@@ -39,7 +39,10 @@ Non c'è runtime Linux né deploy: lo script si distribuisce copiando il file (o
 2. **La password non entra mai nel processo Python.** La chiede `ssh` sul tty. Su disco solo `hosts.json` (host, cliente, parametri) e `profili-<cluster>.json`. (Richiesta esplicita 2026-09-04: "non la password".)
 3. **Ogni rilievo cita la fonte** (`fonte=` in `Esito.add`). Senza fonte è al massimo `INFO`.
 4. **I formati dei comandi si verificano su un nodo reale prima di scrivere il parser.** `qm --help` esce 255, `pvesm status` ha 7 colonne, `corosync-cfgtool -s` è multiriga, SMART ha due formati: ogni parser sbagliato di questo repo nasceva da un formato immaginato. Test: `tests/test_parser.py` fissa i formati verificati.
-5. **Report di prova mai in git**: `*_inventory.md`, `*_report.md`, `*.json` sono ignorati; contengono dati di infrastrutture di clienti.
+5. **`fonti_manuale.py` non si modifica a mano**: è generato da `strumenti/estrai-fonti.py` a partire dal manuale. Una modifica a mano si perde alla prima rigenerazione, e nel frattempo il report cita un testo che nel manuale non c'è. Se una regola va cambiata, si cambia nel manuale.
+6. **Dal manuale escono solo i passaggi citati, e mai i blocchi `[INTERNO]`**: questo repository è pubblico. Test: `tests/test_parser.py::test_nessun_blocco_interno_nelle_regole`.
+7. **Ogni citazione deve risolvere** in una sezione reale del manuale: `scripts/controlla.sh` fallisce altrimenti. Tre citazioni sbagliate sono sopravvissute finché erano testo libero (2026-09-04).
+8. **Report di prova mai in git**: `*_inventory.md`, `*_report.md`, `*.json` sono ignorati; contengono dati di infrastrutture di clienti.
 
 ## Quando cito un altro progetto
 

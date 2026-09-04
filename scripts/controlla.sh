@@ -20,6 +20,15 @@ EOF
 if $PY -m ruff --version >/dev/null 2>&1; then
   echo "→ ruff"; $PY -m ruff check audit-nodo.py tests --quiet || esito=1
 fi
+echo "→ fonti: ogni citazione ha il suo testo"
+$PY strumenti/estrai-fonti.py --controlla || esito=1
+MANUALE="${DA_PROXMOX_DOCS:-$HOME/Progetti/manuali/proxmox}"
+if [ -d "$MANUALE/manuale" ]; then
+  echo "→ fonti: allineamento al manuale"
+  $PY strumenti/estrai-fonti.py --verifica --manuale "$MANUALE" || esito=1
+else
+  echo "→ fonti: manuale non presente su questa macchina, verifica saltata"
+fi
 echo "→ pytest"
 $PY -m pytest -q tests || esito=1
 [ $esito -eq 0 ] && echo "✔ tutto verde" || echo "✘ qualcosa non va"

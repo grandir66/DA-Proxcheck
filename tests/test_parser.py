@@ -138,3 +138,50 @@ def test_conversione_profili_versione_1():
     v2 = {"_versione": "2", "100": "3"}
     assert an.converti_profili(v2) == {"100": "3"}
     assert set(an.CONVERSIONE_PROFILI_V1.values()) <= set(an.PROFILI) | {an.NON_CLASSIFICATA}
+
+
+# ── le regole del manuale dentro il report ──────────────────────────────────
+
+def test_nessun_blocco_interno_nelle_regole():
+    """Il manuale marca [INTERNO] valutazioni Domarc e casi di clienti. Questo
+    repository è pubblico: non devono uscire, né nel testo né altrove nel file
+    generato (incident 2026-06-16, credenziali in un repo)."""
+    generato = Path(__file__).resolve().parents[1] / "fonti_manuale.py"
+    assert "[INTERNO]" not in generato.read_text(encoding="utf-8")
+    for chiave, v in an.REGOLE.items():
+        assert "[INTERNO]" not in v["testo"], chiave
+
+
+def test_ogni_citazione_ha_il_suo_testo():
+    """Un rilievo che cita «manuale §8.3 › Cache mode» deve trovare quel
+    paragrafo: senza, il report rimanda a un documento che il lettore non ha."""
+    codice = (Path(__file__).resolve().parents[1] / "audit-nodo.py").read_text(encoding="utf-8")
+    citate = {a.strip().rstrip(",;.") for a in an._RE_ANCORA.findall(codice)}
+    mancanti = sorted(a for a in citate if a not in an.REGOLE)
+    assert not mancanti, f"citazioni senza testo (rigenerare con strumenti/estrai-fonti.py): {mancanti}"
+
+
+def test_le_regole_hanno_testo_e_origine():
+    for chiave, v in an.REGOLE.items():
+        assert len(v["testo"].strip()) > 80, f"{chiave}: testo troppo corto"
+        assert v.get("origine") or v.get("file"), f"{chiave}: senza origine"
+
+
+def test_una_citazione_puo_nominare_piu_regole():
+    assert an.ancore_di("manuale §9.2, §9.6, §12.1") == ["§9.2", "§9.6", "§12.1"]
+    # il titolo di una sottosezione contiene virgole: non va spezzato
+    assert an.ancore_di("manuale §8.2 › Shares, hugepages, KSM") == ["§8.2 › Shares, hugepages, KSM"]
+    assert an.ancore_di("blockstat") == ["blockstat"]
+    assert an.ancore_di("") == []
+
+
+def test_appendice_riporta_il_testo_della_regola_citata():
+    """È il punto di tutto: il report deve bastare a sé stesso."""
+    e = an.Esito()
+    e.add(an.BLOCCANTE, "VM 1 (prova)", "cache=unsafe", "manuale §8.3 › Cache mode")
+    md = "\n".join(an.sezione_regole_md(e))
+    assert "## Le regole applicate" in md
+    assert "### manuale §8.3 › Cache mode" in md
+    assert an.REGOLE["§8.3 › Cache mode"]["testo"].splitlines()[0] in md
+    # una regola non citata non compare
+    assert "§9.4" not in md

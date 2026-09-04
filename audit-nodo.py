@@ -41,14 +41,16 @@ SOLO LETTURA: pvesh get, smartctl -H/-A, cat, ip, lvs, zpool, timedatectl,
 ping fra gli anelli corosync; con --performance anche pveperf (scrive e
 rimuove un file temporaneo per il test fsync).
 
-FONTI DELLE SOGLIE (citate in ogni rilievo)
-    guida-configurazione-vm-proxmox-per-carico.md   parametri e profili VM
-    manuale/02 installare · 03 cluster · 04-06 storage · 12 backup · App. A
-    Proxreporter hardware_monitor.py                SMART, ECC, RAID (soglie del
-                                                    tool Domarc in produzione)
-    pveperf / forum Proxmox                         fsync/s: valori indicativi
-Dove nessuna fonte prescrive un valore giusto in assoluto, il dato è
-riportato come informazione, non come rilievo.
+FONTI DELLE SOGLIE
+
+Ogni rilievo cita la regola che applica (`manuale §8.3 › Cache mode`), e il
+report ne riporta il TESTO in fondo, nella sezione «Le regole applicate»: chi
+legge non deve avere il manuale sottomano. I passaggi stanno in
+`fonti_manuale.py`, generato da `strumenti/estrai-fonti.py` a partire dal
+manuale operativo Proxmox VE di Domarc; le soglie che il manuale non copre
+(SMART da Proxreporter, fsync/s di pveperf, latenze da blockstat) hanno lì la
+propria spiegazione. Dove nessuna fonte prescrive un valore giusto in
+assoluto, il dato è riportato come informazione, non come rilievo.
 """
 from __future__ import annotations
 
@@ -66,8 +68,18 @@ from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 
-VERSIONE_SCRIPT = "2.0"
+VERSIONE_SCRIPT = "2.1"
 WINDOWS = os.name == "nt"
+
+# Le regole citate, con il testo per esteso: `fonti_manuale.py` è generato da
+# `strumenti/estrai-fonti.py` a partire dal manuale operativo Domarc. Se manca
+# (per esempio perché è stato copiato solo questo file) il report cita le
+# regole senza riportarle: si perde comodità, non correttezza.
+try:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from fonti_manuale import FONTI as REGOLE, MANUALE as EDIZIONE_MANUALE
+except ImportError:
+    REGOLE, EDIZIONE_MANUALE = {}, {}
 
 # ────────────────────────────── console: UTF-8 e colori anche su Windows ──────────────────────────────
 
@@ -560,6 +572,36 @@ def parse_pveperf(testo: str) -> dict:
     return d
 
 
+# un'ancora è `§8.3` o `§8.3 › Cache mode`; il titolo di una sottosezione può
+# contenere virgole («Shares, hugepages, KSM»), quindi si chiude solo a fine
+# stringa o su un altro §
+_RE_ANCORA = re.compile(r"§[0-9A-Z]+(?:\.[0-9]+)?(?:\s*›\s*[^\"'`§\n]+)?")
+
+
+def ancore_di(fonte: str) -> list:
+    """Le regole citate da un rilievo. Una citazione può nominarne più d'una
+    («manuale §9.2, §9.6, §12.1»), e le fonti che non sono il manuale (pveperf,
+    blockstat, Proxreporter) hanno il proprio testo sotto il loro nome."""
+    if not fonte:
+        return []
+    trovate = [a.strip().rstrip(",;.") for a in _RE_ANCORA.findall(fonte)]
+    if not trovate and fonte in REGOLE:
+        trovate = [fonte]
+    return [a for a in trovate if a in REGOLE]
+
+
+def ordine_regola(ancora: str):
+    """Prima il manuale in ordine di sezione, poi le fonti che manuale non sono."""
+    if not ancora.startswith("§"):
+        return (2, 0, 0, ancora)
+    corpo = ancora.lstrip("§").split("›")[0].strip()
+    parte, _, sez = corpo.partition(".")
+    try:
+        return (0, int(parte), int(sez or 0), ancora)
+    except ValueError:                       # appendice: §A.8
+        return (1, 0, int(sez or 0), ancora)
+
+
 def media(campioni, k):
     v = [x[k] for x in (campioni or []) if isinstance(x, dict) and isinstance(x.get(k), (int, float))]
     return (sum(v) / len(v)) if v else None
@@ -658,45 +700,45 @@ class Esito:
         return sum(1 for r in self.rilievi if r.livello == livello)
 
 
-# ────────────────────────────── profili di carico (guida-carico Parte 3) ──────────────────────────────
+# ────────────────────────────── tipologie di carico (manuale, Parte 9) ──────────────────────────────
 
 PROFILI = {
     "1": {"nome": "Domain controller / DNS", "vcpu_max": 4, "balloon": "min_eq_max",
           "cpu_type_evita": {"kvm64"}, "numa": False, "cache": "none", "multiqueue": "no",
-          "protection": True, "ha": True, "fonte": "guida-carico §2.1",
+          "protection": True, "ha": True, "fonte": "manuale §9.1",
           "extra": ["Almeno un secondo domain controller su un altro nodo fisico.",
                     "Mai il rollback di snapshot come ripristino (USN rollback)."]},
     "2": {"nome": "Database", "vcpu_max": None, "balloon": "disabilitato",
           "cpu_type_evita": {"kvm64", "x86-64-v2-AES"}, "numa": True, "cache": "none", "multiqueue": "no",
-          "protection": True, "ha": True, "dischi_min": 2, "fonte": "guida-carico §2.4",
+          "protection": True, "ha": True, "dischi_min": 2, "fonte": "manuale §9.4",
           "extra": ["Dischi dati e log/WAL su dischi virtuali separati.",
                     "aio=native SOLO con raw + cache=none + iothread; altrimenti io_uring."]},
     "3": {"nome": "Applicativo / web / monitoraggio", "vcpu_max": 8, "balloon": "attivo_salvo_java",
           "cpu_type_evita": {"kvm64"}, "numa": False, "cache": "none", "multiqueue": "no",
-          "protection": False, "fonte": "guida-carico §2.3, §2.8",
+          "protection": False, "fonte": "manuale §9.3, §9.8",
           "extra": ["Con JVM (Zabbix Java gateway, Elastic, Tomcat) il ballooning va valutato: la JVM non restituisce memoria."]},
     "4": {"nome": "Rete: firewall, proxy, load balancer", "vcpu_max": None, "balloon": "disabilitato",
           "cpu_type_evita": set(), "cpu_type_richiede": "host", "numa": False, "cache": "none",
-          "multiqueue": "tutte_le_nic", "protection": True, "fonte": "guida-carico §2.5, §2.3 (reverse proxy)",
+          "multiqueue": "tutte_le_nic", "protection": True, "fonte": "manuale §9.5, §9.3",
           "extra": ["Firewall PVE per-interfaccia off se il filtraggio avviene nell'appliance stessa."]},
     "5": {"nome": "Dati: file server, log/SIEM, backup server", "vcpu_max": None, "balloon": "attivo_min_alto",
           "cpu_type_evita": {"kvm64"}, "numa": False, "cache": "none", "multiqueue": "molti_client",
-          "protection": True, "dischi_min": 2, "fonte": "guida-carico §2.2, §2.6; manuale §12",
+          "protection": True, "dischi_min": 2, "fonte": "manuale §9.2, §9.6, §12.1",
           "extra": ["Disco dati separato dal disco di sistema (backup e throttling distinti).",
                     "Valutare un limite di throughput (mbps_wr) sul disco dati: è il vicino rumoroso tipico.",
                     "Se è un backup server: datastore su storage con checksum (ZFS) e backup=0 sul disco del datastore."]},
     "6": {"nome": "Terminal server / VDI", "vcpu_max": None, "balloon": "attivo", "cpu_type_evita": set(),
           "cpu_type_richiede": "host", "numa": None, "cache": "none", "multiqueue": "no",
-          "protection": False, "fonte": "guida-carico §2.7"},
+          "protection": False, "fonte": "manuale §9.7"},
     "7": {"nome": "Test, legacy, replica", "vcpu_max": None, "cpu_type_evita": set(), "numa": False,
           "cache": None, "multiqueue": "no", "protection": False, "onboot_no": True, "legacy": True,
-          "fonte": "guida-carico §1.6, §2.9; manuale §4.5",
+          "fonte": "manuale §8.6, §9.9, §4.5",
           "extra": ["Test: non condividere rete/VLAN con la produzione se il traffico non è filtrato.",
                     "Legacy senza VirtIO: isolare a livello di rete, è debito tecnico con una scadenza.",
                     "Replica/DR: mai onboot insieme alla primaria (conflitto IP/hostname); verificare che la schedulazione pvesr esista."]},
 }
 NON_CLASSIFICATA = "0"
-# I 13 profili della versione 1 (uno per paragrafo della guida-carico) → i 7 di oggi, raggruppati per regole uguali.
+# I 13 profili della versione 1 (uno per paragrafo del manuale, Parte 9) → i 7 di oggi, raggruppati per regole uguali.
 CONVERSIONE_PROFILI_V1 = {"1": "1", "2": "5", "3": "3", "4": "2", "5": "4", "6": "5", "7": "6", "8": "3",
                           "9": "7", "10": "7", "11": "7", "12": "5", "13": "4", "0": "0"}
 VERSIONE_PROFILI = "2"
@@ -828,16 +870,16 @@ def controlla_cluster(inv: dict, esito: Esito):
             bond = iface if iface in topo["slaves"] and iface.startswith("bond") else topo["parent"].get(iface, "")
             if bond.startswith("bond"):
                 esito.add(INFO, B, f"Anello {l['id']} ({l['addr']}) su {iface} → {bond} ({', '.join(topo['slaves'].get(bond, []))}): "
-                          "un anello su un bond è un unico dominio di guasto per configurazione e per switch.", "manuale §5.2")
+                          "un anello su un bond è un unico dominio di guasto per configurazione e per switch.", "manuale §1.3")
             if l["id"] != 0 and l["addr"].rsplit(".", 1)[0] in mgmt_subnets:
-                esito.add(INFO, B, f"Anello {l['id']} ({l['addr']}) sulla rete di management: ok come secondario.", "manuale §5.1")
+                esito.add(INFO, B, f"Anello {l['id']} ({l['addr']}) sulla rete di management: ok come secondario.", "manuale §1.3")
         ids = list(percorsi)
         for i in range(len(ids)):
             for j in range(i + 1, len(ids)):
                 comuni = percorsi[ids[i]] & percorsi[ids[j]]
                 if comuni:
                     esito.add(ATTENZIONE, B, f"Gli anelli {ids[i]} e {ids[j]} passano dalle stesse NIC fisiche "
-                              f"({', '.join(sorted(comuni))}): ridondanza solo logica.", "manuale §3.3, §5.2")
+                              f"({', '.join(sorted(comuni))}): ridondanza solo logica.", "manuale §3.3, §1.3")
         addrs = [l["addr"] for l in link if l.get("addr")]
         if len(addrs) >= 2 and len({a.rsplit(".", 1)[0] for a in addrs}) == 1:
             esito.add(ATTENZIONE, B, "Tutti gli anelli nella stessa subnet.", "manuale §3.3")
@@ -851,34 +893,34 @@ def controlla_cluster(inv: dict, esito: Esito):
 
     ha_res = cl.get("ha_resources") or []
     if ha_res and n_nodi < 3 and not qdev:
-        esito.add(BLOCCANTE, A, f"{len(ha_res)} risorse HA su {n_nodi} nodi senza QDevice.", "manuale §7.1")
+        esito.add(BLOCCANTE, A, f"{len(ha_res)} risorse HA su {n_nodi} nodi senza QDevice.", "manuale §7.2")
     if not ha_res and n_nodi >= 3:
-        esito.add(INFO, A, "Nessuna risorsa in HA: con ≥3 nodi l'alta affidabilità è disponibile ma non usata.", "manuale §7")
+        esito.add(INFO, A, "Nessuna risorsa in HA: con ≥3 nodi l'alta affidabilità è disponibile ma non usata.", "manuale §7.1")
     for r in (cl.get("ha_status") or []):
         if r.get("type") == "service" and str(r.get("state", "")).startswith("error"):
-            esito.add(BLOCCANTE, A, f"Risorsa HA {r.get('sid')} in stato {r.get('state')}.", "manuale §7.7")
+            esito.add(BLOCCANTE, A, f"Risorsa HA {r.get('sid')} in stato {r.get('state')}.", "manuale §7.4")
 
     jobs = cl.get("backup") or []
     if not jobs:
-        esito.add(BLOCCANTE, A, "Nessun job di backup configurato nel cluster.", "manuale §12")
+        esito.add(BLOCCANTE, A, "Nessun job di backup configurato nel cluster.", "manuale §12.1")
     for j in jobs:
         if not j.get("enabled", 1):
-            esito.add(ATTENZIONE, A, f"Job di backup {j.get('id')} disabilitato.", "manuale §12")
+            esito.add(ATTENZIONE, A, f"Job di backup {j.get('id')} disabilitato.", "manuale §12.1")
         if not (j.get("fleecing") or {}).get("enabled"):
-            esito.add(INFO, A, f"Job {j.get('id')} senza fleecing: durante il backup le scritture dei guest aspettano il target.", "manuale §12.7")
+            esito.add(INFO, A, f"Job {j.get('id')} senza fleecing: durante il backup le scritture dei guest aspettano il target.", "manuale §12.6")
         if (j.get("prune-backups") or {}).get("keep-all"):
-            esito.add(INFO, A, f"Job {j.get('id')}: keep-all, nessuna retention.", "manuale §12")
+            esito.add(INFO, A, f"Job {j.get('id')}: keep-all, nessuna retention.", "manuale §12.7")
     nbu = cl.get("not_backed_up") or []
     if nbu:
         esito.add(ATTENZIONE, A, f"{len(nbu)} guest senza alcun job di backup: " +
-                  ", ".join(f"{x.get('vmid')} {x.get('name', '')}".strip() for x in nbu[:12]) + (" …" if len(nbu) > 12 else "") + ".", "manuale §12")
+                  ", ".join(f"{x.get('vmid')} {x.get('name', '')}".strip() for x in nbu[:12]) + (" …" if len(nbu) > 12 else "") + ".", "manuale §12.1")
     for r in (cl.get("replication") or []):
         if r.get("error"):
             esito.add(BLOCCANTE, A, f"Replica {r.get('id')}: errore — {str(r.get('error'))[:120]}", "manuale §4.5")
     ceph = cl.get("ceph")
     if isinstance(ceph, dict) and (ceph.get("health") or {}).get("status") not in (None, "HEALTH_OK"):
         h = ceph["health"]["status"]
-        esito.add(BLOCCANTE if h == "HEALTH_ERR" else ATTENZIONE, A, f"Ceph: {h}.", "manuale §6.7")
+        esito.add(BLOCCANTE if h == "HEALTH_ERR" else ATTENZIONE, A, f"Ceph: {h}.", "manuale §6.6")
 
 
 # ────────────────────────────── controlli: nodo ──────────────────────────────
@@ -915,44 +957,45 @@ def controlla_nodo(nome: str, blocco: dict, inv: dict, esito: Esito):
     upd = nodo.get("apt_update") or []
     if upd:
         imp = [u["Package"] for u in upd if re.match(r"(pve-manager|proxmox-kernel|pve-kernel|qemu-server|pve-qemu-kvm|corosync|zfs)", u.get("Package", ""))]
-        esito.add(ATTENZIONE, A, f"{len(upd)} aggiornamenti disponibili non installati" + (f" (tra cui {', '.join(imp[:5])})" if imp else "") + ".", "manuale §19")
+        esito.add(ATTENZIONE, A, f"{len(upd)} aggiornamenti disponibili non installati" + (f" (tra cui {', '.join(imp[:5])})" if imp else "") + ".", "manuale §19.1")
     running = ((st.get("current-kernel") or {}).get("release") or "")
     ker = sorted(re.findall(r"vmlinuz-(\S+)", nodo.get("kernel_boot") or ""))
     if running and ker and running in ker and ker[-1] != running:
-        esito.add(ATTENZIONE, A, f"Kernel installato più recente ({ker[-1]}) di quello in esecuzione ({running}): riavvio pendente.", "manuale §19")
+        esito.add(ATTENZIONE, A, f"Kernel installato più recente ({ker[-1]}) di quello in esecuzione ({running}): riavvio pendente.", "manuale §19.1")
     srv = {s.get("name"): s for s in (nodo.get("services") or [])}
     for n in list(SERVIZI_CORE) + (["corosync"] if cluster else []):
         s = srv.get(n)
         if s and (s.get("state") != "running" or s.get("unit-state") not in ("enabled", "static", "indirect")):
-            esito.add(BLOCCANTE, A, f"Servizio {n}: {s.get('state')}/{s.get('unit-state')}.", "manuale §20")
+            esito.add(BLOCCANTE, A, f"Servizio {n}: {s.get('state')}/{s.get('unit-state')}.", "manuale §20.2")
     for ce in (nodo.get("certificati") or []):
         if ce.get("notafter"):
             gg = (ce["notafter"] - time.time()) / 86400
             if gg < 0:
-                esito.add(BLOCCANTE, A, f"Certificato {ce.get('filename')} SCADUTO.", "manuale §13")
+                esito.add(BLOCCANTE, A, f"Certificato {ce.get('filename')} SCADUTO.", "manuale §2.7")
             elif gg < 30:
-                esito.add(ATTENZIONE, A, f"Certificato {ce.get('filename')} scade tra {gg:.0f} giorni.", "manuale §13")
+                esito.add(ATTENZIONE, A, f"Certificato {ce.get('filename')} scade tra {gg:.0f} giorni.", "manuale §2.7")
     mem, sw, rf = st.get("memory") or {}, st.get("swap") or {}, st.get("rootfs") or {}
     p = pct(mem.get("used"), mem.get("total"))
     if p is not None and p > 90:
-        esito.add(ATTENZIONE, A, f"RAM host al {p:.0f}%: poco margine per ballooning, ARC e picchi.", "guida-carico §1.2")
+        esito.add(ATTENZIONE, A, f"RAM host al {p:.0f}%: poco margine per ballooning, ARC e picchi.", "manuale §1.5")
     p = pct(sw.get("used"), sw.get("total"))
     if p is not None and p > 25:
-        esito.add(ATTENZIONE, A, f"Swap dell'host al {p:.0f}%: l'hypervisor pagina, ne risentono tutte le VM.", "guida-carico §1.2")
+        esito.add(ATTENZIONE, A, f"Swap dell'host al {p:.0f}%: l'hypervisor pagina, ne risentono tutte le VM.", "manuale §1.5")
     p = pct(rf.get("used"), rf.get("total"))
     if p is not None and p >= 85:
         esito.add(BLOCCANTE if p >= 95 else ATTENZIONE, A, f"Filesystem di root al {p:.0f}%.", "manuale §4.6")
     if (st.get("uptime") or 0) > 365 * 86400:
-        esito.add(INFO, A, f"Uptime {durata(st.get('uptime'))}: oltre un anno senza riavvio.", "manuale §19")
+        esito.add(INFO, A, f"Uptime {durata(st.get('uptime'))}: oltre un anno senza riavvio.", "manuale §19.1")
     cpus = (st.get("cpuinfo") or {}).get("cpus")
     vms = [v for v in costruisci_vms(inv) if v.nodo == nome and v.running]
     vcpu_tot = sum(vcpu_di(v.config) for v in vms)
     mem_tot = sum(int(v.config.get("memory", 0) or 0) for v in vms) * 1024**2
     if cpus and vcpu_tot:
         r = vcpu_tot / cpus
-        esito.add(ATTENZIONE if r > 4 else INFO, A, f"vCPU delle VM accese: {vcpu_tot} su {cpus} CPU logiche ({r:.1f}:1; tipico 3-4:1, 1:1 per database e appliance).", "guida-carico §1.1")
+        esito.add(ATTENZIONE if r > 4 else INFO, A, f"vCPU delle VM accese: {vcpu_tot} su {cpus} CPU logiche "
+                  f"({r:.1f}:1; tipico 3-4:1, 1:1 per database e appliance).", "manuale §8.1 › Overcommit di vCPU")
     if mem.get("total") and mem_tot > mem["total"]:
-        esito.add(ATTENZIONE, A, f"RAM assegnata alle VM accese ({gb(mem_tot)}) supera quella dell'host ({gb(mem['total'])}): overcommit reale.", "guida-carico §1.2")
+        esito.add(ATTENZIONE, A, f"RAM assegnata alle VM accese ({gb(mem_tot)}) supera quella dell'host ({gb(mem['total'])}): overcommit reale.", "manuale §1.5")
     for s in (nodo.get("storage") or []):
         S = f"{A} — storage {s.get('storage')}"
         if s.get("enabled") and not s.get("active"):
@@ -990,29 +1033,29 @@ def controlla_nodo(nome: str, blocco: dict, inv: dict, esito: Esito):
             except ValueError:
                 continue
             if mp >= 80:
-                esito.add(BLOCCANTE if mp >= 95 else ATTENZIONE, f"{A} — LVM-thin {f[1]}/{f[0]}", f"Metadati al {mp:.1f}%: il pool diventa di sola lettura quando finiscono.", "manuale App. A.8")
+                esito.add(BLOCCANTE if mp >= 95 else ATTENZIONE, f"{A} — LVM-thin {f[1]}/{f[0]}", f"Metadati al {mp:.1f}%: il pool diventa di sola lettura quando finiscono.", "manuale §A.8")
     if (nodo.get("multipath") or "").strip():
-        esito.add(INFO, f"{A} — multipath", "multipath attivo: i PV vanno su /dev/mapper/<WWID>, mai su /dev/sdX.", "manuale App. A.8")
+        esito.add(INFO, f"{A} — multipath", "multipath attivo: i PV vanno su /dev/mapper/<WWID>, mai su /dev/sdX.", "manuale §A.8")
     td = nodo.get("timedatectl") or ""
     if re.search(r"System clock synchronized:\s*no", td):
-        esito.add(BLOCCANTE, f"{A} — orario", "Orologio NON sincronizzato: rompe il cluster e Kerberos.", "manuale §2.1")
+        esito.add(BLOCCANTE, f"{A} — orario", "Orologio NON sincronizzato: rompe il cluster e Kerberos.", "manuale §2.5")
     elif re.search(r"NTP service:\s*inactive", td):
-        esito.add(ATTENZIONE, f"{A} — orario", "Servizio NTP inattivo.", "manuale §2.1")
+        esito.add(ATTENZIONE, f"{A} — orario", "Servizio NTP inattivo.", "manuale §2.5")
     for bond, testo in (nodo.get("bonding") or {}).items():
         slave = re.findall(r"Slave Interface:\s*(\S+)\nMII Status:\s*(\S+)", testo)
         giu = [s for s, stt in slave if stt != "up"]
         if giu:
-            esito.add(BLOCCANTE, f"{A} — rete {bond}", f"Slave {', '.join(giu)} DOWN: bond degradato.", "manuale §5")
+            esito.add(BLOCCANTE, f"{A} — rete {bond}", f"Slave {', '.join(giu)} DOWN: bond degradato.", "manuale §2.6")
         if len(slave) == 1:
-            esito.add(ATTENZIONE, f"{A} — rete {bond}", f"Bond con un solo slave ({slave[0][0]}): nessuna ridondanza, il bond è solo nominale.", "manuale §5.2")
+            esito.add(ATTENZIONE, f"{A} — rete {bond}", f"Bond con un solo slave ({slave[0][0]}): nessuna ridondanza, il bond è solo nominale.", "manuale §2.6")
     fw = re.search(r"Status:\s*(\S+)", nodo.get("pve_firewall") or "")
     if fw:
-        esito.add(INFO, f"{A} — firewall PVE", f"Stato {fw.group(1)}: va attivo se il filtraggio non avviene altrove.", "manuale §15")
+        esito.add(INFO, f"{A} — firewall PVE", f"Stato {fw.group(1)}: va attivo se il filtraggio non avviene altrove.", "manuale §15.3")
     bi = st.get("boot-info") or {}
     if bi:
-        esito.add(INFO, A, f"Boot {str(bi.get('mode', '?')).upper()}, Secure Boot {'attivo' if bi.get('secureboot') else 'disattivo'}.", "manuale §2.2")
+        esito.add(INFO, A, f"Boot {str(bi.get('mode', '?')).upper()}, Secure Boot {'attivo' if bi.get('secureboot') else 'disattivo'}.", "manuale §2.1")
     if (st.get("ksm") or {}).get("shared"):
-        esito.add(INFO, A, f"KSM attivo: {gb(st['ksm']['shared'])} di pagine condivise.", "guida-carico §1.2")
+        esito.add(INFO, A, f"KSM attivo: {gb(st['ksm']['shared'])} di pagine condivise.", "manuale §8.2 › Shares, hugepages, KSM")
 
 
 # ────────────────────────────── controlli: hardware ──────────────────────────────
@@ -1069,7 +1112,7 @@ def controlla_performance(nome: str, blocco: dict, esito: Esito):
     nodo = blocco.get("nodo") or {}
     rrd = nodo.get("rrd") or []
     A = f"Performance — nodo {nome} (ultima ora)"
-    F = "rrddata / guida-carico §1"
+    F = "rrddata"
     cpu = media(rrd, "cpu")
     if cpu is not None:
         esito.add(ATTENZIONE if cpu > 0.8 else INFO, A, f"CPU media {cpu*100:.0f}% (max {(massimo(rrd, 'cpu') or 0)*100:.0f}%).", F)
@@ -1089,7 +1132,7 @@ def controlla_performance(nome: str, blocco: dict, esito: Esito):
         f = p.get("fsync_s")
         if f is not None:
             giud = "scarso, sotto il minimo consigliato per VM e database" if f < 200 else ("accettabile" if f < 1000 else "buono")
-            esito.add(ATTENZIONE if f < 200 else INFO, B, f"FSYNC/s {f:.0f} — {giud} (indicativo: <200 scarso · 200-1000 accettabile · >1000 buono).", "pveperf / forum Proxmox")
+            esito.add(ATTENZIONE if f < 200 else INFO, B, f"FSYNC/s {f:.0f} — {giud} (indicativo: <200 scarso · 200-1000 accettabile · >1000 buono).", "pveperf")
         if path == "/" and p.get("dns_int_ms") is not None and p["dns_int_ms"] > 500:
             esito.add(ATTENZIONE, f"Performance — nodo {nome}", f"DNS interno {p['dns_int_ms']:.0f} ms: rallenta login, GUI e ogni "
                       "risoluzione dal nodo — di norma un resolver sbagliato o irraggiungibile.", "pveperf")
@@ -1120,67 +1163,69 @@ def ambito_vm(vm: VM, inv: dict) -> str:
 def controlla_generali(vm: VM, inv: dict, esito: Esito):
     cfg, st = vm.config, vm.status or {}
     A = ambito_vm(vm, inv)
-    G = "guida-carico"
+    G = "manuale"
     host_cpu = (((inv.get("nodi") or {}).get(vm.nodo) or {}).get("nodo") or {}).get("status", {}).get("cpuinfo") or {}
     cpu_tipo = (cfg.get("cpu") or "kvm64").split(",")[0]
     if cpu_tipo == "kvm64":
-        esito.add(ATTENZIONE, A, "CPU type kvm64 (default): set di istruzioni minimo. Valutare almeno x86-64-v2-AES.", f"{G} §1.1")
+        esito.add(ATTENZIONE, A, "CPU type kvm64 (default): set di istruzioni minimo. Valutare almeno x86-64-v2-AES.", f"{G} §8.1 › Tipo di CPU")
     if cfg.get("sockets", "1") not in ("", "1") and cfg.get("numa", "0") != "1":
-        esito.add(ATTENZIONE, A, f"{cfg['sockets']} socket senza NUMA: la regola è 1 socket, N core.", f"{G} §1.1")
+        esito.add(ATTENZIONE, A, f"{cfg['sockets']} socket senza NUMA: la regola è 1 socket, N core.", f"{G} §8.1 › Socket e core")
     if cfg.get("cpulimit") not in (None, "", "0"):
-        esito.add(INFO, A, f"cpulimit={cfg['cpulimit']}: tetto assoluto di CPU.", f"{G} §1.1")
+        esito.add(INFO, A, f"cpulimit={cfg['cpulimit']}: tetto assoluto di CPU.", f"{G} §8.1 › Priorità e limiti")
     if stato_ballooning(cfg) == "assente":
-        esito.add(ATTENZIONE, A, "balloon: 0 — driver assente E reporting RAM perso (sempre 100% in GUI). Per RAM fissa con statistiche: Minimum memory = Memory.", f"{G} §1.2")
+        esito.add(ATTENZIONE, A, "balloon: 0 — driver assente E reporting RAM perso (sempre 100% in GUI). "
+                  "Per RAM fissa con statistiche: Minimum memory = Memory.", f"{G} §8.2 › Ballooning — il malinteso più diffuso")
     if cfg.get("hugepages") not in (None, ""):
-        esito.add(INFO, A, f"hugepages={cfg['hugepages']}.", f"{G} §1.2")
+        esito.add(INFO, A, f"hugepages={cfg['hugepages']}.", f"{G} §8.2 › Shares, hugepages, KSM")
     ha_scsi = False
     for d in dischi_dati(cfg):
         bus, cache, aio, ioth, disc = d["bus"], d.get("cache", ""), d.get("aio", ""), d.get("iothread", "0"), d.get("discard", "")
         ha_scsi |= bus.startswith("scsi")
         if bus.startswith(("sata", "ide")):
-            esito.add(ATTENZIONE, A, f"Disco {bus}: bus SATA/IDE — solo per compatibilità o migrazione; il riferimento è SCSI + VirtIO SCSI single.", f"{G} §1.3")
+            esito.add(ATTENZIONE, A, f"Disco {bus}: bus SATA/IDE — solo per compatibilità o migrazione; il riferimento è SCSI + VirtIO SCSI single.", f"{G} §8.3 › Controller e bus")
         if cache in ("writeback", "unsafe"):
-            esito.add(BLOCCANTE if cache == "unsafe" else ATTENZIONE, A, f"Disco {bus}: cache={cache} — un crash dell'host può corrompere i dati recenti senza UPS/BBU.", f"{G} §1.3")
+            esito.add(BLOCCANTE if cache == "unsafe" else ATTENZIONE, A, f"Disco {bus}: cache={cache} — un crash dell'host può corrompere i dati recenti senza UPS/BBU.", f"{G} §8.3 › Cache mode")
         if aio == "native" and (cache != "none" or ioth in ("0", "")):
-            esito.add(BLOCCANTE, A, f"Disco {bus}: aio=native senza cache=none+iothread=1 — l'I/O può bloccarsi.", f"{G} §1.3, §7.4")
+            esito.add(BLOCCANTE, A, f"Disco {bus}: aio=native senza cache=none+iothread=1 — l'I/O può bloccarsi.", f"{G} §8.3 › AIO — la scelta che dipende dallo storage")
         if disc not in ("on", "1") and bus.startswith(("scsi", "virtio")):
-            esito.add(ATTENZIONE, A, f"Disco {bus}: discard non attivo — lo spazio liberato nel guest non torna allo storage thin.", f"{G} §1.3")
+            esito.add(ATTENZIONE, A, f"Disco {bus}: discard non attivo — lo spazio liberato nel guest non torna allo storage thin.", f"{G} §8.3 › Altri parametri disco")
         if bus.startswith("scsi") and ioth in ("0", ""):
-            esito.add(ATTENZIONE, A, f"Disco {bus}: iothread non attivo.", f"{G} §1.3")
+            esito.add(ATTENZIONE, A, f"Disco {bus}: iothread non attivo.", f"{G} §8.3 › IO thread")
     scsihw = cfg.get("scsihw", "")
     if ha_scsi and scsihw and scsihw != "virtio-scsi-single":
-        esito.add(ATTENZIONE, A, f"scsihw={scsihw}: il riferimento è virtio-scsi-single (presupposto per gli IO thread).", f"{G} §1.3")
+        esito.add(ATTENZIONE, A, f"scsihw={scsihw}: il riferimento è virtio-scsi-single (presupposto per gli IO thread).", f"{G} §8.3 › IO thread")
     vcpu = vcpu_di(cfg)
     for r in parse_reti(cfg):
         mq = r.get("queues")
         if mq and mq.isdigit() and int(mq) > vcpu:
-            esito.add(ATTENZIONE, A, f"{r['iface']}: multiqueue={mq} > {vcpu} vCPU.", f"{G} §1.4")
+            esito.add(ATTENZIONE, A, f"{r['iface']}: multiqueue={mq} > {vcpu} vCPU.", f"{G} §8.4 › Multiqueue")
         if r.get("modello") and not r["modello"].startswith("virtio"):
-            esito.add(ATTENZIONE, A, f"{r['iface']}: modello '{r['modello']}', non VirtIO — solo per sistemi legacy.", f"{G} §1.4")
+            esito.add(ATTENZIONE, A, f"{r['iface']}: modello '{r['modello']}', non VirtIO — solo per sistemi legacy.", f"{G} §8.4")
     agent = cfg.get("agent", "")
     if not agent or agent.startswith("0"):
-        esito.add(ATTENZIONE, A, "QEMU Guest Agent non attivo: niente spegnimento pulito, freeze del filesystem nei backup, IP in GUI.", f"{G} §1.5")
+        esito.add(ATTENZIONE, A, "QEMU Guest Agent non attivo: niente spegnimento pulito, freeze del filesystem nei backup, IP in GUI.", f"{G} §8.5")
     elif vm.running and not st.get("agent"):
-        esito.add(ATTENZIONE, A, "Agent abilitato ma NON risponde nel guest: i backup non fanno il freeze del filesystem.", f"{G} §1.5")
+        esito.add(ATTENZIONE, A, "Agent abilitato ma NON risponde nel guest: i backup non fanno il freeze del filesystem.", f"{G} §8.5")
     ostype = cfg.get("ostype", "")
     if ostype.startswith("win") and host_cpu.get("vendor") == "GenuineIntel" and cpu_tipo == "host":
         rm = st.get("running-machine") or cfg.get("machine", "")
         if re.search(r"11\.0", rm or "") and "pve2" not in rm:
-            esito.add(ATTENZIONE, A, f"Windows con CPU host su Intel e machine {rm}: blocchi intermittenti noti con VBS (Bugzilla #7825) — serve 11.0+pve2.", f"{G} problema noto 9.2")
+            esito.add(ATTENZIONE, A, f"Windows con CPU host su Intel e machine {rm}: blocchi intermittenti noti con VBS (Bugzilla #7825) — serve 11.0+pve2.", f"{G} §8.1 › Tipo di CPU")
     if ostype in ("win11", "win10") and cfg.get("bios", "seabios") != "ovmf":
-        esito.add(INFO, A, "Windows recente con SeaBIOS: OVMF (UEFI) è il riferimento.", f"{G} §1.5")
+        esito.add(INFO, A, "Windows recente con SeaBIOS: OVMF (UEFI) è il riferimento.", f"{G} §8.5")
     if cfg.get("protection", "0") != "1" and cfg.get("onboot", "0") == "1":
-        esito.add(INFO, A, "protection non attiva su una VM ad avvio automatico.", f"{G} §1.6")
+        esito.add(INFO, A, "protection non attiva su una VM ad avvio automatico.", f"{G} §8.6")
     for s in vm.snapshot:
         eta = (time.time() - s.get("snaptime", time.time())) / 86400
         if eta > 30:
-            esito.add(ATTENZIONE, A, f"Snapshot '{s.get('name')}' di {eta:.0f} giorni: non è un backup, e degrada le prestazioni finché resta.", f"{G} §1.3, manuale §12")
+            esito.add(ATTENZIONE, A, f"Snapshot '{s.get('name')}' di {eta:.0f} giorni: non è un backup, "
+                      "e degrada le prestazioni finché resta.", f"{G} §12.1")
     if vm.pending:
-        esito.add(INFO, A, f"{len(vm.pending)} modifiche in attesa di riavvio: " + ", ".join(str(p.get('key')) for p in vm.pending[:6]) + ".", "manuale §8")
+        esito.add(INFO, A, f"{len(vm.pending)} modifiche in attesa di riavvio: " + ", ".join(str(p.get('key')) for p in vm.pending[:6]) + ".", "manuale §8.6")
     if vm.running:
         cpu_avg = media(vm.rrd, "cpu")
         if cpu_avg is not None and cpu_avg > 0.8:
-            esito.add(ATTENZIONE, A, f"CPU media nell'ultima ora {cpu_avg*100:.0f}% su {vcpu} vCPU: sottodimensionata o in loop.", f"{G} §1.1")
+            esito.add(ATTENZIONE, A, f"CPU media nell'ultima ora {cpu_avg*100:.0f}% su {vcpu} vCPU: sottodimensionata o in loop.", f"{G} §8.1 › Overcommit di vCPU")
         for k, n in (("pressurecpusome", "CPU"), ("pressureiosome", "I/O"), ("pressurememorysome", "memoria")):
             v = media(vm.rrd, k)
             if v is not None and v > 20:
@@ -1202,22 +1247,22 @@ def controlla_generali(vm: VM, inv: dict, esito: Esito):
             drift = ag["ora"] / 1e9 - ag["ora_host"]
             resto = abs(drift) % 3600
             if abs(drift) > 30 and min(resto, 3600 - resto) < 60 and abs(drift) >= 3600:
-                esito.add(INFO, A, f"Orologio del guest a {drift/3600:+.0f} h esatte dall'host: quasi certamente l'agent riporta l'ora locale, non un orologio sbagliato.", "manuale §2.1")
+                esito.add(INFO, A, f"Orologio del guest a {drift/3600:+.0f} h esatte dall'host: quasi certamente l'agent riporta l'ora locale, non un orologio sbagliato.", "manuale §2.5")
             elif abs(drift) > 30:
-                esito.add(ATTENZIONE, A, f"Orologio del guest sfasato di {drift:+.0f} s rispetto all'host.", "manuale §2.1")
+                esito.add(ATTENZIONE, A, f"Orologio del guest sfasato di {drift:+.0f} s rispetto all'host.", "manuale §2.5")
         oi = ag.get("osinfo") if isinstance(ag.get("osinfo"), dict) else {}
         if oi.get("id") and ostype:
             if ostype.startswith("win") != ("windows" in (oi.get("id", "") + oi.get("name", "")).lower()):
-                esito.add(INFO, A, f"ostype '{ostype}' ma il guest è {oi.get('pretty-name') or oi.get('name')}.", f"{G} §1.5")
+                esito.add(INFO, A, f"ostype '{ostype}' ma il guest è {oi.get('pretty-name') or oi.get('name')}.", f"{G} §8.5")
         for it in (ag.get("interfacce") if isinstance(ag.get("interfacce"), list) else []):
             stt = it.get("statistics") or {} if isinstance(it, dict) else {}
             if stt.get("rx-errs") or stt.get("tx-errs"):
                 esito.add(INFO, A, f"{it.get('name')} nel guest: errori rx/tx {stt.get('rx-errs', 0)}/{stt.get('tx-errs', 0)}.", "guest agent")
     elif cfg.get("onboot") == "1":
-        esito.add(INFO, A, "Spenta ma con onboot=1: ripartirà al prossimo riavvio del nodo.", f"{G} §1.6")
+        esito.add(INFO, A, "Spenta ma con onboot=1: ripartirà al prossimo riavvio del nodo.", f"{G} §8.6")
     nbu = {str(x.get("vmid")) for x in (inv.get("cluster", {}).get("not_backed_up") or [])}
     if vm.vmid in nbu:
-        esito.add(ATTENZIONE, A, "Non inclusa in nessun job di backup.", "manuale §12")
+        esito.add(ATTENZIONE, A, "Non inclusa in nessun job di backup.", "manuale §12.1")
 
 
 def controlla_profilo(vm: VM, pid: str, inv: dict, esito: Esito):
@@ -1275,7 +1320,7 @@ def controlla_lxc(ctid: str, d: dict, inv: dict, esito: Esito):
     if cfg.get("unprivileged", "0") != "1":
         esito.add(ATTENZIONE, A, "Container privilegiato: un'evasione compromette l'host. Preferire unprivileged.", "manuale §10.2")
     if cfg.get("protection", "0") != "1" and cfg.get("onboot") == "1":
-        esito.add(INFO, A, "protection non attiva su un container ad avvio automatico.", "manuale §10")
+        esito.add(INFO, A, "protection non attiva su un container ad avvio automatico.", "manuale §10.2")
 
 
 # ────────────────────────────── tabella VM e assegnazione ──────────────────────────────
@@ -1772,11 +1817,13 @@ def scrivi_rilievi_md(path: Path, esito: Esito, inv: dict, intest: dict, vms: li
                sum(1 for x in rl if x.livello == INFO)) for cat, rl in per.items()], ("Categoria", "Bloccanti", "Da valutare", "Info"))
     bl = [x for x in esito.rilievi if x.livello == BLOCCANTE]
     if bl:
-        r += ["### Da risolvere prima di tutto", ""] + [f"- 🔴 **{x.ambito}** — {x.messaggio} *[{x.fonte}]*" for x in bl] + [""]
+        r += ["### Da risolvere prima di tutto", ""]
+        r += [f"- 🔴 **{x.ambito}** — {x.messaggio} *[{x.fonte}]*" for x in bl] + [""]
     r += ["## Legenda", "", "- 🔴 **Bloccante**: rischio concreto di fermo, perdita dati o mancato aggiornamento; da trattare per primo.",
           "- 🟡 **Da valutare**: scostamento dalla best practice con un costo reale (prestazioni, ripristino, sicurezza).",
           "- ℹ️ **Informativo**: dato utile a chi decide, nessuna azione obbligata.",
-          "- La colonna *Fonte* cita il documento e il paragrafo da cui viene la regola.", ""]
+          "- La colonna *Fonte* cita il paragrafo da cui viene la regola. **Il testo di ogni regola citata è in fondo al report**, "
+          "nella sezione «Le regole applicate»: per capire un rilievo non serve avere il manuale sottomano.", ""]
     r += ["## Rilievi su cluster, nodi, hardware, storage, rete e performance", ""]
     for cat, rl in per.items():
         if cat.startswith("VM") or cat == "Container":
@@ -1792,8 +1839,46 @@ def scrivi_rilievi_md(path: Path, esito: Esito, inv: dict, intest: dict, vms: li
         r += ["## Rilievi sui container", ""]
         r += _tab([("🔴 BLOCCANTE" if x.livello == BLOCCANTE else "🟡 attenzione" if x.livello == ATTENZIONE else "ℹ️ info",
                     x.ambito, x.messaggio, x.fonte) for x in ct], ("Livello", "Ambito", "Rilievo", "Fonte"))
+    r += sezione_regole_md(esito)
     r += _piede_md()
     path.write_text("\n".join(r), encoding="utf-8")
+
+
+def sezione_regole_md(esito: Esito) -> list:
+    """Le regole citate nel report, con il testo per esteso: il report deve
+    bastare a sé stesso, senza il manuale sottomano. Compaiono solo le regole
+    che un rilievo ha davvero citato, e ognuna porta il file e la riga da cui
+    viene, così chi ha il manuale può risalire e chi non ce l'ha legge qui."""
+    citate = []
+    for x in esito.rilievi:
+        for a in ancore_di(x.fonte):
+            if a not in citate:
+                citate.append(a)
+    if not citate:
+        if esito.rilievi and not REGOLE:
+            return ["## Le regole applicate", "",
+                    "*Il testo delle regole non è disponibile in questa copia dello strumento "
+                    "(manca `fonti_manuale.py`): ogni rilievo riporta comunque il paragrafo del manuale che lo motiva.*", ""]
+        return []
+    ed = EDIZIONE_MANUALE or {}
+    r = ["## Le regole applicate", "",
+         f"Il testo delle regole citate dai rilievi, così il report basta a sé stesso. Dal "
+         f"**{ed.get('nome', 'manuale operativo Proxmox VE — Domarc')}**"
+         + (f", edizione {ed['versione']}" if ed.get("versione") not in (None, "?") else "")
+         + (f", verificata il {ed['verificato']}" if ed.get("verificato") not in (None, "?") else "") + ".", ""]
+    for a in sorted(citate, key=ordine_regola):
+        v = REGOLE[a]
+        r.append(f"### {'manuale ' if a.startswith('§') else ''}{a}")
+        r.append("")
+        origine = v.get("origine") or (f"`{v['file']}`" + (f", riga {v['riga']}" if v.get("riga") else ""))
+        r.append(f"**{v['titolo']}** — {origine}  ")
+        r.append("")
+        r.append(v["testo"])
+        if v.get("troncato"):
+            r.append("")
+            r.append("*(il paragrafo prosegue nel manuale)*")
+        r.append("")
+    return r
 
 
 def _slug(t: str) -> str:

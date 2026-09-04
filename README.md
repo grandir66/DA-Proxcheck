@@ -41,7 +41,7 @@ Le classificazioni delle VM si salvano da sole in `~/.config/audit-nodo/profili-
 | VM | CPU type, socket/NUMA, ballooning, bus e cache dei dischi, iothread, discard, VirtIO, multiqueue, agent, snapshot vecchi, modifiche pendenti, filesystem e orologio del guest, latenze di flush, copertura backup, profilo di carico |
 | Container | privilegiati, protection |
 
-Ogni rilievo ha tre livelli (🔴 bloccante · 🟡 da valutare · ℹ️ informativo) e cita la fonte. Dove nessuna fonte prescrive un valore assoluto, il dato è informativo.
+Ogni rilievo ha tre livelli (🔴 bloccante · 🟡 da valutare · ℹ️ informativo) e cita la regola che applica. **Il report riporta in fondo il testo di ogni regola citata**, nella sezione «Le regole applicate»: per capire un rilievo non serve avere il manuale sottomano. I passaggi stanno in `fonti_manuale.py`, generato da `strumenti/estrai-fonti.py` a partire dal manuale operativo Domarc; le soglie che il manuale non copre (SMART, fsync/s, latenze di I/O) hanno lì la propria spiegazione. Dove nessuna fonte prescrive un valore assoluto, il dato è informativo.
 
 ### Opzioni
 
@@ -65,8 +65,11 @@ Una pagina HTML autonoma (nessun server, nessuna dipendenza online oltre ai font
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install pytest ruff   # una volta per macchina
-bash scripts/controlla.sh                                    # compila, verifica i collector incorporati, ruff, pytest
+bash scripts/controlla.sh                                    # compila, collector, fonti, ruff, pytest
+python3 strumenti/estrai-fonti.py                            # rigenera il testo delle regole dal manuale
 ```
+
+`fonti_manuale.py` è **generato**: contiene i passaggi del manuale che i rilievi citano, con file e riga di origine, e non si modifica a mano. Serve il repo del manuale (`DA_PROXMOX_DOCS`, default `~/Progetti/manuali/proxmox`) solo per rigenerarlo: per usare lo strumento no.
 
 Le soglie dell'audit vengono dal manuale operativo Proxmox di Domarc e dalla guida alla configurazione VM per carico; le soglie hardware da Proxreporter, il tool di reporting Domarc, solo la parte di lettura. `CONTEXT.md` è il passaggio di consegne; `CHANGELOG.md` racconta cosa è cambiato e perché.
 
@@ -76,7 +79,7 @@ Le soglie dell'audit vengono dal manuale operativo Proxmox di Domarc e dalla gui
 
 **DA-Proxcheck** ships two tools for Proxmox VE projects:
 
-- **`audit-nodo.py`** — read-only audit of a node or a whole cluster from the engineer's laptop (macOS, Linux, Windows; Python 3.7+ and `ssh`). One SSH connection: a stdlib-only collector runs on the entry node, queries the local API and, in a cluster, repeats the collection on the other nodes through the cluster's own SSH trust. It compares cluster/corosync, node, hardware, storage, network, performance, VM and container settings with best practices and writes two Markdown files: an **inventory** and a **findings report** (🔴 blocking · 🟡 review · ℹ️ info, each with its source). Passwords are never seen or stored; VM workload types (7, proposed automatically from the VM name and guest OS, always confirmable) are remembered per cluster.
+- **`audit-nodo.py`** — read-only audit of a node or a whole cluster from the engineer's laptop (macOS, Linux, Windows; Python 3.7+ and `ssh`). One SSH connection: a stdlib-only collector runs on the entry node, queries the local API and, in a cluster, repeats the collection on the other nodes through the cluster's own SSH trust. It compares cluster/corosync, node, hardware, storage, network, performance, VM and container settings with best practices and writes two Markdown files: an **inventory** and a **findings report** (🔴 blocking · 🟡 review · ℹ️ info). Each finding cites the rule it applies, and the report **quotes the full text of every cited rule** in a closing section, so it stands on its own without the manual. Passwords are never seen or stored; VM workload types (7, proposed automatically from the VM name and guest OS, always confirmable) are remembered per cluster.
 - **`questionario/questionario-migrazione.html`** — a single-file, offline **migration questionnaire** (VMware → Proxmox or greenfield), Italian and English, Basic/Full scope, blocking fields, per-node IP table, defaults, auto-saved draft and **Markdown export**. Published at <https://grandir66.github.io/DA-Proxcheck/questionario/questionario-migrazione.html>.
 
 Messages, labels and documentation are in Italian; the questionnaire itself is bilingual.

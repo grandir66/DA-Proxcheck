@@ -2,6 +2,21 @@
 
 Cosa è cambiato e **perché**, per chi non usa git. Più recenti in alto.
 
+## 2026-09-04 (9)
+
+### Il report riporta la regola, non solo il suo numero
+
+Richiesta: «sarebbe estremamente utile che nel report si recuperasse non solo il riferimento al manuale, ma proprio l'articolo, per giustificare quel consiglio, in modo da non dover recuperare il manuale».
+
+- **`strumenti/estrai-fonti.py`** legge il manuale operativo Proxmox VE di Domarc (repo DA-Proxmox-Docs) ed estrae **solo i passaggi che un rilievo cita**, scrivendoli in `fonti_manuale.py`. Non si copia il manuale intero: è il documento di Domarc, vive nel suo repository, e una copia integrale in un repo pubblico fra sei mesi lo contraddirebbe
+- Il file dei rilievi guadagna in fondo **«Le regole applicate»**: per ogni regola citata, il testo per esteso con file e riga di origine, e l'edizione del manuale da cui viene. Compaiono solo le regole che quel report cita davvero
+- **I blocchi `[INTERNO]` del manuale non escono mai**: il paragrafo che li contiene viene scartato in estrazione, e due test lo verificano — questo repository è pubblico
+- **Le citazioni ora sono ancore verificabili**, non testo libero: `manuale §8.3 › Cache mode` punta a sezione e sottosezione reali. Il cancello fallisce se una citazione non risolve, e se il manuale cambia sotto (`--verifica`, saltata sulle macchine che il manuale non ce l'hanno)
+
+**Tre citazioni erano sbagliate, e se ne è accorta l'estrazione**: il fleecing citava §12.7, che è «Prune, garbage collection e verify» — è §12.6. Le regole di rete citavano la Parte 5, che nel manuale è lo storage a blocchi: la regola sugli anelli corosync sta in §1.3, la configurazione di rete del nodo in §2.6. E i certificati citavano la Parte 13 (accessi e permessi) invece di §2.7. Erano rimaste dalla vecchia numerazione della guida-carico, assorbita nel manuale come Parti 8 e 9: finché la citazione era una stringa libera nessuno poteva accorgersene.
+
+**Provata su tutto**: il report del cluster di prova cita 38 regole e le riporta tutte; quello del nodo singolo 21. Una prova verifica che il testo di una regola citata finisca davvero nel report, e che una regola non citata non ci finisca.
+
 ## 2026-09-04 (8)
 
 ### Sette tipologie di VM invece di tredici, e una proposta automatica dal nome
