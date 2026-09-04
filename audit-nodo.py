@@ -31,8 +31,11 @@ COME FUNZIONA
      eseguito una volta: interroga l'API locale (pvesh, JSON) e pochi
      comandi di sola lettura; se in cluster, ripete la stessa raccolta
      sugli altri nodi; restituisce un unico JSON. Nessun file resta sui nodi.
-  2. In locale: tabella delle VM (tutto il cluster) con assegnazione dei
-     profili di carico, confronto con le regole, report.
+  2. In locale: tabella delle VM (tutto il cluster) con la tipologia di
+     carico proposta dal nome e dal SO (asterisco) — INVIO accetta, un VMID
+     cambia — poi confronto con le regole della tipologia e report. Sette
+     tipologie: domain controller, database, applicativo, rete, dati,
+     terminal server, test/legacy/replica.
 
 SOLO LETTURA: pvesh get, smartctl -H/-A, cat, ip, lvs, zpool, timedatectl,
 ping fra gli anelli corosync; con --performance anche pveperf (scrive e
@@ -658,59 +661,74 @@ class Esito:
 # ────────────────────────────── profili di carico (guida-carico Parte 3) ──────────────────────────────
 
 PROFILI = {
-    "1": {"nome": "Domain Controller (Active Directory)", "vcpu_max": 4, "balloon": "min_eq_max",
+    "1": {"nome": "Domain controller / DNS", "vcpu_max": 4, "balloon": "min_eq_max",
           "cpu_type_evita": {"kvm64"}, "numa": False, "cache": "none", "multiqueue": "no",
           "protection": True, "ha": True, "fonte": "guida-carico §2.1",
           "extra": ["Almeno un secondo domain controller su un altro nodo fisico.",
                     "Mai il rollback di snapshot come ripristino (USN rollback)."]},
-    "2": {"nome": "File server", "vcpu_max": 4, "balloon": "attivo_min_alto", "cpu_type_evita": {"kvm64"},
-          "numa": False, "cache": "none", "multiqueue": "molti_client", "protection": True,
-          "dischi_min": 2, "fonte": "guida-carico §2.2",
-          "extra": ["Disco dati separato dal disco di sistema (backup e throttling distinti)."]},
-    "3": {"nome": "Application server / web server", "vcpu_max": 8, "balloon": "attivo_salvo_java",
-          "cpu_type_evita": {"kvm64"}, "numa": False, "cache": "none", "multiqueue": "se_reverse_proxy",
-          "protection": False, "fonte": "guida-carico §2.3"},
-    "4": {"nome": "Database server", "vcpu_max": None, "balloon": "disabilitato",
+    "2": {"nome": "Database", "vcpu_max": None, "balloon": "disabilitato",
           "cpu_type_evita": {"kvm64", "x86-64-v2-AES"}, "numa": True, "cache": "none", "multiqueue": "no",
           "protection": True, "ha": True, "dischi_min": 2, "fonte": "guida-carico §2.4",
           "extra": ["Dischi dati e log/WAL su dischi virtuali separati.",
                     "aio=native SOLO con raw + cache=none + iothread; altrimenti io_uring."]},
-    "5": {"nome": "Appliance di rete / firewall virtuale", "vcpu_max": None, "balloon": "disabilitato",
+    "3": {"nome": "Applicativo / web / monitoraggio", "vcpu_max": 8, "balloon": "attivo_salvo_java",
+          "cpu_type_evita": {"kvm64"}, "numa": False, "cache": "none", "multiqueue": "no",
+          "protection": False, "fonte": "guida-carico §2.3, §2.8",
+          "extra": ["Con JVM (Zabbix Java gateway, Elastic, Tomcat) il ballooning va valutato: la JVM non restituisce memoria."]},
+    "4": {"nome": "Rete: firewall, proxy, load balancer", "vcpu_max": None, "balloon": "disabilitato",
           "cpu_type_evita": set(), "cpu_type_richiede": "host", "numa": False, "cache": "none",
-          "multiqueue": "tutte_le_nic", "protection": True, "fonte": "guida-carico §2.5",
-          "extra": ["Firewall PVE per-interfaccia off se il filtraggio avviene nell'appliance."]},
-    "6": {"nome": "Log server / SIEM / raccolta eventi", "vcpu_max": None, "balloon": "dipende_jvm",
-          "cpu_type_evita": {"kvm64"}, "numa": False, "cache": "none", "multiqueue": "se_molte_sorgenti",
-          "protection": False, "dischi_min": 2, "fonte": "guida-carico §2.6",
-          "extra": ["Valutare un limite di throughput (mbps_wr) sul disco dati: vicino rumoroso tipico."]},
-    "7": {"nome": "Terminal server / VDI", "vcpu_max": None, "balloon": "attivo", "cpu_type_evita": set(),
+          "multiqueue": "tutte_le_nic", "protection": True, "fonte": "guida-carico §2.5, §2.3 (reverse proxy)",
+          "extra": ["Firewall PVE per-interfaccia off se il filtraggio avviene nell'appliance stessa."]},
+    "5": {"nome": "Dati: file server, log/SIEM, backup server", "vcpu_max": None, "balloon": "attivo_min_alto",
+          "cpu_type_evita": {"kvm64"}, "numa": False, "cache": "none", "multiqueue": "molti_client",
+          "protection": True, "dischi_min": 2, "fonte": "guida-carico §2.2, §2.6; manuale §12",
+          "extra": ["Disco dati separato dal disco di sistema (backup e throttling distinti).",
+                    "Valutare un limite di throughput (mbps_wr) sul disco dati: è il vicino rumoroso tipico.",
+                    "Se è un backup server: datastore su storage con checksum (ZFS) e backup=0 sul disco del datastore."]},
+    "6": {"nome": "Terminal server / VDI", "vcpu_max": None, "balloon": "attivo", "cpu_type_evita": set(),
           "cpu_type_richiede": "host", "numa": None, "cache": "none", "multiqueue": "no",
           "protection": False, "fonte": "guida-carico §2.7"},
-    "8": {"nome": "Monitoraggio (Zabbix/Prometheus/Grafana)", "vcpu_max": None, "balloon": "dipende_jvm",
-          "cpu_type_evita": {"kvm64"}, "numa": False, "cache": "none", "multiqueue": "no",
-          "protection": False, "fonte": "guida-carico §2.8"},
-    "9": {"nome": "Sistema legacy / appliance senza VirtIO", "vcpu_max": 2, "balloon": "disabilitato",
-          "cpu_type_evita": set(), "numa": False, "cache": None, "multiqueue": "no", "protection": False,
-          "legacy": True, "fonte": "guida-carico §2.9",
-          "extra": ["Isolare a livello di rete: debito tecnico con una data di scadenza."]},
-    "10": {"nome": "Replica (VM di replica/DR)", "vcpu_max": None, "cpu_type_evita": {"kvm64"},
-           "numa": False, "cache": "none", "multiqueue": "no", "protection": True, "fonte": "manuale §4.5",
-           "extra": ["Non deve avere onboot insieme alla primaria (conflitto IP/hostname).",
-                     "Verificare che la schedulazione di replica (pvesr) esista e l'RPO sia quello concordato."]},
-    "11": {"nome": "Test / sviluppo", "vcpu_max": None, "cpu_type_evita": set(), "numa": False,
-           "cache": "none", "multiqueue": "no", "protection": False, "onboot_no": True,
-           "fonte": "guida-carico §1.6",
-           "extra": ["Non condividere rete/VLAN con la produzione se il test comporta traffico non filtrato."]},
-    "12": {"nome": "Backup server (PBS o Veeam)", "vcpu_max": None, "cpu_type_evita": {"kvm64"},
-           "numa": False, "cache": "none", "multiqueue": "no", "protection": True, "fonte": "manuale §12",
-           "extra": ["PBS: datastore su storage con checksum (ZFS). Veeam: serve uno storage file-level nel cluster.",
-                     "Valutare backup=0 sul disco del datastore/repository."]},
-    "13": {"nome": "Proxy / reverse proxy / load balancer", "vcpu_max": 4, "cpu_type_evita": {"kvm64"},
-           "numa": False, "cache": "none", "multiqueue": "tutte_le_nic", "protection": True,
-           "fonte": "guida-carico §2.3 (reverse proxy)",
-           "extra": ["Se il filtraggio avviene nel proxy, valutare il firewall PVE off sull'interfaccia."]},
+    "7": {"nome": "Test, legacy, replica", "vcpu_max": None, "cpu_type_evita": set(), "numa": False,
+          "cache": None, "multiqueue": "no", "protection": False, "onboot_no": True, "legacy": True,
+          "fonte": "guida-carico §1.6, §2.9; manuale §4.5",
+          "extra": ["Test: non condividere rete/VLAN con la produzione se il traffico non è filtrato.",
+                    "Legacy senza VirtIO: isolare a livello di rete, è debito tecnico con una scadenza.",
+                    "Replica/DR: mai onboot insieme alla primaria (conflitto IP/hostname); verificare che la schedulazione pvesr esista."]},
 }
 NON_CLASSIFICATA = "0"
+# I 13 profili della versione 1 (uno per paragrafo della guida-carico) → i 7 di oggi, raggruppati per regole uguali.
+CONVERSIONE_PROFILI_V1 = {"1": "1", "2": "5", "3": "3", "4": "2", "5": "4", "6": "5", "7": "6", "8": "3",
+                          "9": "7", "10": "7", "11": "7", "12": "5", "13": "4", "0": "0"}
+VERSIONE_PROFILI = "2"
+
+# parole nel nome della VM (o nel SO visto dall'agent) → tipologia proposta; ordine = priorità
+INDIZI_PROFILO = [
+    ("7", r"test|tmpl|template|replica|repl\b|\bdev\b|\blab\b|prova|demo|\bold\b|legacy|eve-ng|gns3"),
+    ("1", r"\b(dc|ad|dns|addc|pdc|domain)\b|\bdc\d|-dc\b|dc0\d"),
+    ("2", r"sql|\bdb\b|database|postgres|\bpg\b|oracle|mysql|maria|mongo"),
+    ("4", r"\bfw\b|firewall|pfsense|opnsense|fortigate|sophos|utm|proxy|haproxy|traefik|\blb\b|\bsbc\b|vpn|wireguard|netbird|"
+          r"\bsns\b|stormshield|\bchr\b|routeros|mikrotik|omada|unifi|ubnt|router"),
+    ("5", r"file|\bfs\b|\bnas\b|synology|\bdsm\b|truenas|share|\bftp\b|pbs|veeam|backup|\blog|graylog|siem|wazuh|elastic|syslog|nakivo"),
+    ("6", r"\brds\b|\bts\b|terminal|\bvdi\b|\brdh\b|remoteapp|citrix|rdsh"),
+    ("3", r"zabbix|grafana|prtg|observium|opmanager|nagios|icinga|monitor|checkmk|smtp|mail|esva|dmarc|\bweb\b|\bwww\b|\bapp\b|nginx|apache|iis|tomcat"),
+]
+
+
+def suggerisci_profilo(vm) -> str:
+    """Proposta dal nome della VM e dal SO dell'agent. Torna NON_CLASSIFICATA se
+    nessun indizio: meglio nessuna proposta che una sbagliata."""
+    testo = " ".join(x for x in (vm.nome, (vm.config or {}).get("name", ""), so_di(vm)) if x).lower()
+    for pid, rx in INDIZI_PROFILO:
+        if re.search(rx, testo):
+            return pid
+    return NON_CLASSIFICATA
+
+
+def converti_profili(noti: dict) -> dict:
+    """File di profili della versione 1 (13 tipologie) → versione 2 (7)."""
+    if noti.get("_versione") == VERSIONE_PROFILI:
+        return {k: v for k, v in noti.items() if not k.startswith("_")}
+    return {k: CONVERSIONE_PROFILI_V1.get(str(v), NON_CLASSIFICATA) for k, v in noti.items() if not k.startswith("_")}
 
 
 @dataclass
@@ -1233,6 +1251,10 @@ def controlla_profilo(vm: VM, pid: str, inv: dict, esito: Esito):
         for d in dischi_dati(cfg):
             if d.get("cache", "none") not in ("none", ""):
                 esito.add(BLOCCANTE, A, f"Disco {d['bus']}: cache={d['cache']}, il profilo richiede none.", F)
+    if p.get("legacy"):
+        for d in dischi_dati(cfg):
+            if d["bus"].startswith(("sata", "ide")):
+                esito.add(INFO, A, f"Disco {d['bus']} su bus SATA/IDE: tollerato per questa tipologia, ma è la prima cosa da cambiare se la VM diventa di produzione.", F)
     if p.get("multiqueue") == "tutte_le_nic":
         reti = parse_reti(cfg)
         senza = [r["iface"] for r in reti if not (r.get("queues") or "").isdigit()]
@@ -1273,7 +1295,11 @@ def stampa_tabella_vm(vms: list, asseg: dict, multi: bool):
     righe = []
     for v in vms:
         pid = asseg.get(v.vmid, NON_CLASSIFICATA)
-        prof = "—" if pid == NON_CLASSIFICATA else PROFILI.get(pid, {}).get("nome", f"id '{pid}'?")
+        if pid == NON_CLASSIFICATA:
+            sug = suggerisci_profilo(v)
+            prof = f"{PROFILI[sug]['nome']} *" if sug != NON_CLASSIFICATA else "—"
+        else:
+            prof = PROFILI.get(pid, {}).get("nome", f"id '{pid}'?")
         stato = (v.status or {}).get("status") or v.lista.get("status") or "?"
         r = [v.vmid, _acc(v.nome, 22), stato, vcpu_di(v.config), f"{ram_gb_di(v.config):.0f}", f"{disco_gb_di(v.config):.0f}",
              _acc(",".join(x.get("bridge", "?") for x in parse_reti(v.config)) or "—", 14), _acc(so_di(v), 22), prof]
@@ -1291,12 +1317,13 @@ def stampa_tabella_vm(vms: list, asseg: dict, multi: bool):
 
 
 def chiedi_profilo_per(vm: VM) -> str:
-    print(f"\n── VM {vm.vmid} — {vm.nome} " + "─" * max(1, 40 - len(vm.nome)))
+    sug = suggerisci_profilo(vm)
+    print(f"\n── VM {vm.vmid} — {vm.nome} ({so_di(vm)}) " + "─" * max(1, 30 - len(vm.nome)))
     for k, v in PROFILI.items():
-        print(f"  {k:>2}) {v['nome']}")
-    print(f"   {NON_CLASSIFICATA}) Non classificare")
+        print(f"  {k}) {v['nome']}" + ("   ← proposta" if k == sug else ""))
+    print(f"  {NON_CLASSIFICATA}) Non classificare")
     while True:
-        s = input("  Tipologia: ").strip()
+        s = input(f"  Tipologia [{sug}]: ").strip() or sug
         if s in PROFILI or s == NON_CLASSIFICATA:
             return s
         print("  Valore non valido.")
@@ -1307,9 +1334,14 @@ def assegna_profili_da_tabella(vms: list, noti: dict, multi: bool) -> dict:
     ids = {v.vmid for v in vms}
     while True:
         stampa_tabella_vm(vms, asseg, multi)
-        print("\nVMID da classificare · 't' tutte quelle senza profilo · INVIO per procedere")
+        proposte = sum(1 for v in vms if asseg.get(v.vmid, NON_CLASSIFICATA) == NON_CLASSIFICATA and suggerisci_profilo(v) != NON_CLASSIFICATA)
+        print("\nVMID da cambiare · 't' chiedi una per una quelle senza profilo · INVIO accetta le proposte (*)"
+              + (f" — {proposte} proposte dal nome/SO" if proposte else ""))
         s = input("Scelta: ").strip()
         if s == "":
+            for v in vms:
+                if asseg.get(v.vmid, NON_CLASSIFICATA) == NON_CLASSIFICATA:
+                    asseg[v.vmid] = suggerisci_profilo(v)
             return asseg
         if s == "t":
             for v in vms:
@@ -1855,9 +1887,10 @@ def menu_profili_vm(percorso: Path):
     noti = {}
     if percorso.is_file():
         try:
-            noti = json.loads(percorso.read_text(encoding="utf-8"))
+            noti = converti_profili(json.loads(percorso.read_text(encoding="utf-8")))
         except json.JSONDecodeError:
             print(f"ATTENZIONE: {percorso} non è un JSON leggibile.", file=sys.stderr)
+    salva = lambda: percorso.write_text(json.dumps({"_versione": VERSIONE_PROFILI, **noti}, indent=2, ensure_ascii=False), encoding="utf-8")
     while True:
         print(f"\nProfili VM salvati in {percorso}:")
         if not noti:
@@ -1879,13 +1912,13 @@ def menu_profili_vm(percorso: Path):
             if pid in PROFILI or pid == NON_CLASSIFICATA:
                 noti[vmid] = pid
                 percorso.parent.mkdir(parents=True, exist_ok=True)
-                percorso.write_text(json.dumps(noti, indent=2, ensure_ascii=False), encoding="utf-8")
+                salva()
                 print("  Salvato.")
         elif s == "r":
             vmid = input("  VMID da rimuovere: ").strip()
             if vmid in noti:
                 del noti[vmid]
-                percorso.write_text(json.dumps(noti, indent=2, ensure_ascii=False), encoding="utf-8")
+                salva()
                 print("  Rimosso.")
         else:
             print("  Scelta non valida.")
@@ -2043,15 +2076,18 @@ def esegui(args):
         controlla_hardware(nome, blocco, esito)
         controlla_performance(nome, blocco, esito)
 
-    chiave = cluster_nome or HOST_REMOTO or inv.get("ingresso") or "host"
+    chiave = cluster_nome or inv.get("ingresso") or "host"   # il cluster, o l'hostname del nodo: mai l'indirizzo, che cambia
     auto = percorso_profili_default(chiave)
     lettura = args.profili or auto
     noti = {}
     if lettura.is_file():
         try:
-            noti = json.loads(lettura.read_text(encoding="utf-8"))
+            grezzi = json.loads(lettura.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
-            noti = {}
+            grezzi = {}
+        noti = converti_profili(grezzi)
+        if grezzi and grezzi.get("_versione") != VERSIONE_PROFILI:
+            print(c("Profili salvati con le 13 tipologie della versione 1: convertiti alle 7 attuali.", GRIGIO), file=sys.stderr)
         if noti:
             print(c(f"Profili già noti ({len(noti)} VM), da {lettura}", GRIGIO), file=sys.stderr)
 
@@ -2060,7 +2096,9 @@ def esegui(args):
     if vms and sys.stdin.isatty():
         asseg = assegna_profili_da_tabella(vms, noti, multi)
     for v in vms:
-        asseg.setdefault(v.vmid, NON_CLASSIFICATA)
+        # senza terminale (o per VM nuove) vale la proposta automatica: meglio i controlli del profilo probabile che nessuno
+        if asseg.get(v.vmid, NON_CLASSIFICATA) == NON_CLASSIFICATA:
+            asseg[v.vmid] = suggerisci_profilo(v)
         controlla_generali(v, inv, esito)
         controlla_profilo(v, asseg.get(v.vmid, NON_CLASSIFICATA), inv, esito)
     if not args.solo_nodo:
@@ -2070,7 +2108,7 @@ def esegui(args):
     if vms:
         scrittura = args.salva_profili or auto
         scrittura.parent.mkdir(parents=True, exist_ok=True)
-        scrittura.write_text(json.dumps(asseg, indent=2, ensure_ascii=False), encoding="utf-8")
+        scrittura.write_text(json.dumps({"_versione": VERSIONE_PROFILI, **asseg}, indent=2, ensure_ascii=False), encoding="utf-8")
         print(c(f"Profili VM salvati in {scrittura}", GRIGIO), file=sys.stderr)
 
     n_vm_cluster = sum(1 for x in (inv.get("cluster", {}).get("resources") or []) if x.get("type") == "qemu")

@@ -23,7 +23,7 @@ Audit di sola lettura di un nodo o di un intero cluster Proxmox VE, eseguito dal
 - `COLLECTOR_CLUSTER` → eseguito sul nodo d'ingresso: raccoglie `/cluster/*`, esegue il collector-nodo in locale e poi `ssh -o BatchMode=yes root@<ip> python3 -` verso ogni altro nodo online (il sorgente del collector-nodo viaggia dentro in base64). Restituisce `{ingresso, cluster, nodi{…}, errori}`.
 - Locale: `raccogli()` → `costruisci_vms()` → `controlla_cluster/nodo/hardware/performance/generali/profilo/lxc` → `Esito` di `Rilievo(livello, ambito, messaggio, fonte)` → `stampa_report` (terminale) + `scrivi_inventario_md` + `scrivi_rilievi_md`.
 - La categoria di un rilievo si ricava dall'`ambito` (`categoria_di`): cambiare il testo di un ambito può spostare un rilievo di categoria.
-- `PROFILI` (13 profili di carico) è la trascrizione della Parte 3 della guida-carico: se la guida cambia, cambia qui.
+- `PROFILI` (7 tipologie di carico, dal 2026-09-04; prima 13) raggruppa la Parte 3 della guida-carico per regole uguali; `CONVERSIONE_PROFILI_V1` converte i file salvati con i vecchi numeri. `INDIZI_PROFILO` propone la tipologia dal nome/SO (regex in ordine di priorità: test/replica prima di tutto).
 
 ## 4. Trappole già risolte (non ripercorrerle)
 
@@ -47,7 +47,8 @@ Audit di sola lettura di un nodo o di un intero cluster Proxmox VE, eseguito dal
 | Sola lettura, mai installare pacchetti sui nodi | È un audit: `fio`/`iperf3` non si installano; `pveperf` è già presente e resta opt-in | 2026-09-03 |
 | Da Proxreporter solo la parte di lettura | Niente SFTP/email/GELF: questo non è un agente | 2026-09-04, CHANGELOG (3) |
 | Due file (inventario, report) con nome `codcli_cliente_ip_*` | Lettori diversi: l'inventario si allega, il report è la lista di lavoro | 2026-09-04, CHANGELOG (6) |
-| Profili VM salvati per cluster, mai la password | VMID unici nel cluster, VM che migrano | 2026-09-04 |
+| Profili VM salvati per cluster (o hostname del nodo singolo), mai la password | VMID unici nel cluster, VM che migrano; l'indirizzo cambia, l'hostname no | 2026-09-04 |
+| 7 tipologie, non 13; proposta automatica ma sempre confermabile | Regole uguali → stessa tipologia; nessuna proposta è meglio di una sbagliata | 2026-09-04, CHANGELOG (8) |
 
 ## 6. Igiene / stale noti — 2026-09-04
 

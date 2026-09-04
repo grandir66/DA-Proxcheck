@@ -2,6 +2,18 @@
 
 Cosa è cambiato e **perché**, per chi non usa git. Più recenti in alto.
 
+## 2026-09-04 (8)
+
+### Sette tipologie di VM invece di tredici, e una proposta automatica dal nome
+
+Richiesta: "vorrei semplificare le tipologie". Le 13 di prima erano la trascrizione uno a uno dei paragrafi della guida-carico, e diverse condividevano le stesse regole.
+
+- **Sette tipologie**, raggruppate per regole uguali: 1 domain controller/DNS · 2 database · 3 applicativo/web/monitoraggio · 4 rete (firewall, proxy, load balancer) · 5 dati (file server, log/SIEM, backup server) · 6 terminal server/VDI · 7 test/legacy/replica. Dove due profili uniti differivano in un dettaglio, il dettaglio resta come nota informativa, non come rilievo
+- **Proposta automatica** dal nome della VM e dal sistema operativo visto dall'agent (`INDIZI_PROFILO`): la tabella la mostra con un asterisco, INVIO accetta tutte le proposte, un VMID la cambia, `t` chiede una per una con la proposta come default. Senza terminale vale la proposta. Sul cluster di prova (54 VM) propone 42 tipologie e nessuna sbagliata; le 12 senza indizio restano non classificate — meglio nessuna proposta che una errata
+- **I file di profili già salvati si convertono da soli** (13 → 7, tabella `CONVERSIONE_PROFILI_V1`); il file porta ora `"_versione": "2"`
+- Il file dei profili di un nodo singolo prende il nome dall'hostname, non dall'indirizzo con cui ci si collega (prima `root@ip` e `ip` davano due file diversi)
+- Bug trovato provando: le VM salvate come "non classificata" non ricevevano la proposta al giro successivo
+
 ## 2026-09-04 (7)
 
 ### Nasce il repository: `audit-nodo.py` esce dal manuale Proxmox

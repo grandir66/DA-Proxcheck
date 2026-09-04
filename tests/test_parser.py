@@ -113,3 +113,28 @@ def test_drift_di_due_ore_esatte_e_solo_informativo():
     an.controlla_generali(vm, inv, e)
     orologio = [r for r in e.rilievi if "Orologio" in r.messaggio]
     assert orologio and orologio[0].livello == an.INFO
+
+
+def _vm(nome, ostype="l26", pretty=None):
+    ag = {"osinfo": {"pretty-name": pretty}} if pretty else {}
+    return an.VM(vmid="1", nome=nome, nodo="n", config={"name": nome, "ostype": ostype}, agent=ag)
+
+
+def test_suggerimento_profilo_dal_nome_e_dal_so():
+    assert an.suggerisci_profilo(_vm("DA-DC01")) == "1"
+    assert an.suggerisci_profilo(_vm("DA-SQL12")) == "2"
+    assert an.suggerisci_profilo(_vm("DA-3CX-SBC")) == "4"
+    assert an.suggerisci_profilo(_vm("PX-veeam-01")) == "5"
+    assert an.suggerisci_profilo(_vm("DA-RDH")) == "6"
+    assert an.suggerisci_profilo(_vm("TMPL-WIN-2022")) == "7"
+    assert an.suggerisci_profilo(_vm("DA-SNS-replica")) == "7"   # replica vince sull'indizio "firewall"
+    assert an.suggerisci_profilo(_vm("INTEGRA3CX")) == an.NON_CLASSIFICATA   # nessun indizio: nessuna proposta
+
+
+def test_conversione_profili_versione_1():
+    """I 13 profili della versione 1 finiscono nei 7 di oggi; un file già in versione 2 resta com'è."""
+    v1 = {"100": "4", "101": "13", "102": "12", "103": "0", "104": "9"}
+    assert an.converti_profili(v1) == {"100": "2", "101": "4", "102": "5", "103": "0", "104": "7"}
+    v2 = {"_versione": "2", "100": "3"}
+    assert an.converti_profili(v2) == {"100": "3"}
+    assert set(an.CONVERSIONE_PROFILI_V1.values()) <= set(an.PROFILI) | {an.NON_CLASSIFICATA}

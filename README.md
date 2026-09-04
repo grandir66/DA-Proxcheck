@@ -26,7 +26,7 @@ Produce `C0123_Rossi-Srl_192.168.40.1_inventory.md` (cosa c'è) e `C0123_Rossi-S
 ### Come funziona
 
 1. Un collector Python (solo libreria standard) viene inviato al nodo d'ingresso ed eseguito una volta: interroga l'API locale (`pvesh … --output-format json`) e pochi comandi di sola lettura. Se il nodo è in cluster, ripete la raccolta sugli altri nodi con la fiducia SSH interna che Proxmox distribuisce da sé. Restituisce un unico JSON.
-2. In locale: tabella di tutte le VM del cluster con assegnazione del **profilo di carico** (domain controller, database, firewall virtuale, file server, …: 13 profili), confronto con le regole, report.
+2. In locale: tabella di tutte le VM del cluster con la **tipologia di carico** proposta dal nome e dal sistema operativo (asterisco): INVIO accetta, un VMID la cambia. Sette tipologie: domain controller/DNS, database, applicativo/web/monitoraggio, rete (firewall, proxy, load balancer), dati (file server, log/SIEM, backup), terminal server/VDI, test/legacy/replica. Ogni tipologia aggiunge le sue regole ai controlli generali.
 
 Le classificazioni delle VM si salvano da sole in `~/.config/audit-nodo/profili-<cluster>.json`; gli host e i parametri in `hosts.json`. **La password non viene mai vista né salvata dallo script**: la chiede `ssh` sul terminale.
 
@@ -76,7 +76,7 @@ Le soglie dell'audit vengono dal manuale operativo Proxmox di Domarc e dalla gui
 
 **DA-Proxcheck** ships two tools for Proxmox VE projects:
 
-- **`audit-nodo.py`** — read-only audit of a node or a whole cluster from the engineer's laptop (macOS, Linux, Windows; Python 3.7+ and `ssh`). One SSH connection: a stdlib-only collector runs on the entry node, queries the local API and, in a cluster, repeats the collection on the other nodes through the cluster's own SSH trust. It compares cluster/corosync, node, hardware, storage, network, performance, VM and container settings with best practices and writes two Markdown files: an **inventory** and a **findings report** (🔴 blocking · 🟡 review · ℹ️ info, each with its source). VM passwords are never seen or stored; VM workload profiles are remembered per cluster.
+- **`audit-nodo.py`** — read-only audit of a node or a whole cluster from the engineer's laptop (macOS, Linux, Windows; Python 3.7+ and `ssh`). One SSH connection: a stdlib-only collector runs on the entry node, queries the local API and, in a cluster, repeats the collection on the other nodes through the cluster's own SSH trust. It compares cluster/corosync, node, hardware, storage, network, performance, VM and container settings with best practices and writes two Markdown files: an **inventory** and a **findings report** (🔴 blocking · 🟡 review · ℹ️ info, each with its source). Passwords are never seen or stored; VM workload types (7, proposed automatically from the VM name and guest OS, always confirmable) are remembered per cluster.
 - **`questionario/questionario-migrazione.html`** — a single-file, offline **migration questionnaire** (VMware → Proxmox or greenfield), Italian and English, Basic/Full scope, blocking fields, per-node IP table, defaults, auto-saved draft and **Markdown export**. Published at <https://grandir66.github.io/DA-Proxcheck/questionario/questionario-migrazione.html>.
 
 Messages, labels and documentation are in Italian; the questionnaire itself is bilingual.
