@@ -1,0 +1,1544 @@
+<!DOCTYPE html>
+<html lang="it" id="html">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Questionario migrazione Proxmox VE — DA-Proxcheck</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Signika:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --ground:#F2F5F8; --surface:#FFFFFF; --surface-2:#E9EFF4;
+  --ink:#0D2537; --ink-2:#4C6070; --ink-3:#7A8D9C;
+  --rule:#D3DDE5; --rule-2:#BDCBD6;
+  --accent:#FFD400; --link:#006E93; --link-h:#00506B;
+  --danger:#A4231A; --danger-bg:#FCEEEC; --danger-rule:#E3897F;
+  --ok:#1B7F4B; --ok-bg:#EAF6EF;
+  --warn-bg:#FDF3E7; --warn-rule:#E9A23B;
+  --shadow:0 1px 2px rgba(13,37,55,.06),0 8px 24px rgba(13,37,55,.07);
+  --font-ui:"Signika","Segoe UI",system-ui,sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#0B1F2E; --surface:#11293C; --surface-2:#173650;
+    --ink:#E7EEF4; --ink-2:#A3B8C8; --ink-3:#7C94A6;
+    --rule:#22455F; --rule-2:#2C5677;
+    --link:#5BC9EC; --link-h:#8FDCF6;
+    --danger:#F4938A; --danger-bg:#2E1714; --danger-rule:#6B2A22;
+    --ok:#3FBE81; --ok-bg:#122A1E;
+    --warn-bg:#2A2110; --warn-rule:#8A6520;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.28);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#0B1F2E; --surface:#11293C; --surface-2:#173650;
+  --ink:#E7EEF4; --ink-2:#A3B8C8; --ink-3:#7C94A6;
+  --rule:#22455F; --rule-2:#2C5677;
+  --link:#5BC9EC; --link-h:#8FDCF6;
+  --danger:#F4938A; --danger-bg:#2E1714; --danger-rule:#6B2A22;
+  --ok:#3FBE81; --ok-bg:#122A1E;
+  --warn-bg:#2A2110; --warn-rule:#8A6520;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.28);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--font-ui);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:var(--link)}
+:focus-visible{outline:2px solid var(--link);outline-offset:2px;border-radius:3px}
+input,textarea,select{font-family:inherit;font-size:14px;color:var(--ink);background:var(--surface);border:1px solid var(--rule-2);border-radius:6px;padding:7px 9px;width:100%}
+input:focus,textarea:focus,select:focus{border-color:var(--link)}
+textarea{resize:vertical;min-height:34px}
+button{font-family:inherit;cursor:pointer}
+
+.shell{display:grid;grid-template-columns:270px minmax(0,1fr);min-height:100vh}
+.rail{background:var(--surface);border-right:1px solid var(--rule);position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
+.brand{padding:18px 18px 14px;border-bottom:1px solid var(--rule)}
+.brand .kicker{font-size:10.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.brand h1{font-size:16.5px;font-weight:600;margin:5px 0 0;line-height:1.25}
+.filtro{padding:14px 18px;border-bottom:1px solid var(--rule)}
+.filtro .lbl{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:7px}
+.chips{display:flex;gap:5px}
+.chips button{flex:1;font-size:12.5px;font-weight:600;color:var(--ink-2);background:var(--ground);border:1px solid var(--rule-2);border-radius:6px;padding:7px 0;transition:.13s}
+.chips button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.filtro .hint{font-size:11.5px;color:var(--ink-3);margin-top:7px;line-height:1.4}
+.progresso{padding:14px 18px;border-bottom:1px solid var(--rule)}
+.progresso .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:22px;font-weight:600}
+.progresso .num small{font-size:12px;font-weight:400;color:var(--ink-3)}
+.barra{height:6px;background:var(--surface-2);border-radius:3px;margin-top:8px;overflow:hidden}
+.barra i{display:block;height:100%;background:var(--ok);border-radius:3px;transition:width .2s}
+.progresso .residui{font-size:11.5px;color:var(--danger);margin-top:6px}
+.toc{flex:1;overflow-y:auto;padding:8px 8px 16px}
+.toc a{display:flex;justify-content:space-between;gap:8px;text-decoration:none;color:var(--ink-2);border-radius:6px;padding:6px 10px;font-size:13px}
+.toc a:hover{background:var(--surface-2);color:var(--ink)}
+.toc a.on{background:var(--surface-2);color:var(--ink);box-shadow:inset 2px 0 0 var(--accent)}
+.toc .puntino{width:7px;height:7px;border-radius:50%;background:var(--rule-2);flex:none;align-self:center}
+.toc .puntino.manca{background:var(--danger)}
+.toc .puntino.ok{background:var(--ok)}
+
+.main{grid-column:2;min-width:0}
+.bar{display:none}
+@media (max-width:980px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:fixed;inset:0 auto 0 0;width:min(88vw,300px);z-index:40;transform:translateX(-102%);transition:transform .2s;box-shadow:var(--shadow)}
+  body.nav .rail{transform:none}
+  .main{grid-column:1}
+  .bar{display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:30;background:var(--surface);border-bottom:1px solid var(--rule);padding:9px 14px}
+  .bar button{font-size:13px;font-weight:600;color:var(--ink);background:var(--ground);border:1px solid var(--rule-2);border-radius:7px;padding:6px 11px}
+  .scrim{position:fixed;inset:0;background:rgba(13,37,55,.45);z-index:35;display:none}
+  body.nav .scrim{display:block}
+}
+
+.doc{max-width:880px;margin:0 auto;padding:40px 32px 120px}
+.lede h2{font-size:24px;font-weight:600;margin:0 0 8px;letter-spacing:-.01em}
+.lede p{color:var(--ink-2);margin:0 0 10px;max-width:64ch}
+.meta-testata{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:18px 0 6px}
+.meta-testata label{display:block;font-size:11.5px;font-weight:600;color:var(--ink-3);margin-bottom:4px}
+.call{background:var(--surface);border-left:3px solid var(--rule-2);border-radius:0 8px 8px 0;padding:11px 15px;margin:14px 0;font-size:13.5px;color:var(--ink-2);box-shadow:var(--shadow)}
+.call.warn{background:var(--warn-bg);border-left-color:var(--warn-rule)}
+.call b{color:var(--ink)}
+
+section.sez{border-top:2px solid var(--accent);padding-top:26px;margin-top:44px;scroll-margin-top:14px}
+section.sez:first-of-type{margin-top:34px}
+.sez-testa{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:4px}
+.sez-testa h2{font-size:19px;font-weight:600;margin:0}
+.sez-num{font-family:var(--font-mono);color:var(--ink-3);font-size:13px}
+.sez-nota{color:var(--ink-2);font-size:13.5px;margin:2px 0 16px;max-width:68ch}
+
+.gruppo{margin-bottom:22px}
+.gruppo h3{font-size:14.5px;font-weight:600;margin:0 0 3px}
+.gruppo .g-nota{font-size:12.5px;color:var(--ink-3);margin:0 0 10px;max-width:66ch}
+.gruppo[hidden]{display:none}
+
+.righe{display:grid;gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:9px;overflow:hidden;box-shadow:var(--shadow)}
+.riga{display:grid;grid-template-columns:minmax(180px,1.4fr) minmax(160px,1fr);gap:1px;background:var(--surface)}
+.riga.multi{grid-template-columns:none}
+.cella{background:var(--surface);padding:9px 12px;display:flex;flex-direction:column;justify-content:center;gap:5px}
+.cella.testa{background:var(--surface-2)}
+.cella label.q{font-size:13px;line-height:1.4}
+.cella label.q .chip-r{display:inline-block;font-size:9.5px;font-weight:700;letter-spacing:.06em;color:var(--danger);background:var(--danger-bg);border:1px solid var(--danger-rule);border-radius:4px;padding:0 4px;margin-left:5px;vertical-align:1px}
+.cella.hidden-col{display:none}
+.riga.mancante .cella:first-child{box-shadow:inset 3px 0 0 var(--danger)}
+.sotto{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:6px 10px;width:100%}
+.sotto>div{display:flex;flex-direction:column;gap:3px;min-width:0}
+.sotto label{font-size:11px;color:var(--ink-3);letter-spacing:.02em}
+.unita{display:flex;align-items:center;gap:6px}.unita input{flex:1;min-width:0}.unita span{font-size:12px;color:var(--ink-3);white-space:nowrap}
+.checks{display:flex;flex-wrap:wrap;gap:6px 16px}.checks label{display:inline-flex;align-items:center;gap:6px;font-size:13px}
+.checks input[type=checkbox]{width:15px;height:15px;accent-color:var(--link);margin:0}
+.altro{margin-top:6px}
+input[readonly]{background:var(--surface-2);color:var(--ink-2)}
+.riga[data-default="true"] .cella:not(.testa) input:not([readonly]){border-style:dashed}
+
+table.din{width:100%;border-collapse:collapse;font-size:13px}
+.tw{border:1px solid var(--rule);border-radius:9px;overflow:hidden;box-shadow:var(--shadow);overflow-x:auto}
+table.din th{background:var(--surface-2);text-align:left;font-size:11.5px;font-weight:600;color:var(--ink-2);padding:7px 9px;border-bottom:2px solid var(--accent);white-space:nowrap}
+table.din td{padding:5px 7px;border-bottom:1px solid var(--rule);vertical-align:middle}
+table.din td input,table.din td select{padding:5px 7px;font-size:12.5px;min-width:110px}
+table.din tr:last-child td{border-bottom:none}
+table.din th.hidden-col,table.din td.hidden-col{display:none}
+table.din td.azione{width:34px;padding:5px}
+table.din td.azione button{width:26px;height:26px;border:1px solid var(--rule-2);background:var(--ground);border-radius:6px;color:var(--danger);font-size:15px;line-height:1}
+.aggiungi{margin-top:8px;font-size:12.5px;font-weight:600;color:var(--link);background:none;border:1px dashed var(--rule-2);border-radius:7px;padding:6px 12px}
+.aggiungi:hover{border-color:var(--link)}
+
+.decisioni tr td:nth-child(1){text-align:center;font-family:var(--font-mono);color:var(--ink-3)}
+.decisioni input[type=checkbox]{width:16px;height:16px;accent-color:var(--ok);margin:0}
+.decisioni td.dec-testo{font-size:13px}
+.decisioni td.dec-sez{font-family:var(--font-mono);font-size:11.5px;color:var(--ink-3);white-space:nowrap}
+
+.script{background:#0D2537;color:#DCE7EF;border-radius:9px;padding:14px 16px;overflow-x:auto;font-family:var(--font-mono);font-size:11.8px;line-height:1.55;white-space:pre;box-shadow:var(--shadow)}
+.script-wrap{position:relative}
+.copia{position:absolute;top:9px;right:9px;font-size:11px;font-weight:600;color:#DCE7EF;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:6px;padding:4px 9px}
+
+.piede{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--rule);padding:11px 24px;display:flex;gap:9px;align-items:center;justify-content:flex-end;flex-wrap:wrap;box-shadow:0 -6px 16px rgba(13,37,55,.06)}
+.piede .stato{margin-right:auto;font-size:12.5px;color:var(--ink-3)}
+.piede .stato b{color:var(--ok)}
+.btn{font-size:13px;font-weight:600;border-radius:8px;padding:9px 15px;border:1px solid var(--rule-2);background:var(--ground);color:var(--ink)}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primario{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.btn.primario:hover{background:var(--link);border-color:var(--link)}
+#fileCarica{display:none}
+
+.toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%) translateY(8px);background:var(--ink);color:var(--surface);font-size:13px;font-weight:600;padding:9px 16px;border-radius:8px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.18s;z-index:50}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.err{background:var(--danger)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="rail" id="rail">
+    <div class="brand">
+      <div class="kicker" data-i18n="Domarc · raccolta dati">Domarc · raccolta dati</div>
+      <h1 data-i18n-html="Questionario migrazione<br>a Proxmox VE">Questionario migrazione<br>a Proxmox VE</h1>
+      <div class="chips lingua" style="margin-top:10px">
+        <button id="lIt" aria-pressed="true" title="Italiano">IT</button>
+        <button id="lEn" aria-pressed="false" title="English">EN</button>
+      </div>
+    </div>
+    <div class="filtro">
+      <div class="lbl" data-i18n="Estensione">Estensione</div>
+      <div class="chips">
+        <button id="fBase" aria-pressed="false" data-i18n="Base">Base</button>
+        <button id="fCompleto" aria-pressed="true" data-i18n="Completo">Completo</button>
+      </div>
+      <p class="hint" data-i18n="Base: installazioni da 2-3 nodi. Completo: aggiunge inventario host, SAS diretto, dipendenze tra servizi, conformità estesa.">Base: installazioni da 2-3 nodi. Completo: aggiunge inventario host, SAS diretto, dipendenze tra servizi, conformità estesa.</p>
+    </div>
+    <div class="progresso">
+      <div class="num" id="pctNum">0<small>%</small></div>
+      <div class="barra"><i id="pctBar" style="width:0%"></i></div>
+      <div class="residui" id="pctResidui"></div>
+    </div>
+    <nav class="toc" id="toc"></nav>
+  </aside>
+
+  <div class="main">
+    <div class="bar">
+      <button id="apri" data-i18n="☰ Sezioni">☰ Sezioni</button>
+      <span style="font-size:13px;color:var(--ink-2);font-weight:600" data-i18n="Questionario migrazione">Questionario migrazione</span>
+    </div>
+    <main class="doc">
+      <header class="lede">
+        <h2 data-i18n="Raccolta dati prima della migrazione">Raccolta dati prima della migrazione</h2>
+        <p id="ledeTesto">Le voci <span class="chip-r" style="position:static">BLOCCANTE</span> vanno risolte prima dell'installazione: emergendo a lavori avviati costano un rifacimento o un acquisto sbagliato. Se non si conosce una risposta, scrivere <b>"da verificare"</b> invece di lasciare vuoto — una casella vuota non distingue un dato mancante da una risposta negativa.</p>
+        <div class="meta-testata">
+          <div><label data-i18n="Cliente">Cliente</label><input id="meta_cliente" data-id="meta_cliente"></div>
+          <div><label data-i18n="Data di compilazione">Data di compilazione</label><input type="date" id="meta_data" data-id="meta_data"></div>
+          <div><label data-i18n="Compilato da">Compilato da</label><input id="meta_compilatore" data-id="meta_compilatore"></div>
+          <div><label data-i18n="Referente tecnico Domarc">Referente tecnico Domarc</label><input id="meta_referente" data-id="meta_referente"></div>
+        </div>
+      </header>
+      <div id="corpo"></div>
+    </main>
+  </div>
+  <div class="scrim" id="scrim"></div>
+</div>
+
+<div class="piede">
+  <span class="stato" id="statoSalvataggio" data-i18n="Bozza non salvata">Bozza non salvata</span>
+  <button class="btn" id="btnCarica" data-i18n="Carica bozza…">Carica bozza…</button>
+  <input type="file" id="fileCarica" accept="application/json">
+  <button class="btn" id="btnBozza" data-i18n="Salva bozza (.json)">Salva bozza (.json)</button>
+  <button class="btn primario" id="btnEsporta" data-i18n="Esporta Markdown">Esporta Markdown</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+/* ───────────────────────── modello dati ─────────────────────────
+   C()      = un campo/input singolo
+   ridotto  = compare anche nella versione "Base" (altrimenti solo "Completo")
+   rosso    = bloccante: obbligatorio per l'esportazione, in QUALSIASI filtro attivo
+------------------------------------------------------------------ */
+function C(id, label, o={}) {
+  return { id, label, rosso: !!o.rosso, base: o.base !== false, tipo: o.tipo || 'text',
+           placeholder: o.placeholder || '', opzioni: o.opzioni || null, nota: o.nota || '',
+           default: o.default ?? null, unita: o.unita || '', min: o.min ?? null, sotto: o.sotto || null,
+           altro: !!o.altro, calc: o.calc || null };
+}
+/* Tipi di campo:
+   text · textarea · date · select · number (con default e unita)
+   multi  = più sotto-campi in una riga (o.sotto = [{key,label,tipo,opzioni,default,unita,placeholder}]),
+            salvati come id.key — un valore per casella, mai "versione e indirizzo" nella stessa
+   check  = scelta multipla (o.opzioni), salvata come stringa "A, B"; con altro:true anche un testo libero
+   select con altro:true = compare un testo libero quando si sceglie "Altro"
+   calc   = somma in sola lettura di altri campi numerici (o.calc = [id,…])
+   Un default compare tratteggiato: è una proposta, si può cambiare. */
+let LINGUA = 'it';
+const TRADUZIONI = {
+"Accesso diretto": "Direct access",
+"Accesso remoto per l'intervento": "Remote access for the engagement",
+"Alimentazione ridondata e UPS?": "Redundant power supplies and UPS?",
+"Altro": "Other",
+"Ambiente VMware attuale": "Current VMware environment",
+"Anagrafica, referenti e vincoli di progetto": "Customer, contacts and project constraints",
+"Annuali": "Yearly",
+"Attualmente attivi?": "Currently enabled?",
+"Autenticazione?": "Authentication?",
+"Avvio dei nodi": "Node boot",
+"Backup": "Backup",
+"Backup e continuità": "Backup and continuity",
+"Boot": "Boot",
+"Bridge VLAN-aware (consigliato)": "VLAN-aware bridge (recommended)",
+"Build": "Build",
+"C'è spazio sufficiente su VMware per tenerle?": "Is there enough space on VMware to keep them?",
+"CA interna": "Internal CA",
+"CPU (modello)": "CPU (model)",
+"CPU dei nodi identiche o miste": "Identical or mixed node CPUs",
+"Capacità": "Capacity",
+"Capacità da dimensionare (GB)": "Capacity to size (GB)",
+"Capacità del datastore di backup": "Backup datastore capacity",
+"Capacità di ciascuno": "Capacity of each",
+"Capacità totale da approvvigionare": "Total capacity to procure",
+"Certificati per la GUI": "Certificates for the GUI",
+"Che tipo di storage si prevede?": "Which kind of storage is planned?",
+"Chi autorizza un fermo di produzione": "Who authorises a production outage",
+"Chi configura gli switch (interno o fornitore) e con quali tempi?": "Who configures the switches (in-house or vendor) and with what lead time?",
+"Chi decide un rollback e con quale criterio": "Who decides a rollback and on what criteria",
+"Chi gestirà il cluster dopo la consegna? Serve formazione?": "Who will run the cluster after handover? Is training needed?",
+"Chi verifica l'esito dei backup, e con quale frequenza?": "Who checks backup results, and how often?",
+"Cloud / S3": "Cloud / S3",
+"Compilare solo se il progetto prevede una migrazione. Per un'installazione da zero, passare alla Sezione 3.": "Fill in only if the project is a migration. For a greenfield installation, skip to Section 3.",
+"Con CPU identiche si usa il tipo host (prestazioni migliori); con CPU diverse serve un modello generico, altrimenti la migrazione a caldo non funziona.": "With identical CPUs the host type is used (best performance); with different CPUs a generic model is needed, otherwise live migration fails.",
+"Configurazione": "Layout",
+"Conservazione": "Retention",
+"Consigliato 14-28 giorni: è il tempo per scoprire un problema applicativo che il collaudo non ha visto.": "Recommended 14-28 days: the time it takes to discover an application issue that acceptance testing missed.",
+"Consistenza": "Size",
+"Contratto di supporto attivo fino a": "Support contract valid until",
+"Controller": "Controllers",
+"Controller disco": "Disk controller",
+"Controller storage": "Storage controllers",
+"Convenzione di denominazione per VM e nodi": "Naming convention for VMs and nodes",
+"Copia offsite": "Offsite copy",
+"Core": "Cores",
+"Corosync 1": "Corosync 1",
+"Corosync 2": "Corosync 2",
+"Corosync considera una rete inutilizzabile non solo se cade, ma se la latenza sale troppo: traffico di storage o backup può saturarla e far riavviare i nodi da soli (self-fencing). Almeno due anelli su percorsi fisici diversi, senza bond, sono la configurazione corretta.": "Corosync treats a network as unusable not only when it is down but when latency rises too much: storage or backup traffic can saturate it and make nodes reboot on their own (self-fencing). At least two rings on different physical paths, without bonds, is the correct setup.",
+"Crescita prevista a 3 anni": "Expected growth over 3 years",
+"Critiche": "Critical",
+"Criticità": "Criticality",
+"Critico: un drift dell'orologio rompe Kerberos e destabilizza il cluster.": "Critical: clock drift breaks Kerberos and destabilises the cluster.",
+"DHCP?": "DHCP?",
+"DNS interni": "Internal DNS",
+"Da decidere": "To be decided",
+"Da definire": "To be defined",
+"Da verificare": "To be verified",
+"Data": "Date",
+"Data obiettivo di completamento": "Target completion date",
+"Datastore con caratteri speciali nel nome (es. \"+\") — bloccano l'import": "Datastores with special characters in the name (e.g. \"+\") — they block the import",
+"Decisioni da chiudere prima dell'installazione": "Decisions to close before installation",
+"Definisce l'ordine di avvio automatico e la sequenza delle ondate. Regola generale: domain controller e DNS per primi, poi i database, poi gli application server, infine i frontend.": "Defines the automatic start order and the wave sequence. Rule of thumb: domain controllers and DNS first, then databases, then application servers, frontends last.",
+"Destinatari delle notifiche di allarme": "Alert notification recipients",
+"Destinazione": "Target",
+"Destinazione dei backup": "Backup target",
+"Destinazione dei log (syslog centralizzato, SIEM)": "Log destination (central syslog, SIEM)",
+"Determina se è possibile separare fisicamente la rete di cluster dalle altre — il vincolo che più spesso costringe a un compromesso.": "Determines whether the cluster network can be physically separated from the others — the constraint that most often forces a compromise.",
+"Determina snapshot, alta affidabilità e complessità — la risposta cambia il resto della sezione.": "Determines snapshots, high availability and complexity — the answer changes the rest of the section.",
+"Deve avviarsi prima di": "Must start before",
+"Di quali si possiedono le recovery key?": "For which ones are the recovery keys available?",
+"Dipende da": "Depends on",
+"Dipendenze tra servizi": "Service dependencies",
+"Dischi SO": "OS disks",
+"Dischi dati per nodo": "Data disks per node",
+"Dischi per il sistema operativo": "Operating system disks",
+"Disco GB": "Disk GB",
+"Disco singolo": "Single disk",
+"Domande di progetto": "Design questions",
+"Domande sui nodi": "Node questions",
+"Dominio Active Directory": "Active Directory domain",
+"Elenco VM non migrabili e loro destino": "List of non-migratable VMs and their fate",
+"Esiste già una copia offsite?": "Is there already an offsite copy?",
+"Esiste un CMDB / inventario da aggiornare?": "Is there a CMDB / inventory to update?",
+"Esiste una copia immutabile?": "Is there an immutable copy?",
+"Esiste uno switch SAS?": "Is there a SAS switch?",
+"Esiste?": "Exists?",
+"Fault Tolerance — in uso?": "Fault Tolerance — in use?",
+"Finestre di manutenzione disponibili (giorni e orari)": "Available maintenance windows (days and hours)",
+"Firmware": "Firmware",
+"Fisico dedicato (consigliato)": "Dedicated physical (recommended)",
+"Fornitore rete (se gestita da terzi)": "Network vendor (if outsourced)",
+"Fornitore storage (se gestito da terzi)": "Storage vendor (if outsourced)",
+"Funzionalità VMware in uso": "VMware features in use",
+"Funzione": "Role",
+"Gateway": "Gateway",
+"Gateway predefinito / firewall": "Default gateway / firewall",
+"Giornaliere": "Daily",
+"Gli host attuali verranno riutilizzati per Proxmox?": "Will the current hosts be reused for Proxmox?",
+"Gli switch sono ridondati / in stack?": "Are the switches redundant / stacked?",
+"HA — in uso?": "HA — in use?",
+"HBA/FC": "HBA/FC",
+"Hardware dei nodi Proxmox": "Proxmox node hardware",
+"Host ESXi": "ESXi hosts",
+"IP": "IP",
+"IP virtuale / accesso GUI (opzionale)": "Virtual IP / GUI access (optional)",
+"Il backup della VM cattura lo stato del disco, non la coerenza transazionale del DBMS.": "A VM backup captures the disk state, not the transactional consistency of the DBMS.",
+"Il cluster deve reggere il carico con un nodo fuori servizio? (regola N+1)": "Must the cluster carry the load with one node down? (N+1 rule)",
+"Il controller è un HBA in modalità IT o un RAID hardware?": "Is the controller an HBA in IT mode or a hardware RAID?",
+"Il plug-in Veeam per Proxmox VE richiede almeno uno storage file-level nel cluster: non supporta ambienti basati esclusivamente su LVM. Se il progetto prevede solo una SAN a blocchi, va messo a budget anche uno storage NFS — non è opzionale.": "The Veeam plug-in for Proxmox VE requires at least one file-level storage in the cluster: it does not support LVM-only environments. If the project only has a block SAN, an NFS storage must be budgeted too — it is not optional.",
+"Importanti": "Important",
+"Indirizzi IP da riservare — servono liberi prima dell'installazione — indirizzi singoli e note": "IP addresses to reserve — must be free before installation — single addresses and notes",
+"Indirizzi IP da riservare — servono liberi prima dell'installazione — per nodo": "IP addresses to reserve — must be free before installation — per node",
+"Indirizzi per nodo (management, corosync 1 e 2)": "Per-node addresses (management, corosync 1 and 2)",
+"Indirizzo": "Address",
+"Indirizzo / FQDN": "Address / FQDN",
+"Infrastruttura di switching": "Switching infrastructure",
+"Integrazione di Proxmox nel monitoraggio": "Proxmox integration in monitoring",
+"Interfacce fisiche disponibili per nodo": "Physical interfaces available per node",
+"Inventario delle macchine virtuali": "Virtual machine inventory",
+"Jumbo frames (MTU 9000)": "Jumbo frames (MTU 9000)",
+"L'autenticazione a Proxmox deve integrarsi con Active Directory / LDAP?": "Must Proxmox authentication integrate with Active Directory / LDAP?",
+"L'infrastruttura ha accesso a Internet per i repository, o serve un mirror interno?": "Does the infrastructure have Internet access for repositories, or is an internal mirror needed?",
+"Le CPU dei nodi sono identiche fra loro?": "Are the node CPUs identical?",
+"Le VM vanno spostate prima della migrazione.": "VMs must be moved before the migration.",
+"Le tre condizioni che bloccano l'import — elencare le VM interessate": "The three conditions that block the import — list the affected VMs",
+"Le tre domande decisive": "The three decisive questions",
+"Legacy BIOS": "Legacy BIOS",
+"Libera": "Free",
+"Licenze (tipo e numero)": "Licences (type and count)",
+"Lo storage ha snapshot propri utilizzabili?": "Does the storage have usable native snapshots?",
+"Lo storage supporta SCSI UNMAP / space reclamation?": "Does the storage support SCSI UNMAP / space reclamation?",
+"Lo storage supporta il thin provisioning?": "Does the storage support thin provisioning?",
+"Log di audit": "Audit logs",
+"MTU": "MTU",
+"MTU sulla rete storage": "MTU on the storage network",
+"Management": "Management",
+"Marca e modello": "Make and model",
+"Mensili": "Monthly",
+"Migrazione": "Migration",
+"Mirror (consigliato)": "Mirror (recommended)",
+"Miste": "Mixed",
+"Misto": "Mixed",
+"Modello": "Model",
+"Modello di VLAN sui bridge": "VLAN model on the bridges",
+"Motivo": "Reason",
+"NAS remoto": "Remote NAS",
+"NIC (n. × velocità)": "NICs (count × speed)",
+"NTP": "NTP",
+"Nessuna": "None",
+"Nessuno": "None",
+"No": "No",
+"Nome / uso": "Name / purpose",
+"Nome VM": "VM name",
+"Non configurato": "Not configured",
+"Non esiste su Proxmox: va sostituita con ridondanza applicativa.": "Does not exist on Proxmox: replace it with application-level redundancy.",
+"Non previsto": "Not planned",
+"Note": "Notes",
+"Note sul piano di indirizzamento (subnet, VLAN, riserve DHCP, vincoli)": "Notes on the addressing plan (subnets, VLANs, DHCP reservations, constraints)",
+"Numero": "Count",
+"Numero di nodi e gestione del quorum": "Number of nodes and quorum handling",
+"Numero di nodi previsto": "Planned number of nodes",
+"Object storage S3": "S3 object storage",
+"Object storage S3 disponibile?": "S3 object storage available?",
+"Operatività e monitoraggio": "Operations and monitoring",
+"PBS 4.2 supporta ufficialmente S3; con S3 Object Lock si ottiene una copia immutabile offsite senza infrastruttura aggiuntiva.": "PBS 4.2 officially supports S3; with S3 Object Lock you get an immutable offsite copy with no extra infrastructure.",
+"Per i database: esiste un dump applicativo nativo, oltre al backup VM?": "For databases: is there a native application dump in addition to the VM backup?",
+"Per quanti giorni si tengono spente ma intatte le VM di origine?": "For how many days are the source VMs kept powered off but intact?",
+"Periodi di blocco assoluto (chiusure, campagne, stagionalità)": "Absolute freeze periods (closures, campaigns, seasonality)",
+"Periodo e modalità di rollback": "Rollback period and procedure",
+"Piano di indirizzamento IP completo": "Complete IP addressing plan",
+"Piano di rollback": "Rollback plan",
+"Politica di aggiornamento: chi applica le patch e con quale finestra?": "Patch policy: who applies patches and in which window?",
+"Porta": "Port",
+"Porte SAS per controller": "SAS ports per controller",
+"Porte libere per nodo": "Free ports per node",
+"Porte per controller": "Ports per controller",
+"Porte per nodo": "Ports per node",
+"Prodotto": "Product",
+"Progetto del backup": "Backup design",
+"Protocollo": "Protocol",
+"Proxy HTTP (se l'accesso a Internet passa da proxy)": "HTTP proxy (if Internet access goes through a proxy)",
+"QDevice, se cluster a 2 nodi": "QDevice, if 2-node cluster",
+"Quali VM hanno BitLocker o cifratura dell'intero disco?": "Which VMs have BitLocker or full-disk encryption?",
+"Quali dipendono da prenotazioni DHCP legate al MAC?": "Which depend on MAC-bound DHCP reservations?",
+"Quali fanno parte di cluster applicativi (SQL Always On, failover cluster, Oracle RAC)?": "Which belong to application clusters (SQL Always On, failover cluster, Oracle RAC)?",
+"Quali hanno IP statici configurati nel guest?": "Which have static IPs configured in the guest?",
+"Quali hanno dispositivi USB o PCI in passthrough?": "Which have USB or PCI passthrough devices?",
+"Quali hanno licenze legate all'hardware (MAC, UUID, dongle USB)?": "Which have hardware-bound licences (MAC, UUID, USB dongle)?",
+"Quali hanno snapshot attivi? (rallentano molto l'import: da consolidare)": "Which have active snapshots? (they slow the import a lot: consolidate first)",
+"Quali sono appliance di terze parti (firewall, NAS virtuali, backup, PBX)?": "Which are third-party appliances (firewalls, virtual NAS, backup, PBX)?",
+"Quali sono i domain controller?": "Which are the domain controllers?",
+"Quali usano dischi RDM, independent o shared?": "Which use RDM, independent or shared disks?",
+"Quattro è il minimo per separare management, corosync, storage e VM su percorsi diversi.": "Four is the minimum to keep management, corosync, storage and VM traffic on separate paths.",
+"Questionario di raccolta dati — Migrazione a Proxmox VE": "Data collection questionnaire — Migration to Proxmox VE",
+"Quorum e sottoscrizione": "Quorum and subscription",
+"RAID hardware": "Hardware RAID",
+"RAM GB": "RAM GB",
+"Referente applicativo — valida i servizi dopo la migrazione": "Application owner — validates services after the migration",
+"Referente di progetto — decide su ambito e tempi": "Project sponsor — decides on scope and timing",
+"Referente infrastruttura — accessi, rete, storage": "Infrastructure contact — access, network, storage",
+"Referente sicurezza (se esiste)": "Security contact (if any)",
+"Referenti": "Contacts",
+"Repository su server": "Repository on a server",
+"Requisiti di protezione per classe di VM": "Protection requirements per VM class",
+"Requisiti normativi": "Regulatory requirements",
+"Rete dedicata per corosync — fattibile?": "Dedicated corosync network — feasible?",
+"Rete esistente": "Existing network",
+"Retention attuale (copie conservate)": "Current retention (copies kept)",
+"Reti del cluster Proxmox da definire": "Proxmox cluster networks to define",
+"Richiesti?": "Required?",
+"SAS diretto": "Direct-attached SAS",
+"Scadenza esterna (fine contratto, fine supporto, rinnovo licenze)": "External deadline (contract end, end of support, licence renewal)",
+"Se 2 nodi: dove si colloca il QDevice come terzo voto?": "If 2 nodes: where does the QDevice sit as third vote?",
+"Se Veeam: storage file-level previsto a budget": "If Veeam: file-level storage budgeted",
+"Se il collegamento è SAS direct-attached": "If the connection is direct-attached SAS",
+"Se riutilizzati: si può liberare almeno un host per il primo nodo?": "If reused: can at least one host be freed for the first node?",
+"Se si prevede storage locale (ZFS)": "If local storage (ZFS) is planned",
+"Se sì: è già previsto uno storage file-level (es. NFS)?": "If yes: is a file-level storage (e.g. NFS) already planned?",
+"Se è previsto Veeam — domanda vincolante": "If Veeam is planned — binding question",
+"Secondo PBS remoto": "Second remote PBS",
+"Secure Boot attivo?": "Secure Boot enabled?",
+"Self-signed": "Self-signed",
+"Senza QDevice un cluster a due nodi non fa alta affidabilità: la caduta di un nodo blocca anche l'altro.": "Without a QDevice a two-node cluster has no high availability: losing one node blocks the other too.",
+"Senza switch SAS, ogni nodo occupa una porta per controller per avere ridondanza: un array dual-controller con 2 porte regge 2 nodi, ma un cluster Proxmox ne vuole almeno 3 per il quorum.": "Without a SAS switch each node uses one port per controller for redundancy: a dual-controller array with 2 ports serves 2 nodes, but a Proxmox cluster needs at least 3 for quorum.",
+"Senza, lo spazio dei dati cancellati non torna mai disponibile.": "Without it, the space of deleted data is never returned.",
+"Senza, ogni snapshot occupa fisicamente la dimensione piena del disco.": "Without it, every snapshot physically takes the full disk size.",
+"Serve il firewall integrato di Proxmox, o il filtraggio avviene altrove?": "Is the built-in Proxmox firewall needed, or is filtering done elsewhere?",
+"Server": "Servers",
+"Server SMTP per le notifiche": "SMTP server for notifications",
+"Server SMTP relay (per le notifiche)": "SMTP relay server (for notifications)",
+"Server da collegare": "Servers to connect",
+"Servizi di rete": "Network services",
+"Servizio": "Service",
+"Servono ruoli differenziati (chi vede cosa, chi può cosa)?": "Are differentiated roles needed (who sees what, who can do what)?",
+"Settimanali": "Weekly",
+"Si dispone delle credenziali amministrative sui singoli host ESXi (non solo su vCenter)?": "Are administrative credentials available on the individual ESXi hosts (not only vCenter)?",
+"Sicurezza, accessi e conformità": "Security, access and compliance",
+"Sistema di monitoraggio esistente": "Existing monitoring system",
+"Sistema operativo": "Operating system",
+"Situazione attuale": "Current situation",
+"Situazioni particolari — compilare solo le righe con risposta affermativa": "Special cases — fill in only the rows with a positive answer",
+"Soluzione di backup in uso": "Backup solution in use",
+"Soluzione di backup: PBS, Veeam o entrambi": "Backup solution: PBS, Veeam or both",
+"Sottoscrizione Proxmox prevista": "Planned Proxmox subscription",
+"Spanning tree in uso": "Spanning tree in use",
+"Spazio attualmente occupato dalle VM": "Space currently used by the VMs",
+"Spazio per l'area di staging del backup, se serve": "Space for the backup staging area, if needed",
+"Spazio per snapshot contemporanei": "Space for concurrent snapshots",
+"Storage": "Storage",
+"Storage esistente (se presente)": "Existing storage (if any)",
+"Su storage a blocchi con LVM ogni snapshot alloca il volume a dimensione piena: con 2 TB di dischi e uno snapshot per VM servono ~4 TB. Calcolare sul caso peggiore.": "On block storage with LVM every snapshot allocates the volume at full size: with 2 TB of disks and one snapshot per VM you need ~4 TB. Size for the worst case.",
+"Su storage enterprise sono normalmente presenti; su array entry-level spesso mancano — vanno verificati prima dell'acquisto, non durante il collaudo.": "Usually present on enterprise storage; often missing on entry-level arrays — verify before purchase, not during acceptance.",
+"Subnet": "Subnet",
+"Supportati?": "Supported?",
+"Supporto LACP / port-channel?": "LACP / port-channel support?",
+"Switch": "Switches",
+"Sì": "Yes",
+"TB occupati": "TB used",
+"Test/sviluppo": "Test/dev",
+"Thin provisioning e UNMAP disponibili sullo storage": "Thin provisioning and UNMAP available on the storage",
+"Tipo": "Type",
+"Tipo di dischi": "Disk type",
+"Tipo di storage (ZFS locale / NFS / iSCSI / SAS)": "Storage type (local ZFS / NFS / iSCSI / SAS)",
+"Tipo di storage previsto": "Planned storage type",
+"Totale": "Total",
+"Totale richiesto (calcolato)": "Total required (calculated)",
+"Tre è il minimo per un quorum senza QDevice; con due nodi serve un terzo voto esterno.": "Three is the minimum for quorum without a QDevice; with two nodes an external third vote is needed.",
+"Tutto il percorso la supporta?": "Does the whole path support it?",
+"Ubicazione": "Location",
+"Ultimo restore di prova eseguito il": "Last test restore performed on",
+"Un bridge per VLAN": "One bridge per VLAN",
+"Una riga per VM. Se disponete di PowerCLI, lo script in fondo alla pagina genera automaticamente le colonne tecniche.": "One row per VM. With PowerCLI, the script at the bottom of the page generates the technical columns automatically.",
+"Una riga per nodo: i nodi sono quelli della Sezione 7. Management, corosync 1 e corosync 2 sono obbligatori; le celle sono a testo libero (indirizzo/prefisso).": "One row per node: the nodes are those of Section 7. Management, corosync 1 and corosync 2 are mandatory; cells are free text (address/prefix).",
+"VLAN": "VLAN",
+"VLAN ID": "VLAN ID",
+"VLAN e indirizzamento": "VLANs and addressing",
+"VM con cifratura via Storage Policy — non importabili, va rimossa la policy": "VMs encrypted via Storage Policy — not importable, the policy must be removed",
+"VM su altro sito": "VM on another site",
+"VM su datastore vSAN — non importabili, vanno spostate su altro datastore": "VMs on vSAN datastores — not importable, move them to another datastore",
+"VM su un nodo del cluster": "VM on a cluster node",
+"VM totali": "Total VMs",
+"VPN Domarc": "Domarc VPN",
+"VPN del cliente": "Customer VPN",
+"Vanno definite prima di mettere mano ai server.": "They must be settled before touching the servers.",
+"Veeam sarà utilizzato per proteggere il cluster Proxmox?": "Will Veeam be used to protect the Proxmox cluster?",
+"Velocità": "Speed",
+"Verificare con il fornitore se Proxmox VE è una piattaforma supportata.": "Check with the vendor whether Proxmox VE is a supported platform.",
+"Versione": "Version",
+"Versione firmware": "Firmware version",
+"Vincoli temporali": "Time constraints",
+"ZFS richiede accesso diretto ai dischi: un RAID hardware che li nasconde non è adatto.": "ZFS needs direct access to the disks: a hardware RAID that hides them is not suitable.",
+"iDRAC / iLO / IPMI": "iDRAC / iLO / IPMI",
+"vCPU": "vCPU",
+"vCenter": "vCenter",
+"vCenter e host": "vCenter and hosts",
+"vMotion — in uso?": "vMotion — in use?",
+"vSAN — in uso?": "vSAN — in use?",
+"vTPM": "vTPM",
+"È accettabile un RPO > 0 (replica asincrona invece di HA sincrona)?": "Is an RPO > 0 acceptable (asynchronous replication instead of synchronous HA)?",
+"È la sezione che determina la stabilità del cluster: far convivere reti con funzioni diverse sullo stesso collegamento è la causa più frequente di problemi gravi.": "This section determines cluster stability: mixing networks with different roles on the same link is the most frequent cause of serious problems.",
+"È previsto l'uso di SDN Proxmox?": "Is Proxmox SDN planned?",
+"È quello che manca più spesso e serve di più: è l'unico che può confermare che il gestionale funziona davvero dopo la migrazione.": "The one most often missing and most needed: the only person who can confirm the business application really works after the migration.",
+"È richiesta l'autenticazione a due fattori?": "Is two-factor authentication required?",
+"giorni": "days",
+"nodi": "nodes",
+"porte": "ports",
+"server": "servers",
+"NIC": "NICs",
+"TB": "TB",
+"bloccante": "blocking",
+"Specificare": "Specify",
+"Altro (specificare)": "Other (specify)",
+"Somma dei campi precedenti": "Sum of the previous fields",
+"Nodo": "Node",
+"Aggiungi nodo": "Add node",
+"Aggiungi VM": "Add VM",
+"Aggiungi VLAN": "Add VLAN",
+"Aggiungi dipendenza": "Add dependency",
+"Rimuovi riga": "Remove row",
+"Elenco VM": "VM list",
+"VLAN in uso": "VLANs in use",
+"Classe": "Class",
+"Classe di VM": "VM class",
+"RPO": "RPO",
+"RTO": "RTO",
+"Retention": "Retention",
+"Decisione": "Decision",
+"Sez.": "Sec.",
+"Fatto": "Done",
+"Decisa da": "Decided by",
+"Script PowerCLI per l'inventario automatico": "PowerCLI script for the automatic inventory",
+"Da eseguire su una postazione con VMware PowerCLI: genera i CSV per buona parte delle Sezioni 2 e 3. Funzione/ruolo, criticità, BitLocker e licenze legate all'hardware restano da compilare a mano.": "Run on a workstation with VMware PowerCLI: it generates the CSVs for most of Sections 2 and 3. Role, criticality, BitLocker and hardware-bound licences still need to be filled in by hand.",
+"Copia": "Copy",
+"Script copiato": "Script copied",
+"Copia non riuscita": "Copy failed",
+"campi bloccanti mancanti": "blocking fields missing",
+"Bozza salvata in locale": "Draft saved locally",
+"Bozza scaricata": "Draft downloaded",
+"Bozza caricata": "Draft loaded",
+"File non valido": "Invalid file",
+"Markdown esportato": "Markdown exported",
+"Bozza precedente ripristinata": "Previous draft restored",
+"campi bloccanti ancora vuoti — completare o scrivere \"da verificare\"": "blocking fields still empty — fill them in or write \"to be verified\"",
+" — versione base": " — basic version",
+"SEZIONE": "SECTION",
+"Domanda": "Question",
+"Risposta": "Answer",
+"N.": "No.",
+"Cliente": "Customer",
+"Compilato da": "Filled in by",
+"Referente Domarc": "Domarc contact",
+"APPENDICE — Script PowerCLI per l'inventario automatico": "APPENDIX — PowerCLI script for the automatic inventory",
+"*Esportato dal questionario interattivo DA-Proxcheck (Domarc) il ": "*Exported from the DA-Proxcheck (Domarc) interactive questionnaire on ",
+"Modifiche non salvate…": "Unsaved changes…",
+"Bozza non salvata": "Draft not saved",
+"Domarc · raccolta dati": "Domarc · data collection",
+"Questionario migrazione<br>a Proxmox VE": "Migration questionnaire<br>to Proxmox VE",
+"Estensione": "Scope",
+"Base": "Basic",
+"Completo": "Full",
+"Base: installazioni da 2-3 nodi. Completo: aggiunge inventario host, SAS diretto, dipendenze tra servizi, conformità estesa.": "Basic: 2-3 node installations. Full: adds host inventory, direct SAS, service dependencies, extended compliance.",
+"☰ Sezioni": "☰ Sections",
+"Questionario migrazione": "Migration questionnaire",
+"Raccolta dati prima della migrazione": "Data collection before the migration",
+"Le voci <span class=\"chip-r\" style=\"position:static\">BLOCCANTE</span> vanno risolte prima dell'installazione: emergendo a lavori avviati costano un rifacimento o un acquisto sbagliato. Se non si conosce una risposta, scrivere <b>\"da verificare\"</b> invece di lasciare vuoto — una casella vuota non distingue un dato mancante da una risposta negativa.": "<span class=\"chip-r\" style=\"position:static\">BLOCKING</span> items must be settled before installation: discovered mid-project they cost a rework or a wrong purchase. If an answer is unknown, write <b>\"to be verified\"</b> instead of leaving it blank — an empty box does not tell a missing value from a negative answer.",
+"Data di compilazione": "Date",
+"Referente tecnico Domarc": "Domarc technical contact",
+"Carica bozza…": "Load draft…",
+"Salva bozza (.json)": "Save draft (.json)",
+"Esporta Markdown": "Export Markdown"
+};   // it → en: la chiave è il testo italiano
+function t(s){ if(LINGUA==='it' || s==null) return s; const k=String(s); return TRADUZIONI[k] ?? k; }
+const SI_NO = ['', 'Sì', 'No', 'Da verificare'];
+const VELOCITA = ['', '1 GbE', '10 GbE', '25 GbE', '40/100 GbE', 'Miste'];
+const PROTOCOLLI = ['', 'iSCSI', 'Fibre Channel', 'SAS diretto', 'NFS', 'SMB/CIFS', 'Altro'];
+const TIPI_DISCO = ['NVMe', 'SSD SAS', 'SSD SATA', 'SAS 10k/15k', 'NL-SAS / SATA 7.2k'];
+const SOTTOSCRIZIONI = ['', 'Nessuna', 'Community', 'Basic', 'Standard', 'Premium', 'Da decidere'];
+const BOOT = ['', 'UEFI', 'Legacy BIOS', 'Misto'];
+const STP = ['', 'RSTP', 'MSTP', 'PVST / Rapid-PVST', 'Non configurato', 'Da verificare'];
+const MODO_VLAN = ['', 'Bridge VLAN-aware (consigliato)', 'Un bridge per VLAN', 'Da decidere'];
+const MTU = ['', '1500', '9000', 'Da decidere'];
+const PBS_TIPO = ['', 'Fisico dedicato (consigliato)', 'VM su un nodo del cluster', 'VM su altro sito', 'Non previsto'];
+const CERTIFICATI = ['', 'CA interna', "Let's Encrypt (ACME)", 'Self-signed', 'Da decidere'];
+const ACCESSO_REMOTO = ['', 'VPN del cliente', 'Jump host', 'VPN Domarc', 'Accesso diretto', 'Da definire', 'Altro'];
+const MONITORAGGIO = ['', 'Zabbix', 'PRTG', 'Centreon', 'Nagios / Icinga', 'Nessuno', 'Altro'];
+const SOLUZIONI_BACKUP = ['', 'Veeam', 'Proxmox Backup Server', 'Nakivo', 'Commvault', 'Nessuna', 'Altro'];
+const DEST_BACKUP = ['', 'NAS', 'Repository su server', 'Tape', 'Cloud / S3', 'Altro'];
+const DEST_OFFSITE = ['', 'Object storage S3', 'Secondo PBS remoto', 'NAS remoto', 'Nessuna', 'Da decidere'];
+const CONFIG_SO = ['', 'Mirror (consigliato)', 'Disco singolo', 'RAID hardware'];
+
+const DOC = {
+  titolo: "Questionario di raccolta dati — Migrazione a Proxmox VE",
+  sezioni: [
+    { id:'s1', numero:'1', titolo:'Anagrafica, referenti e vincoli di progetto', base:true, gruppi:[
+      { id:'1.1', titolo:'Referenti', tipo:'qa', righe:[
+        C('ref_progetto','Referente di progetto — decide su ambito e tempi'),
+        C('ref_infra','Referente infrastruttura — accessi, rete, storage'),
+        C('ref_applicativo','Referente applicativo — valida i servizi dopo la migrazione',{rosso:true,
+           nota:"È quello che manca più spesso e serve di più: è l'unico che può confermare che il gestionale funziona davvero dopo la migrazione."}),
+        C('ref_sicurezza','Referente sicurezza (se esiste)',{base:false}),
+        C('fornitore_rete','Fornitore rete (se gestita da terzi)',{base:false}),
+        C('fornitore_storage','Fornitore storage (se gestito da terzi)',{base:false}),
+      ]},
+      { id:'1.2', titolo:'Vincoli temporali', tipo:'qa', righe:[
+        C('finestre_manutenzione','Finestre di manutenzione disponibili (giorni e orari)',{tipo:'textarea'}),
+        C('blocco_assoluto','Periodi di blocco assoluto (chiusure, campagne, stagionalità)',{tipo:'textarea'}),
+        C('data_obiettivo','Data obiettivo di completamento',{tipo:'date'}),
+        C('scadenza_esterna','Scadenza esterna (fine contratto, fine supporto, rinnovo licenze)',{base:false,tipo:'multi',sotto:[{key:'esiste',label:'Esiste?',tipo:'select',opzioni:SI_NO},{key:'data',label:'Data',tipo:'date'},{key:'motivo',label:'Motivo'}]}),
+        C('chi_autorizza_fermo','Chi autorizza un fermo di produzione'),
+      ]},
+      { id:'1.3', titolo:'Piano di rollback', tipo:'qa', righe:[
+        C('rollback_durata','Per quanti giorni si tengono spente ma intatte le VM di origine?',{rosso:true,tipo:'number',default:21,min:0,unita:'giorni',nota:'Consigliato 14-28 giorni: è il tempo per scoprire un problema applicativo che il collaudo non ha visto.'}),
+        C('rollback_spazio','C\'è spazio sufficiente su VMware per tenerle?',{rosso:true,opzioni:SI_NO,tipo:'select'}),
+        C('rollback_criterio','Chi decide un rollback e con quale criterio',{base:false}),
+      ]},
+    ]},
+
+    { id:'s2', numero:'2', titolo:'Ambiente VMware attuale', base:true,
+      nota:"Compilare solo se il progetto prevede una migrazione. Per un'installazione da zero, passare alla Sezione 3.", gruppi:[
+      { id:'2.1', titolo:'vCenter e host', tipo:'qa', righe:[
+        C('vcenter_versione','vCenter',{tipo:'multi',sotto:[{key:'versione',label:'Versione',placeholder:'8.0 U3'},{key:'indirizzo',label:'Indirizzo / FQDN'}]}),
+        C('esxi_host_numero','Host ESXi',{tipo:'multi',sotto:[{key:'numero',label:'Numero',tipo:'number',min:1},{key:'versione',label:'Versione',placeholder:'7.0 U3'},{key:'build',label:'Build'}]}),
+        C('esxi_credenziali','Si dispone delle credenziali amministrative sui singoli host ESXi (non solo su vCenter)?',{rosso:true,tipo:'select',opzioni:SI_NO}),
+        C('esxi_controller_porte','Controller storage',{base:false,rosso:true,tipo:'multi',sotto:[{key:'controller',label:'Controller',tipo:'number',min:0},{key:'porte',label:'Porte per controller',tipo:'number',min:0}]}),
+        C('vm_numero_tb','Consistenza',{tipo:'multi',sotto:[{key:'vm',label:'VM totali',tipo:'number',min:0},{key:'tb',label:'TB occupati',tipo:'number',min:0}]}),
+        C('host_riuso','Gli host attuali verranno riutilizzati per Proxmox?',{opzioni:SI_NO,tipo:'select'}),
+        C('host_liberabile','Se riutilizzati: si può liberare almeno un host per il primo nodo?',{rosso:true,opzioni:SI_NO,tipo:'select'}),
+      ]},
+      { id:'2.2', titolo:'Le tre condizioni che bloccano l\'import — elencare le VM interessate', tipo:'qa', righe:[
+        C('vsan_vm','VM su datastore vSAN — non importabili, vanno spostate su altro datastore',{rosso:true,tipo:'textarea'}),
+        C('caratteri_speciali_vm','Datastore con caratteri speciali nel nome (es. "+") — bloccano l\'import',{rosso:true,tipo:'textarea'}),
+        C('cifratura_policy_vm','VM con cifratura via Storage Policy — non importabili, va rimossa la policy',{rosso:true,tipo:'textarea'}),
+      ]},
+      { id:'2.3', titolo:'Funzionalità VMware in uso', tipo:'qa', righe:[
+        C('feat_ha','HA — in uso?',{opzioni:SI_NO,tipo:'select'}),
+        C('feat_vmotion','vMotion — in uso?',{opzioni:SI_NO,tipo:'select'}),
+        C('feat_ft','Fault Tolerance — in uso?',{opzioni:SI_NO,tipo:'select',base:false,
+           nota:"Non esiste su Proxmox: va sostituita con ridondanza applicativa."}),
+        C('feat_vsan','vSAN — in uso?',{opzioni:SI_NO,tipo:'select',nota:"Le VM vanno spostate prima della migrazione."}),
+      ]},
+    ]},
+
+    { id:'s3', numero:'3', titolo:'Inventario delle macchine virtuali', base:true,
+      nota:"Una riga per VM. Se disponete di PowerCLI, lo script in fondo alla pagina genera automaticamente le colonne tecniche.", gruppi:[
+      { id:'3.0', tipo:'vm', minRighe:3 },
+      { id:'3.1', titolo:'Situazioni particolari — compilare solo le righe con risposta affermativa', tipo:'qa', righe:[
+        C('sp_bitlocker','Quali VM hanno BitLocker o cifratura dell\'intero disco?',{rosso:true,tipo:'textarea'}),
+        C('sp_recovery_key','Di quali si possiedono le recovery key?',{rosso:true,tipo:'textarea'}),
+        C('sp_snapshot','Quali hanno snapshot attivi? (rallentano molto l\'import: da consolidare)',{rosso:true,tipo:'textarea'}),
+        C('sp_rdm','Quali usano dischi RDM, independent o shared?',{rosso:true,tipo:'textarea'}),
+        C('sp_cluster_app','Quali fanno parte di cluster applicativi (SQL Always On, failover cluster, Oracle RAC)?',{rosso:true,tipo:'textarea'}),
+        C('sp_licenze_hw','Quali hanno licenze legate all\'hardware (MAC, UUID, dongle USB)?',{rosso:true,tipo:'textarea'}),
+        C('sp_usb_pci','Quali hanno dispositivi USB o PCI in passthrough?',{base:false,tipo:'textarea'}),
+        C('sp_ip_statici','Quali hanno IP statici configurati nel guest?',{tipo:'textarea'}),
+        C('sp_dhcp_mac','Quali dipendono da prenotazioni DHCP legate al MAC?',{base:false,tipo:'textarea'}),
+        C('sp_dc','Quali sono i domain controller?',{tipo:'textarea'}),
+        C('sp_appliance','Quali sono appliance di terze parti (firewall, NAS virtuali, backup, PBX)?',{tipo:'textarea',
+           nota:"Verificare con il fornitore se Proxmox VE è una piattaforma supportata."}),
+      ]},
+      { id:'3.2', titolo:'Dipendenze tra servizi', tipo:'dip', base:false,
+        nota:"Definisce l'ordine di avvio automatico e la sequenza delle ondate. Regola generale: domain controller e DNS per primi, poi i database, poi gli application server, infine i frontend." },
+    ]},
+
+    { id:'s4', numero:'4', titolo:'Rete esistente', base:true, gruppi:[
+      { id:'4.1', titolo:'VLAN e indirizzamento', tipo:'vlan' },
+      { id:'4.2', titolo:'Servizi di rete', tipo:'qa', righe:[
+        C('dns_interni','DNS interni'),
+        C('dominio_ad','Dominio Active Directory'),
+        C('ntp','NTP',{rosso:true,nota:"Critico: un drift dell'orologio rompe Kerberos e destabilizza il cluster."}),
+        C('gateway_fw','Gateway predefinito / firewall'),
+        C('smtp_relay','Server SMTP relay (per le notifiche)'),
+        C('proxy_http','Proxy HTTP (se l\'accesso a Internet passa da proxy)',{base:false}),
+      ]},
+      { id:'4.3', titolo:'Infrastruttura di switching', tipo:'qa', righe:[
+        C('switch_modello','Switch',{tipo:'multi',sotto:[{key:'modello',label:'Modello'},{key:'numero',label:'Numero',tipo:'number',min:1}]}),
+        C('switch_porte_libere','Porte libere per nodo',{rosso:true,tipo:'multi',sotto:[{key:'porte',label:'Porte per nodo',tipo:'number',min:0},{key:'velocita',label:'Velocità',tipo:'select',opzioni:VELOCITA}],nota:"Determina se è possibile separare fisicamente la rete di cluster dalle altre — il vincolo che più spesso costringe a un compromesso."}),
+        C('switch_lacp','Supporto LACP / port-channel?',{opzioni:SI_NO,tipo:'select'}),
+        C('switch_jumbo','Jumbo frames (MTU 9000)',{tipo:'multi',sotto:[{key:'supportati',label:'Supportati?',tipo:'select',opzioni:SI_NO},{key:'attivi',label:'Attualmente attivi?',tipo:'select',opzioni:SI_NO}]}),
+        C('switch_ridondanza','Gli switch sono ridondati / in stack?',{opzioni:SI_NO,tipo:'select'}),
+        C('switch_gestione','Chi configura gli switch (interno o fornitore) e con quali tempi?',{base:false}),
+        C('switch_stp','Spanning tree in uso',{base:false,tipo:'select',opzioni:STP}),
+      ]},
+      { id:'4.4a', titolo:'Indirizzi IP da riservare — servono liberi prima dell\'installazione — per nodo', tipo:'ipnodi', nota:"Una riga per nodo: i nodi sono quelli della Sezione 7. Management, corosync 1 e corosync 2 sono obbligatori; le celle sono a testo libero (indirizzo/prefisso)." },
+      { id:'4.4', titolo:'Indirizzi IP da riservare — servono liberi prima dell\'installazione — indirizzi singoli e note', tipo:'qa', righe:[
+        C('ip_gui_virtuale','IP virtuale / accesso GUI (opzionale)',{base:false}),
+        C('ip_pbs','Proxmox Backup Server'),
+        C('ip_qdevice','QDevice, se cluster a 2 nodi'),
+        C('ip_note','Note sul piano di indirizzamento (subnet, VLAN, riserve DHCP, vincoli)',{tipo:'textarea'}),
+      ]},
+    ]},
+
+    { id:'s5', numero:'5', titolo:'Reti del cluster Proxmox da definire', base:true,
+      nota:"È la sezione che determina la stabilità del cluster: far convivere reti con funzioni diverse sullo stesso collegamento è la causa più frequente di problemi gravi.", gruppi:[
+      { id:'5.1', titolo:'Domande di progetto', tipo:'qa', righe:[
+        C('reti_interfacce','Interfacce fisiche disponibili per nodo',{rosso:true,tipo:'number',default:4,min:1,unita:'NIC',nota:'Quattro è il minimo per separare management, corosync, storage e VM su percorsi diversi.'}),
+        C('reti_vlan_aware','Modello di VLAN sui bridge',{base:false,tipo:'select',opzioni:MODO_VLAN}),
+        C('reti_mtu','MTU sulla rete storage',{tipo:'multi',sotto:[{key:'mtu',label:'MTU',tipo:'select',opzioni:MTU},{key:'percorso',label:'Tutto il percorso la supporta?',tipo:'select',opzioni:SI_NO}]}),
+        C('reti_sdn','È previsto l\'uso di SDN Proxmox?',{opzioni:SI_NO,tipo:'select',base:false}),
+        C('reti_firewall','Serve il firewall integrato di Proxmox, o il filtraggio avviene altrove?',{base:false}),
+      ], nota:"Corosync considera una rete inutilizzabile non solo se cade, ma se la latenza sale troppo: traffico di storage o backup può saturarla e far riavviare i nodi da soli (self-fencing). Almeno due anelli su percorsi fisici diversi, senza bond, sono la configurazione corretta."},
+    ]},
+
+    { id:'s6', numero:'6', titolo:'Storage', base:true, gruppi:[
+      { id:'6.0', titolo:'Tipo di storage previsto', tipo:'qa', righe:[
+        C('storage_tipo','Che tipo di storage si prevede?',{rosso:true,tipo:'select',
+           opzioni:['','ZFS locale','NFS','SAN iSCSI','SAS direct-attached','Altro'],
+           nota:"Determina snapshot, alta affidabilità e complessità — la risposta cambia il resto della sezione."}),
+      ]},
+      { id:'6.1', titolo:'Storage esistente (se presente)', tipo:'qa', righe:[
+        C('storage_marca','Marca e modello'),
+        C('storage_protocollo','Protocollo',{tipo:'select',opzioni:PROTOCOLLI,altro:true}),
+        C('storage_firmware','Versione firmware',{base:false}),
+        C('storage_capacita','Capacità',{tipo:'multi',sotto:[{key:'totale',label:'Totale',tipo:'number',min:0,unita:'TB'},{key:'libera',label:'Libera',tipo:'number',min:0,unita:'TB'}]}),
+        C('storage_dischi','Tipo di dischi',{tipo:'check',opzioni:TIPI_DISCO}),
+        C('storage_supporto','Contratto di supporto attivo fino a',{tipo:'date'}),
+      ]},
+      { id:'6.2', titolo:'Le tre domande decisive', tipo:'qa', righe:[
+        C('storage_thin','Lo storage supporta il thin provisioning?',{rosso:true,opzioni:SI_NO,tipo:'select',
+           nota:"Senza, ogni snapshot occupa fisicamente la dimensione piena del disco."}),
+        C('storage_unmap','Lo storage supporta SCSI UNMAP / space reclamation?',{rosso:true,opzioni:SI_NO,tipo:'select',
+           nota:"Senza, lo spazio dei dati cancellati non torna mai disponibile."}),
+        C('storage_snap_propri','Lo storage ha snapshot propri utilizzabili?',{opzioni:SI_NO,tipo:'select',base:false}),
+      ], nota:"Su storage enterprise sono normalmente presenti; su array entry-level spesso mancano — vanno verificati prima dell'acquisto, non durante il collaudo."},
+      { id:'6.3', titolo:'Se il collegamento è SAS direct-attached', tipo:'qa', base:false, righe:[
+        C('sas_porte','Porte SAS per controller',{rosso:true,tipo:'number',min:1,unita:'porte'}),
+        C('sas_server','Server da collegare',{rosso:true,tipo:'number',min:1,unita:'server'}),
+        C('sas_switch','Esiste uno switch SAS?',{opzioni:SI_NO,tipo:'select'}),
+      ], nota:"Senza switch SAS, ogni nodo occupa una porta per controller per avere ridondanza: un array dual-controller con 2 porte regge 2 nodi, ma un cluster Proxmox ne vuole almeno 3 per il quorum."},
+      { id:'6.4', titolo:'Se si prevede storage locale (ZFS)', tipo:'qa', righe:[
+        C('zfs_dischi','Dischi dati per nodo',{tipo:'multi',sotto:[{key:'numero',label:'Numero',tipo:'number',min:1},{key:'tipo',label:'Tipo',tipo:'select',opzioni:['',...TIPI_DISCO]},{key:'capacita',label:'Capacità di ciascuno',tipo:'number',min:0,unita:'TB'}]}),
+        C('zfs_hba','Il controller è un HBA in modalità IT o un RAID hardware?',{rosso:true,
+           nota:"ZFS richiede accesso diretto ai dischi: un RAID hardware che li nasconde non è adatto."}),
+        C('zfs_rpo','È accettabile un RPO > 0 (replica asincrona invece di HA sincrona)?',{rosso:true,opzioni:SI_NO,tipo:'select'}),
+      ]},
+      { id:'6.5', titolo:'Capacità da dimensionare (GB)', tipo:'qa', righe:[
+        C('cap_occupato','Spazio attualmente occupato dalle VM',{tipo:'number',min:0,unita:'TB'}),
+        C('cap_crescita','Crescita prevista a 3 anni',{tipo:'number',min:0,unita:'TB'}),
+        C('cap_snapshot','Spazio per snapshot contemporanei',{tipo:'number',min:0,unita:'TB',nota:"Su storage a blocchi con LVM ogni snapshot alloca il volume a dimensione piena: con 2 TB di dischi e uno snapshot per VM servono ~4 TB. Calcolare sul caso peggiore."}),
+        C('cap_staging','Spazio per l\'area di staging del backup, se serve',{base:false,tipo:'number',min:0,unita:'TB',default:0}),
+        C('cap_totale','Totale richiesto (calcolato)',{rosso:true,tipo:'calc',calc:['cap_occupato','cap_crescita','cap_snapshot','cap_staging'],unita:'TB'}),
+      ]},
+    ]},
+
+    { id:'s7', numero:'7', titolo:'Hardware dei nodi Proxmox', base:true, gruppi:[
+      { id:'7.0', titolo:'Server', tipo:'nodi', minRighe:3 },
+      { id:'7.1', titolo:'Domande sui nodi', tipo:'qa', righe:[
+        C('nodi_cpu_identiche','Le CPU dei nodi sono identiche fra loro?',{rosso:true,opzioni:SI_NO,tipo:'select',
+           nota:"Con CPU identiche si usa il tipo host (prestazioni migliori); con CPU diverse serve un modello generico, altrimenti la migrazione a caldo non funziona."}),
+        C('nodi_boot','Avvio dei nodi',{base:false,tipo:'multi',sotto:[{key:'boot',label:'Boot',tipo:'select',opzioni:BOOT},{key:'secure',label:'Secure Boot attivo?',tipo:'select',opzioni:SI_NO}]}),
+        C('nodi_dischi_so','Dischi per il sistema operativo',{tipo:'multi',sotto:[{key:'numero',label:'Numero',tipo:'number',min:1,default:2},{key:'config',label:'Configurazione',tipo:'select',opzioni:CONFIG_SO,default:'Mirror (consigliato)'}]}),
+        C('nodi_ups','Alimentazione ridondata e UPS?',{opzioni:SI_NO,tipo:'select'}),
+      ]},
+      { id:'7.2', titolo:'Quorum e sottoscrizione', tipo:'qa', righe:[
+        C('cluster_nodi_num','Numero di nodi previsto',{rosso:true,tipo:'number',default:3,min:1,unita:'nodi',nota:'Tre è il minimo per un quorum senza QDevice; con due nodi serve un terzo voto esterno.'}),
+        C('cluster_qdevice','Se 2 nodi: dove si colloca il QDevice come terzo voto?',{rosso:true,
+           nota:"Senza QDevice un cluster a due nodi non fa alta affidabilità: la caduta di un nodo blocca anche l'altro."}),
+        C('cluster_n1','Il cluster deve reggere il carico con un nodo fuori servizio? (regola N+1)',{opzioni:SI_NO,tipo:'select'}),
+        C('cluster_subscription','Sottoscrizione Proxmox prevista',{tipo:'select',opzioni:SOTTOSCRIZIONI}),
+      ]},
+    ]},
+
+    { id:'s8', numero:'8', titolo:'Backup e continuità', base:true, gruppi:[
+      { id:'8.1', titolo:'Situazione attuale', tipo:'qa', righe:[
+        C('backup_soluzione','Soluzione di backup in uso',{tipo:'multi',sotto:[{key:'prodotto',label:'Prodotto',tipo:'select',opzioni:SOLUZIONI_BACKUP},{key:'versione',label:'Versione'},{key:'licenze',label:'Licenze (tipo e numero)'}]}),
+        C('backup_destinazione','Destinazione dei backup',{tipo:'multi',sotto:[{key:'tipo',label:'Tipo',tipo:'select',opzioni:DEST_BACKUP},{key:'capacita',label:'Capacità',tipo:'number',min:0,unita:'TB'},{key:'ubicazione',label:'Ubicazione'}]}),
+        C('backup_offsite','Esiste già una copia offsite?',{opzioni:SI_NO,tipo:'select'}),
+        C('backup_immutabile','Esiste una copia immutabile?',{opzioni:SI_NO,tipo:'select'}),
+        C('backup_retention','Retention attuale (copie conservate)',{tipo:'multi',sotto:[{key:'giornaliere',label:'Giornaliere',tipo:'number',min:0},{key:'settimanali',label:'Settimanali',tipo:'number',min:0},{key:'mensili',label:'Mensili',tipo:'number',min:0},{key:'annuali',label:'Annuali',tipo:'number',min:0}]}),
+        C('backup_restore_test','Ultimo restore di prova eseguito il',{tipo:'date'}),
+      ]},
+      { id:'8.2', titolo:'Se è previsto Veeam — domanda vincolante', tipo:'qa', righe:[
+        C('veeam_previsto','Veeam sarà utilizzato per proteggere il cluster Proxmox?',{rosso:true,opzioni:SI_NO,tipo:'select'}),
+        C('veeam_filelevel','Se sì: è già previsto uno storage file-level (es. NFS)?',{rosso:true,opzioni:SI_NO,tipo:'select'}),
+      ], nota:"Il plug-in Veeam per Proxmox VE richiede almeno uno storage file-level nel cluster: non supporta ambienti basati esclusivamente su LVM. Se il progetto prevede solo una SAN a blocchi, va messo a budget anche uno storage NFS — non è opzionale."},
+      { id:'8.3', titolo:'Requisiti di protezione per classe di VM', tipo:'rpo' },
+      { id:'8.4', titolo:'Progetto del backup', tipo:'qa', righe:[
+        C('pbs_fisico','Proxmox Backup Server',{tipo:'select',opzioni:PBS_TIPO}),
+        C('pbs_capacita','Capacità del datastore di backup',{tipo:'number',min:0,unita:'TB'}),
+        C('pbs_offsite','Copia offsite',{tipo:'multi',sotto:[{key:'destinazione',label:'Destinazione',tipo:'select',opzioni:DEST_OFFSITE},{key:'s3',label:'Object storage S3 disponibile?',tipo:'select',opzioni:SI_NO}],nota:"PBS 4.2 supporta ufficialmente S3; con S3 Object Lock si ottiene una copia immutabile offsite senza infrastruttura aggiuntiva."}),
+        C('pbs_verifica','Chi verifica l\'esito dei backup, e con quale frequenza?',{base:false}),
+        C('pbs_dump_db','Per i database: esiste un dump applicativo nativo, oltre al backup VM?',{rosso:true,
+           nota:"Il backup della VM cattura lo stato del disco, non la coerenza transazionale del DBMS."}),
+      ]},
+    ]},
+
+    { id:'s9', numero:'9', titolo:'Sicurezza, accessi e conformità', base:true, gruppi:[
+      { id:'9.1', tipo:'qa', righe:[
+        C('sic_ad','L\'autenticazione a Proxmox deve integrarsi con Active Directory / LDAP?',{opzioni:SI_NO,tipo:'select'}),
+        C('sic_2fa','È richiesta l\'autenticazione a due fattori?',{opzioni:SI_NO,tipo:'select'}),
+        C('sic_ruoli','Servono ruoli differenziati (chi vede cosa, chi può cosa)?',{base:false,opzioni:SI_NO,tipo:'select'}),
+        C('sic_certificati','Certificati per la GUI',{base:false,tipo:'select',opzioni:CERTIFICATI}),
+        C('sic_accesso_remoto','Accesso remoto per l\'intervento',{tipo:'select',opzioni:ACCESSO_REMOTO,altro:true}),
+        C('sic_audit_log','Log di audit',{base:false,tipo:'multi',sotto:[{key:'richiesti',label:'Richiesti?',tipo:'select',opzioni:SI_NO},{key:'giorni',label:'Conservazione',tipo:'number',min:0,unita:'giorni'}]}),
+        C('sic_normativa','Requisiti normativi',{tipo:'check',opzioni:['GDPR','NIS2','ISO 27001','PCI DSS','Nessuno'],altro:true}),
+        C('sic_patch','Politica di aggiornamento: chi applica le patch e con quale finestra?',{base:false}),
+        C('sic_repo','L\'infrastruttura ha accesso a Internet per i repository, o serve un mirror interno?',{rosso:true,opzioni:SI_NO,tipo:'select'}),
+      ]},
+    ]},
+
+    { id:'s10', numero:'10', titolo:'Operatività e monitoraggio', base:false, gruppi:[
+      { id:'10.1', tipo:'qa', righe:[
+        C('op_monitoraggio','Sistema di monitoraggio esistente',{tipo:'select',opzioni:MONITORAGGIO,altro:true}),
+        C('op_integrazione','Integrazione di Proxmox nel monitoraggio',{tipo:'check',opzioni:['SNMP','API Proxmox','Agente','Nessuna']}),
+        C('op_log_dest','Destinazione dei log (syslog centralizzato, SIEM)'),
+        C('op_smtp','Server SMTP per le notifiche',{tipo:'multi',sotto:[{key:'server',label:'Indirizzo'},{key:'porta',label:'Porta',tipo:'number',min:1,default:25},{key:'auth',label:'Autenticazione?',tipo:'select',opzioni:SI_NO}]}),
+        C('op_destinatari_alert','Destinatari delle notifiche di allarme'),
+        C('op_naming','Convenzione di denominazione per VM e nodi'),
+        C('op_cmdb','Esiste un CMDB / inventario da aggiornare?',{opzioni:SI_NO,tipo:'select'}),
+        C('op_formazione','Chi gestirà il cluster dopo la consegna? Serve formazione?'),
+      ]},
+    ]},
+
+    { id:'s11', numero:'11', titolo:'Decisioni da chiudere prima dell\'installazione', base:true, tipo:'decisioni',
+      nota:"Vanno definite prima di mettere mano ai server." },
+  ]
+};
+
+const DECISIONI = [
+  ['Numero di nodi e gestione del quorum','7.2'],
+  ['Tipo di storage (ZFS locale / NFS / iSCSI / SAS)','6'],
+  ['Thin provisioning e UNMAP disponibili sullo storage','6.2'],
+  ['Capacità totale da approvvigionare','6.5'],
+  ['Rete dedicata per corosync — fattibile?','5'],
+  ['Piano di indirizzamento IP completo','4.4'],
+  ['CPU dei nodi identiche o miste','7.1'],
+  ['Soluzione di backup: PBS, Veeam o entrambi','8'],
+  ['Se Veeam: storage file-level previsto a budget','8.2'],
+  ['Elenco VM non migrabili e loro destino','3.1'],
+  ['Periodo e modalità di rollback','1.3'],
+];
+
+const COLONNE_VM_BASE = [
+  {key:'nome', label:'Nome VM'}, {key:'so', label:'Sistema operativo'}, {key:'funzione', label:'Funzione'},
+  {key:'vcpu', label:'vCPU', tipo:'number'}, {key:'ram', label:'RAM GB', tipo:'number'},
+  {key:'disco', label:'Disco GB', tipo:'number'},
+  {key:'firmware', label:'Firmware', rosso:true, tipo:'select', opzioni:['','BIOS','UEFI']},
+  {key:'criticita', label:'Criticità', tipo:'select', opzioni:['','A','M','B']},
+];
+const COLONNE_VM_COMPLETO = [
+  {key:'controller', label:'Controller disco', base:false},
+  {key:'vtpm', label:'vTPM', base:false, tipo:'select', opzioni:['','Sì','No']},
+  {key:'ip', label:'IP', base:false},
+  {key:'vlan', label:'VLAN', base:false},
+];
+const COLONNE_VLAN = [
+  {key:'id', label:'VLAN ID'}, {key:'uso', label:'Nome / uso'}, {key:'subnet', label:'Subnet'}, {key:'gateway', label:'Gateway'},
+  {key:'dhcp', label:'DHCP?', base:false, tipo:'select', opzioni:['','Sì','No']}, {key:'note', label:'Note', base:false},
+];
+const COLONNE_NODI = [
+  {key:'modello', label:'Modello'}, {key:'cpu', label:'CPU (modello)'}, {key:'core', label:'Core', tipo:'number'},
+  {key:'ram', label:'RAM GB', tipo:'number'}, {key:'dischi', label:'Dischi SO'}, {key:'nic', label:'NIC (n. × velocità)'},
+  {key:'hba', label:'HBA/FC', base:false},
+];
+const COLONNE_IP = [
+  {key:'ip_mgmt', label:'Management', rosso:true, placeholder:'192.168.10.11/24'},
+  {key:'ip_coro1', label:'Corosync 1', rosso:true, placeholder:'10.10.1.11/24'},
+  {key:'ip_coro2', label:'Corosync 2', rosso:true, placeholder:'10.10.2.11/24'},
+  {key:'ip_storage', label:'Storage'}, {key:'ip_migrazione', label:'Migrazione', base:false},
+  {key:'ip_backup', label:'Backup'}, {key:'ip_ipmi', label:'iDRAC / iLO / IPMI'},
+];
+const COLONNE_DIP = [
+  {key:'servizio', label:'Servizio'}, {key:'dipende', label:'Dipende da'}, {key:'prima_di', label:'Deve avviarsi prima di'},
+];
+const CLASSI_RPO = ['Critiche','Importanti','Standard','Test/sviluppo'];
+
+const POWERCLI = `Connect-VIServer -Server <vcenter-o-esxi>
+
+Get-VM | Select-Object \`
+  Name, PowerState, NumCpu,
+  @{N='OS';E={$_.Guest.OSFullName}},
+  @{N='RAM_GB';E={$_.MemoryGB}},
+  @{N='Disco_GB';E={[math]::Round((($_ | Get-HardDisk | Measure-Object CapacityGB -Sum).Sum),1)}},
+  @{N='Firmware';E={$_.ExtensionData.Config.Firmware}},
+  @{N='Controller';E={($_.ExtensionData.Config.Hardware.Device |
+        Where-Object {$_ -is [VMware.Vim.VirtualSCSIController]} |
+        Select-Object -First 1).GetType().Name}},
+  @{N='vTPM';E={[bool]($_.ExtensionData.Config.Hardware.Device |
+        Where-Object {$_ -is [VMware.Vim.VirtualTPM]})}},
+  @{N='N_Snapshot';E={($_ | Get-Snapshot).Count}},
+  @{N='IP';E={$_.Guest.IPAddress -join ';'}},
+  @{N='PortGroup';E={($_ | Get-NetworkAdapter).NetworkName -join ';'}},
+  @{N='Datastore';E={($_ | Get-Datastore).Name -join ';'}} |
+  Sort-Object Name | Export-Csv .\\inventario-vm.csv -NoTypeInformation -Encoding UTF8
+
+Get-Datastore | Select-Object Name, Type,
+  @{N='Capacita_GB';E={[math]::Round($_.CapacityGB,1)}},
+  @{N='Libero_GB';E={[math]::Round($_.FreeSpaceGB,1)}} |
+  Export-Csv .\\datastore.csv -NoTypeInformation -Encoding UTF8
+
+Get-VM | Get-Snapshot | Select-Object \`
+  @{N='VM';E={$_.VM.Name}}, Name, Created,
+  @{N='GB';E={[math]::Round($_.SizeGB,2)}} |
+  Export-Csv .\\snapshot.csv -NoTypeInformation -Encoding UTF8
+
+Write-Host "Fatto: tre file CSV nella cartella corrente."`;
+
+/* ───────────────────────── stato ───────────────────────── */
+let STATO = { meta:{}, campi:{}, vm:[], vlan:[], nodi:[], dip:[], rpo:{}, decisioni:{} };
+let FILTRO = 'completo';   // 'base' | 'completo'
+let idSeq = 1;
+const nuovoId = p => `${p}_${idSeq++}_${Date.now().toString(36)}`;
+
+function rigaVuotaVM(){ const r={id:nuovoId('vm')}; [...COLONNE_VM_BASE,...COLONNE_VM_COMPLETO].forEach(c=>r[c.key]=''); return r; }
+function rigaVuotaVLAN(){ const r={id:nuovoId('vlan')}; COLONNE_VLAN.forEach(c=>r[c.key]=''); return r; }
+function rigaVuotaNodo(n){ const r={id:nuovoId('nodo'),numero:n}; [...COLONNE_NODI,...COLONNE_IP].forEach(c=>r[c.key]=''); return r; }
+function rigaVuotaDip(){ const r={id:nuovoId('dip')}; COLONNE_DIP.forEach(c=>r[c.key]=''); return r; }
+
+function statoIniziale(){
+  STATO.vm = [rigaVuotaVM(), rigaVuotaVM(), rigaVuotaVM()];
+  STATO.vlan = [rigaVuotaVLAN()];
+  STATO.nodi = [rigaVuotaNodo(1), rigaVuotaNodo(2), rigaVuotaNodo(3)];
+  STATO.dip = [rigaVuotaDip()];
+}
+
+/* ───────────────────────── render ───────────────────────── */
+const $corpo = document.getElementById('corpo');
+const $toc = document.getElementById('toc');
+
+function tutteCampiRosse(){
+  // elenco {id,label,sezioneId} di TUTTI i campi rosso semplici (tipo qa), per la validazione
+  const out = [];
+  DOC.sezioni.forEach(s=>{
+    (s.gruppi||[]).forEach(g=>{
+      if(g.tipo==='qa') g.righe.forEach(c=>{ if(c.rosso) out.push({id:c.id, label:c.label, sez:s.id, campo:c}); });
+      if(g.tipo==='ipnodi') out.push({id:'__ipnodi', label:'Indirizzi per nodo (management, corosync 1 e 2)', sez:s.id, speciale:'ipnodi'});
+    });
+  });
+  return out;
+}
+
+function visibileSe(base){ return FILTRO==='completo' || base !== false; }
+
+function inputPer(campo, valore){
+  let val = valore==null?'':valore;
+  if(val==='' && campo.default!=null && campo.tipo!=='multi'){ val = String(campo.default); STATO.campi[campo.id] = val; }
+  if(campo.tipo==='select'){
+    let h = `<select data-id="${campo.id}">`;
+    (campo.opzioni||['']).forEach(o=>{ h += `<option value="${escHtml(o)}" ${o===val?'selected':''}>${escHtml(t(o))}</option>`; });
+    h += `</select>`;
+    if(campo.altro){
+      const alt = STATO.campi[campo.id+'.altro'] || '';
+      h += `<input class="altro" type="text" data-id="${campo.id}.altro" placeholder="${escHtml(t('Specificare'))}" value="${escHtml(alt)}" ${val==='Altro'?'':'hidden'}>`;
+    }
+    return h;
+  }
+  if(campo.tipo==='check'){
+    const scelte = String(val).split(', ').filter(Boolean);
+    let h = `<div class="checks" data-check="${campo.id}">`;
+    (campo.opzioni||[]).forEach(o=>{ h += `<label><input type="checkbox" data-check-opt="${escHtml(o)}" ${scelte.includes(o)?'checked':''}>${escHtml(t(o))}</label>`; });
+    h += `</div>`;
+    if(campo.altro) h += `<input class="altro" type="text" data-id="${campo.id}.altro" placeholder="${escHtml(t('Altro (specificare)'))}" value="${escHtml(STATO.campi[campo.id+'.altro']||'')}">`;
+    return h;
+  }
+  if(campo.tipo==='multi'){
+    let h = `<div class="sotto">`;
+    campo.sotto.forEach(sc=>{
+      const sub = { id:`${campo.id}.${sc.key}`, tipo:sc.tipo||'text', opzioni:sc.opzioni, placeholder:sc.placeholder||'', default:sc.default??null, unita:sc.unita||'', min:sc.min??null };
+      h += `<div><label>${escHtml(t(sc.label))}</label>${inputPer(sub, STATO.campi[sub.id])}</div>`;
+    });
+    return h + `</div>`;
+  }
+  if(campo.tipo==='calc'){
+    const tot = numeroCalc(campo); STATO.campi[campo.id] = tot ? String(Math.round(tot*100)/100) : '';
+    return `<div class="unita"><input type="number" data-id="${campo.id}" value="${tot?Math.round(tot*100)/100:''}" readonly title="${escHtml(t('Somma dei campi precedenti'))}"><span>${escHtml(t(campo.unita||''))}</span></div>`;
+  }
+  if(campo.tipo==='textarea') return `<textarea data-id="${campo.id}" placeholder="${escHtml(t(campo.placeholder))}">${escHtml(val)}</textarea>`;
+  const tipo = campo.tipo==='date'?'date':campo.tipo==='number'?'number':'text';
+  const attr = (tipo==='number' ? ` min="${campo.min??0}" step="any"` : '');
+  const inp = `<input type="${tipo}" data-id="${campo.id}" placeholder="${escHtml(t(campo.placeholder))}" value="${escHtml(val)}"${attr}>`;
+  return campo.unita ? `<div class="unita">${inp}<span>${escHtml(t(campo.unita))}</span></div>` : inp;
+}
+function escHtml(s){ return String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function renderQA(gruppo){
+  if(!visibileSe(gruppo.base)) return '';
+  const righeVisibili = gruppo.righe.filter(c=>visibileSe(c.base));
+  if(!righeVisibili.length) return '';
+  let h = `<div class="gruppo" data-base="${gruppo.base!==false}"><h3>${escHtml(t(gruppo.titolo||''))}</h3>`;
+  if(gruppo.nota) h += `<p class="g-nota">${escHtml(t(gruppo.nota))}</p>`;
+  h += `<div class="righe">`;
+  righeVisibili.forEach(c=>{
+    const haDefault = c.default!=null || (c.sotto||[]).some(sc=>sc.default!=null);
+    h += `<div class="riga" data-rosso="${c.rosso}" data-campo="${c.id}" data-default="${haDefault}">
+      <div class="cella testa"><label class="q">${escHtml(t(c.label))}${c.rosso?`<span class="chip-r">${escHtml(t('bloccante'))}</span>`:''}</label>${c.nota?`<span class="g-nota" style="margin:0">${escHtml(t(c.nota))}</span>`:''}</div>
+      <div class="cella">${inputPer(c, STATO.campi[c.id])}</div>
+    </div>`;
+  });
+  return h + `</div></div>`;
+}
+
+function renderTabellaDin(id, titolo, nota, colonneBase, colonneExtra, righe, placeholderAggiungi, onAggiungi){
+  const colonne = [...colonneBase, ...(colonneExtra||[])];
+  const colVisibili = colonne.filter(c=>visibileSe(c.base));
+  let h = `<div class="gruppo"><h3>${escHtml(t(titolo))}</h3>`;
+  if(nota) h += `<p class="g-nota">${escHtml(t(nota))}</p>`;
+  h += `<div class="tw"><table class="din" data-tabella="${id}"><thead><tr><th>#</th>`;
+  colonne.forEach(c=>{ h += `<th class="${visibileSe(c.base)?'':'hidden-col'}" data-col="${c.key}">${escHtml(t(c.label))}${c.rosso?' <span class="chip-r">•</span>':''}</th>`; });
+  h += `<th></th></tr></thead><tbody>`;
+  righe.forEach((r,i)=>{
+    h += `<tr data-rid="${r.id}"><td>${r.numero ?? (i+1)}</td>`;
+    colonne.forEach(c=>{
+      const campoObj = {id:`${id}::${r.id}::${c.key}`, tipo:c.tipo, opzioni:c.opzioni};
+      h += `<td class="${visibileSe(c.base)?'':'hidden-col'}" data-col="${c.key}">${inputPer(campoObj, r[c.key])}</td>`;
+    });
+    h += `<td class="azione"><button type="button" data-rimuovi="${id}::${r.id}" title="${escHtml(t('Rimuovi riga'))}">✕</button></td></tr>`;
+  });
+  h += `</tbody></table></div>
+    <button type="button" class="aggiungi" data-aggiungi="${id}">+ ${escHtml(t(placeholderAggiungi))}</button>
+  </div>`;
+  return h;
+}
+
+function renderVM(){
+  return renderTabellaDin('vm', 'Elenco VM', null, COLONNE_VM_BASE, COLONNE_VM_COMPLETO, STATO.vm, 'Aggiungi VM');
+}
+function renderVLAN(){
+  return renderTabellaDin('vlan', 'VLAN in uso', null, COLONNE_VLAN, [], STATO.vlan, 'Aggiungi VLAN');
+}
+function renderNodi(){
+  const colonne = COLONNE_NODI.filter(c=>visibileSe(c.base));
+  let h = `<div class="gruppo"><h3>${escHtml(t('Server'))}</h3><div class="tw"><table class="din" data-tabella="nodi"><thead><tr><th>${escHtml(t('Nodo'))}</th>`;
+  COLONNE_NODI.forEach(c=>{ h += `<th class="${visibileSe(c.base)?'':'hidden-col'}" data-col="${c.key}">${escHtml(t(c.label))}</th>`; });
+  h += `<th></th></tr></thead><tbody>`;
+  STATO.nodi.forEach((r,i)=>{
+    h += `<tr data-rid="${r.id}"><td>${i+1}</td>`;
+    COLONNE_NODI.forEach(c=>{
+      const campoObj = {id:`nodi::${r.id}::${c.key}`, tipo:c.tipo};
+      h += `<td class="${visibileSe(c.base)?'':'hidden-col'}" data-col="${c.key}">${inputPer(campoObj, r[c.key])}</td>`;
+    });
+    h += `<td class="azione"><button type="button" data-rimuovi="nodi::${r.id}">✕</button></td></tr>`;
+  });
+  h += `</tbody></table></div><button type="button" class="aggiungi" data-aggiungi="nodi">+ ${escHtml(t('Aggiungi nodo'))}</button></div>`;
+  return h;
+}
+function renderIpNodi(gruppo){
+  const colonne = COLONNE_IP;
+  let h = `<div class="gruppo"><h3>${escHtml(t(gruppo.titolo||''))}</h3>`;
+  if(gruppo.nota) h += `<p class="g-nota">${escHtml(t(gruppo.nota))}</p>`;
+  h += `<div class="tw"><table class="din" data-tabella="ipnodi"><thead><tr><th>${escHtml(t('Nodo'))}</th>`;
+  colonne.forEach(c=>{ h += `<th class="${visibileSe(c.base)?'':'hidden-col'}">${escHtml(t(c.label))}${c.rosso?' <span class="chip-r">•</span>':''}</th>`; });
+  h += `</tr></thead><tbody>`;
+  STATO.nodi.forEach((r,i)=>{
+    h += `<tr data-rid="${r.id}"><td>${i+1}${r.modello?` <small style="color:var(--ink-3)">${escHtml(r.modello)}</small>`:''}</td>`;
+    colonne.forEach(c=>{
+      const campoObj = {id:`nodi::${r.id}::${c.key}`, placeholder:c.placeholder||''};
+      h += `<td class="${visibileSe(c.base)?'':'hidden-col'}">${inputPer(campoObj, r[c.key])}</td>`;
+    });
+    h += `</tr>`;
+  });
+  h += `</tbody></table></div><button type="button" class="aggiungi" data-aggiungi="nodi">+ ${escHtml(t('Aggiungi nodo'))}</button></div>`;
+  return h;
+}
+function renderDip(gruppo){
+  if(!visibileSe(gruppo.base)) return '';
+  return renderTabellaDin('dip', 'Dipendenze tra servizi', null, COLONNE_DIP, [], STATO.dip, 'Aggiungi dipendenza');
+}
+function renderRPO(){
+  let h = `<div class="gruppo"><h3>${escHtml(t('Requisiti di protezione per classe di VM'))}</h3><div class="tw"><table class="din"><thead><tr><th>${escHtml(t('Classe'))}</th><th>RPO</th><th>RTO</th><th>${escHtml(t('Retention'))}</th></tr></thead><tbody>`;
+  CLASSI_RPO.forEach(cl=>{
+    h += `<tr><td>${escHtml(t(cl))}</td>`;
+    ['rpo','rto','retention'].forEach(k=>{
+      const id = `rpo::${cl}::${k}`;
+      h += `<td><input data-id="${id}" value="${escHtml(STATO.rpo[id]||'')}"></td>`;
+    });
+    h += `</tr>`;
+  });
+  return h + `</tbody></table></div></div>`;
+}
+function renderDecisioni(){
+  let h = `<div class="tw"><table class="din decisioni"><thead><tr><th>#</th><th>${escHtml(t('Decisione'))}</th><th>${escHtml(t('Sez.'))}</th><th>${escHtml(t('Fatto'))}</th><th>${escHtml(t('Decisa da'))}</th><th>${escHtml(t('Data'))}</th></tr></thead><tbody>`;
+  DECISIONI.forEach((d,i)=>{
+    const base=`dec_${i}`;
+    const fatto = STATO.decisioni[base+'_fatto'];
+    h += `<tr><td>${i+1}</td><td class="dec-testo">${escHtml(t(d[0]))}</td><td class="dec-sez">§${d[1]}</td>
+      <td><input type="checkbox" data-id="${base}_fatto" ${fatto?'checked':''}></td>
+      <td><input data-id="${base}_da" value="${escHtml(STATO.decisioni[base+'_da']||'')}"></td>
+      <td><input type="date" data-id="${base}_data" value="${escHtml(STATO.decisioni[base+'_data']||'')}"></td></tr>`;
+  });
+  return h + `</tbody></table></div>`;
+}
+
+function renderSezione(s){
+  if(!visibileSe(s.base)) return '';
+  let h = `<section class="sez" id="${s.id}"><div class="sez-testa"><span class="sez-num">§${s.numero}</span><h2>${escHtml(t(s.titolo))}</h2></div>`;
+  if(s.nota) h += `<p class="sez-nota">${escHtml(t(s.nota))}</p>`;
+  if(s.tipo==='decisioni'){ h += renderDecisioni(); h += `</section>`; return h; }
+  (s.gruppi||[]).forEach(g=>{
+    if(g.tipo==='qa') h += renderQA(g);
+    else if(g.tipo==='vm') h += renderVM();
+    else if(g.tipo==='vlan') h += renderVLAN();
+    else if(g.tipo==='nodi') h += renderNodi();
+    else if(g.tipo==='ipnodi') h += renderIpNodi(g);
+    else if(g.tipo==='dip') h += renderDip(g);
+    else if(g.tipo==='rpo') h += renderRPO();
+  });
+  h += `</section>`;
+  return h;
+}
+
+function renderTutto(){
+  let h = DOC.sezioni.map(renderSezione).join('');
+  h += `<section class="sez"><div class="sez-testa"><span class="sez-num">App.</span><h2>${escHtml(t("Script PowerCLI per l'inventario automatico"))}</h2></div>
+    <p class="sez-nota">${escHtml(t("Da eseguire su una postazione con VMware PowerCLI: genera i CSV per buona parte delle Sezioni 2 e 3. Funzione/ruolo, criticità, BitLocker e licenze legate all'hardware restano da compilare a mano."))}</p>
+    <div class="script-wrap"><button class="copia" type="button" id="copiaScript">${escHtml(t('Copia'))}</button><div class="script">${escHtml(POWERCLI)}</div></div>
+  </section>`;
+  $corpo.innerHTML = h;
+
+  $toc.innerHTML = DOC.sezioni.filter(s=>visibileSe(s.base)).map(s=>
+    `<a href="#${s.id}" data-target="${s.id}"><span>§${s.numero} ${escHtml(t(s.titolo))}</span><span class="puntino" data-punto="${s.id}"></span></a>`
+  ).join('');
+
+  traduciChrome();
+  cablaEventi();
+  applicaValori();
+  aggiornaProgresso();
+  osservaSezioni();
+}
+
+/* ───────────────────────── eventi / lettura-scrittura campi ───────────────────────── */
+function leggiInput(el){
+  const v = el.type==='checkbox' ? el.checked : el.value;
+  const raw = el.dataset.id;
+  if(raw.includes('::')){
+    const [tabella, rid, chiave] = raw.split('::');
+    const coll = {vm:STATO.vm, vlan:STATO.vlan, nodi:STATO.nodi, dip:STATO.dip}[tabella];
+    const r = coll && coll.find(x=>x.id===rid);
+    if(r) r[chiave] = v;
+  } else if(raw.startsWith('rpo::')){
+    STATO.rpo[raw] = v;
+  } else if(raw.startsWith('dec_')){
+    STATO.decisioni[raw] = v;
+  } else if(raw.startsWith('meta_')){
+    STATO.meta[raw] = v;
+  } else {
+    STATO.campi[raw] = v;
+  }
+}
+function applicaValori(){
+  document.querySelectorAll('[data-id^="meta_"]').forEach(el=>{ if(STATO.meta[el.dataset.id]!=null) el.value = STATO.meta[el.dataset.id]; });
+}
+
+let salvaTimer = null;
+function segnaModificato(){
+  clearTimeout(salvaTimer);
+  document.getElementById('statoSalvataggio').textContent = t('Modifiche non salvate…');
+  salvaTimer = setTimeout(()=>{ salvaLocale(); aggiornaProgresso(); }, 500);
+}
+
+function cablaEventi(){
+  $corpo.addEventListener('input', e=>{
+    const chk = e.target.closest('[data-check-opt]');
+    if(chk){
+      const box = chk.closest('[data-check]');
+      const scelte = [...box.querySelectorAll('input:checked')].map(x=>x.dataset.checkOpt);
+      STATO.campi[box.dataset.check] = scelte.join(', ');
+      segnaModificato(); return;
+    }
+    const el = e.target.closest('[data-id]');
+    if(!el) return;
+    leggiInput(el);
+    if(el.tagName==='SELECT'){ const alt = el.parentElement.querySelector(`[data-id="${el.dataset.id}.altro"]`); if(alt) alt.hidden = el.value!=='Altro'; }
+    const riga = el.closest('.riga');
+    if(riga){ const c = trovaCampo(riga.dataset.campo); if(c && c.tipo==='number' && String(c.default)!==el.value) riga.dataset.default='false'; }
+    if(el.type==='number'){ document.querySelectorAll('input[readonly][data-id]').forEach(ro=>{ const c=trovaCampo(ro.dataset.id); if(c&&c.tipo==='calc'){ const tot=numeroCalc(c); ro.value = tot?Math.round(tot*100)/100:''; STATO.campi[c.id] = ro.value; } }); }
+    segnaModificato();
+  });
+  $corpo.addEventListener('click', e=>{
+    const rim = e.target.closest('[data-rimuovi]');
+    if(rim){
+      const [tabella, rid] = rim.dataset.rimuovi.split('::');
+      const coll = {vm:STATO.vm, vlan:STATO.vlan, nodi:STATO.nodi, dip:STATO.dip}[tabella];
+      const i = coll.findIndex(x=>x.id===rid);
+      if(i>-1 && coll.length>1) coll.splice(i,1);
+      else if(i>-1) coll[i] = tabella==='vm'?rigaVuotaVM():tabella==='vlan'?rigaVuotaVLAN():tabella==='nodi'?rigaVuotaNodo(1):rigaVuotaDip();
+      renderTutto();
+      return;
+    }
+    const agg = e.target.closest('[data-aggiungi]');
+    if(agg){
+      const t = agg.dataset.aggiungi;
+      if(t==='vm') STATO.vm.push(rigaVuotaVM());
+      if(t==='vlan') STATO.vlan.push(rigaVuotaVLAN());
+      if(t==='nodi') STATO.nodi.push(rigaVuotaNodo(STATO.nodi.length+1));
+      if(t==='dip') STATO.dip.push(rigaVuotaDip());
+      renderTutto();
+      const el = document.querySelector(`[data-tabella="${t}"] tbody tr:last-child input`);
+      if(el) el.focus();
+      return;
+    }
+    if(e.target.id==='copiaScript'){
+      navigator.clipboard?.writeText(POWERCLI).then(()=>mostraToast(t('Script copiato'))).catch(()=>mostraToast(t('Copia non riuscita'),'err'));
+    }
+  });
+}
+
+document.getElementById('meta_cliente').addEventListener('input', e=>{ STATO.meta.meta_cliente=e.target.value; segnaModificato(); });
+document.getElementById('meta_data').addEventListener('input', e=>{ STATO.meta.meta_data=e.target.value; segnaModificato(); });
+document.getElementById('meta_compilatore').addEventListener('input', e=>{ STATO.meta.meta_compilatore=e.target.value; segnaModificato(); });
+document.getElementById('meta_referente').addEventListener('input', e=>{ STATO.meta.meta_referente=e.target.value; segnaModificato(); });
+
+/* ───────────────────────── lingua ───────────────────────── */
+const LEDE_IT = document.getElementById('ledeTesto').innerHTML;
+function traduciChrome(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-html]').forEach(el=>{ el.innerHTML = t(el.dataset.i18nHtml); });
+  document.getElementById('ledeTesto').innerHTML = t(LEDE_IT);
+  document.getElementById('html').lang = LINGUA;
+  document.getElementById('lIt').setAttribute('aria-pressed', LINGUA==='it');
+  document.getElementById('lEn').setAttribute('aria-pressed', LINGUA==='en');
+}
+function impostaLingua(l){
+  LINGUA = l;
+  try{ localStorage.setItem('qm.lingua', l); }catch(_){}
+  renderTutto();
+}
+document.getElementById('lIt').addEventListener('click', ()=>impostaLingua('it'));
+document.getElementById('lEn').addEventListener('click', ()=>impostaLingua('en'));
+
+/* ───────────────────────── filtro ───────────────────────── */
+function impostaFiltro(f){
+  FILTRO = f;
+  document.getElementById('fBase').setAttribute('aria-pressed', f==='base');
+  document.getElementById('fCompleto').setAttribute('aria-pressed', f==='completo');
+  try{ localStorage.setItem('qm.filtro', f); }catch(_){}
+  renderTutto();
+}
+document.getElementById('fBase').addEventListener('click', ()=>impostaFiltro('base'));
+document.getElementById('fCompleto').addEventListener('click', ()=>impostaFiltro('completo'));
+
+/* ───────────────────────── progresso e validazione ───────────────────────── */
+function campoValorizzato(id){
+  if(id==='__ipnodi') return STATO.nodi.every(r=>COLONNE_IP.filter(c=>c.rosso).every(c=>String(r[c.key]||'').trim()!==''));
+  const campo = trovaCampo(id);
+  if(campo && campo.tipo==='multi') return campo.sotto.some(sc=>{ const v=STATO.campi[id+'.'+sc.key]; return v!=null && String(v).trim()!==''; });
+  if(campo && campo.tipo==='calc') return numeroCalc(campo) > 0;
+  const v = STATO.campi[id];
+  return v!=null && String(v).trim()!=='';
+}
+function trovaCampo(id){
+  for(const s of DOC.sezioni) for(const g of (s.gruppi||[])) if(g.tipo==='qa') for(const c of g.righe) if(c.id===id) return c;
+  return null;
+}
+function numeroCalc(campo){ return campo.calc.reduce((t,k)=>t+(parseFloat(STATO.campi[k])||0), 0); }
+function aggiornaProgresso(){
+  const rossi = tutteCampiRosse().filter(c=> FILTRO==='completo' || c.speciale ? true : (
+    // in base contano solo i rossi effettivamente visibili in quel filtro
+    DOC.sezioni.some(s=> s.id===c.sez && (s.gruppi||[]).some(g=> g.tipo==='qa' && g.righe.some(r=>r.id===c.id && visibileSe(r.base))))
+  ));
+  const mancanti = rossi.filter(c=>!campoValorizzato(c.id));
+  const fatti = rossi.length - mancanti.length;
+  const pct = rossi.length ? Math.round(100*fatti/rossi.length) : 100;
+  document.getElementById('pctNum').innerHTML = pct + '<small>%</small>';
+  document.getElementById('pctBar').style.width = pct + '%';
+  document.getElementById('pctResidui').textContent = mancanti.length ? `${mancanti.length} ${t('campi bloccanti mancanti')}` : '';
+
+  // pallini di sezione
+  const perSezione = {};
+  rossi.forEach(c=>{ (perSezione[c.sez] ??= {tot:0,ok:0}); perSezione[c.sez].tot++; if(campoValorizzato(c.id)) perSezione[c.sez].ok++; });
+  document.querySelectorAll('[data-punto]').forEach(p=>{
+    const s = perSezione[p.dataset.punto];
+    p.classList.remove('manca','ok');
+    if(s) p.classList.add(s.ok===s.tot ? 'ok' : 'manca');
+  });
+
+  // evidenzia righe mancanti
+  document.querySelectorAll('.riga[data-rosso="true"]').forEach(r=>{
+    const id = r.dataset.campo;
+    r.classList.toggle('mancante', !campoValorizzato(id));
+  });
+}
+
+/* ───────────────────────── indice attivo / navigazione ───────────────────────── */
+function osservaSezioni(){
+  const voci = [...document.querySelectorAll('#toc a')];
+  const perId = {}; voci.forEach(a=>perId[a.dataset.target]=a);
+  const oss = new IntersectionObserver(entries=>{
+    entries.forEach(en=>{
+      const a = perId[en.target.id];
+      if(!a) return;
+      if(en.isIntersecting){
+        document.querySelectorAll('#toc a.on').forEach(x=>x.classList.remove('on'));
+        a.classList.add('on');
+      }
+    });
+  }, {rootMargin:'-10% 0px -80% 0px'});
+  document.querySelectorAll('section.sez').forEach(s=>oss.observe(s));
+}
+document.getElementById('apri')?.addEventListener('click', ()=>document.body.classList.toggle('nav'));
+document.getElementById('scrim')?.addEventListener('click', ()=>document.body.classList.remove('nav'));
+$toc.addEventListener('click', e=>{ if(e.target.closest('a')) document.body.classList.remove('nav'); });
+
+/* ───────────────────────── salvataggio locale (bozza automatica) ───────────────────────── */
+function salvaLocale(){
+  try{
+    localStorage.setItem('qm.stato', JSON.stringify(STATO));
+    const ora = new Date().toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('statoSalvataggio').innerHTML = `${t('Bozza salvata in locale')} · <b>${ora}</b>`;
+  }catch(_){}
+}
+function caricaLocale(){
+  try{
+    const f = localStorage.getItem('qm.filtro');
+    if(f) FILTRO = f;
+    const l = localStorage.getItem('qm.lingua');
+    if(l) LINGUA = l;
+    const s = localStorage.getItem('qm.stato');
+    if(s){ STATO = Object.assign(statoBase(), JSON.parse(s)); return true; }
+  }catch(_){}
+  return false;
+}
+function statoBase(){ return { meta:{}, campi:{}, vm:[], vlan:[], nodi:[], dip:[], rpo:{}, decisioni:{} }; }
+
+/* ───────────────────────── esportazione / importazione file ───────────────────────── */
+function scarica(nome, contenuto, mime){
+  const blob = new Blob([contenuto], {type:mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = nome;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+
+document.getElementById('btnBozza').addEventListener('click', ()=>{
+  salvaLocale();
+  const nome = `bozza-questionario-${(STATO.meta.meta_cliente||'cliente').replace(/[^a-z0-9]+/gi,'-').toLowerCase()}-${new Date().toISOString().slice(0,10)}.json`;
+  scarica(nome, JSON.stringify({filtro:FILTRO, stato:STATO}, null, 2), 'application/json');
+  mostraToast(t('Bozza scaricata'));
+});
+document.getElementById('btnCarica').addEventListener('click', ()=>document.getElementById('fileCarica').click());
+document.getElementById('fileCarica').addEventListener('change', e=>{
+  const file = e.target.files[0]; if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const dati = JSON.parse(reader.result);
+      STATO = Object.assign(statoBase(), dati.stato || dati);
+      if(dati.filtro) FILTRO = dati.filtro;
+      idSeq += 1000;
+      renderTutto();
+      salvaLocale();
+      mostraToast(t('Bozza caricata'));
+    }catch(err){ mostraToast(t('File non valido'), 'err'); }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+document.getElementById('btnEsporta').addEventListener('click', ()=>{
+  const mancanti = tutteCampiRosse().filter(c=>{
+    const inFiltro = c.speciale || DOC.sezioni.some(s=> s.id===c.sez && (s.gruppi||[]).some(g=> g.tipo==='qa' && g.righe.some(r=>r.id===c.id && visibileSe(r.base))));
+    return inFiltro && !campoValorizzato(c.id);
+  });
+  if(mancanti.length){
+    mostraToast(`${mancanti.length} ${t('campi bloccanti ancora vuoti — completare o scrivere "da verificare"')}`, 'err');
+    const primo = document.querySelector('.riga.mancante') || (mancanti[0].speciale ? document.querySelector('[data-tabella="ipnodi"]') : null);
+    if(primo) primo.scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+  const md = esportaMarkdown();
+  const nome = `questionario-${(STATO.meta.meta_cliente||'cliente').replace(/[^a-z0-9]+/gi,'-').toLowerCase()}-${new Date().toISOString().slice(0,10)}.md`;
+  scarica(nome, md, 'text/markdown');
+  salvaLocale();
+  mostraToast(t('Markdown esportato'));
+});
+
+function v(id){ const x = STATO.campi[id]; return (x==null||x==='') ? '' : String(x); }
+function valoreMd(c){
+  if(c.tipo==='multi') return c.sotto.map(sc=>{ const x=v(c.id+'.'+sc.key); return x ? `${t(sc.label)}: ${t(x)}${sc.unita?' '+t(sc.unita):''}` : ''; }).filter(Boolean).join(' · ');
+  let x = v(c.id);
+  if(c.tipo==='select') x = t(x);
+  if(c.tipo==='check') x = x.split(', ').filter(Boolean).map(t).join(', ');
+  if((c.tipo==='select'||c.tipo==='check') && c.altro && v(c.id+'.altro')) x = (x ? x + ' — ' : '') + v(c.id+'.altro');
+  if(x && c.unita) x += ' ' + t(c.unita);
+  return x;
+}
+function rigaMd(cols, r){ return '| ' + cols.map(c=>(r[c.key]??'').toString().replace(/\|/g,'/')).join(' | ') + ' |'; }
+
+function esportaMarkdown(){
+  const M = STATO.meta;
+  let out = [];
+  out.push(`# ${t(DOC.titolo)}${FILTRO==='base'?t(' — versione base'):''}`);
+  out.push('');
+  out.push(`**${t('Cliente')}:** ${M.meta_cliente||'______'}  **${t('Data')}:** ${M.meta_data||'______'}  **${t('Compilato da')}:** ${M.meta_compilatore||'______'}  **${t('Referente Domarc')}:** ${M.meta_referente||'______'}`);
+  out.push('');
+  out.push('---');
+  out.push('');
+
+  DOC.sezioni.forEach(s=>{
+    if(!visibileSe(s.base)) return;
+    out.push(`# ${t('SEZIONE')} ${s.numero} — ${t(s.titolo)}`);
+    out.push('');
+    if(s.nota){ out.push(`> ${t(s.nota)}`); out.push(''); }
+
+    if(s.tipo==='decisioni'){
+      out.push(`| ${t('N.')} | ${t('Decisione')} | ${t('Sez.')} | ${t('Fatto')} | ${t('Decisa da')} | ${t('Data')} |`);
+      out.push('|---|---|---|---|---|---|');
+      DECISIONI.forEach((d,i)=>{
+        const base=`dec_${i}`;
+        out.push(`| ${i+1} | ${t(d[0])} | §${d[1]} | ${STATO.decisioni[base+'_fatto']?'✅':'☐'} | ${STATO.decisioni[base+'_da']||''} | ${STATO.decisioni[base+'_data']||''} |`);
+      });
+      out.push('');
+      return;
+    }
+
+    (s.gruppi||[]).forEach(g=>{
+      if(g.tipo==='qa'){
+        if(!visibileSe(g.base)) return;
+        const righeVis = g.righe.filter(c=>visibileSe(c.base));
+        if(!righeVis.length) return;
+        if(g.titolo) out.push(`## ${s.numero}.x ${t(g.titolo)}`);
+        if(g.nota) out.push(`> ${t(g.nota)}`);
+        out.push(`| ${t('Domanda')} | ${t('Risposta')} |`);
+        out.push('|---|---|');
+        righeVis.forEach(c=>{
+          const marcatore = c.rosso ? '🔴 ' : '';
+          out.push(`| ${marcatore}${t(c.label)} | ${valoreMd(c).replace(/\|/g,'/').replace(/\n/g,' ')} |`);
+        });
+        out.push('');
+      } else if(g.tipo==='vm'){
+        const cols = [...COLONNE_VM_BASE, ...COLONNE_VM_COMPLETO].filter(c=>visibileSe(c.base));
+        out.push('| # | ' + cols.map(c=>t(c.label)).join(' | ') + ' |');
+        out.push('|---|' + cols.map(()=>'---').join('|') + '|');
+        STATO.vm.forEach((r,i)=>{ out.push(`| ${i+1} | ` + cols.map(c=>(r[c.key]||'').toString().replace(/\|/g,'/')).join(' | ') + ' |'); });
+        out.push('');
+      } else if(g.tipo==='vlan'){
+        if(g.titolo) out.push(`## ${s.numero}.x ${t(g.titolo)}`);
+        const cols = COLONNE_VLAN.filter(c=>visibileSe(c.base));
+        out.push('| ' + cols.map(c=>t(c.label)).join(' | ') + ' |');
+        out.push('|' + cols.map(()=>'---').join('|') + '|');
+        STATO.vlan.forEach(r=>{ out.push(rigaMd(cols, r)); });
+        out.push('');
+      } else if(g.tipo==='nodi'){
+        if(g.titolo) out.push(`## ${s.numero}.x ${t(g.titolo)}`);
+        const cols = COLONNE_NODI.filter(c=>visibileSe(c.base));
+        out.push(`| ${t('Nodo')} | ` + cols.map(c=>t(c.label)).join(' | ') + ' |');
+        out.push('|---|' + cols.map(()=>'---').join('|') + '|');
+        STATO.nodi.forEach((r,i)=>{ out.push(`| ${i+1} | ` + cols.map(c=>(r[c.key]||'').toString().replace(/\|/g,'/')).join(' | ') + ' |'); });
+        out.push('');
+      } else if(g.tipo==='ipnodi'){
+        out.push(`## ${s.numero}.x ${t(g.titolo)}`);
+        const cols = COLONNE_IP.filter(c=>visibileSe(c.base));
+        out.push(`| ${t('Nodo')} | ` + cols.map(c=>(c.rosso?'🔴 ':'')+t(c.label)).join(' | ') + ' |');
+        out.push('|---|' + cols.map(()=>'---').join('|') + '|');
+        STATO.nodi.forEach((r,i)=>{ out.push(`| ${i+1}${r.modello?' '+r.modello:''} | ` + cols.map(c=>(r[c.key]||'').toString().replace(/\|/g,'/')).join(' | ') + ' |'); });
+        out.push('');
+      } else if(g.tipo==='dip'){
+        if(!visibileSe(g.base)) return;
+        if(g.titolo) out.push(`## ${s.numero}.x ${t(g.titolo)}`);
+        if(g.nota) out.push(`> ${t(g.nota)}`);
+        out.push('| ' + COLONNE_DIP.map(c=>t(c.label)).join(' | ') + ' |');
+        out.push('|' + COLONNE_DIP.map(()=>'---').join('|') + '|');
+        STATO.dip.forEach(r=>{ out.push(rigaMd(COLONNE_DIP, r)); });
+        out.push('');
+      } else if(g.tipo==='rpo'){
+        if(g.titolo) out.push(`## ${s.numero}.x ${t(g.titolo)}`);
+        out.push(`| ${t('Classe di VM')} | RPO | RTO | ${t('Retention')} |`);
+        out.push('|---|---|---|---|');
+        CLASSI_RPO.forEach(cl=>{
+          const get = k => STATO.rpo[`rpo::${cl}::${k}`] || '';
+          out.push(`| ${t(cl)} | ${get('rpo')} | ${get('rto')} | ${get('retention')} |`);
+        });
+        out.push('');
+      }
+    });
+    out.push('---');
+    out.push('');
+  });
+
+  out.push('# ' + t("APPENDICE — Script PowerCLI per l'inventario automatico"));
+  out.push('');
+  out.push('```powershell');
+  out.push(POWERCLI);
+  out.push('```');
+  out.push('');
+  out.push(t('*Esportato dal questionario interattivo DA-Proxcheck (Domarc) il ') + new Date().toISOString().slice(0,10) + '.*');
+  return out.join('\n');
+}
+
+/* ───────────────────────── toast ───────────────────────── */
+let toastTimer=null;
+function mostraToast(msg, tipo=''){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast on ' + tipo;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('on'), 2600);
+}
+
+/* ───────────────────────── avvio ───────────────────────── */
+statoIniziale();
+if(caricaLocale()){ mostraToast(t('Bozza precedente ripristinata')); }
+document.getElementById('fBase').setAttribute('aria-pressed', FILTRO==='base');
+document.getElementById('fCompleto').setAttribute('aria-pressed', FILTRO==='completo');
+renderTutto();
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+# Ponte Mac (APFS) → Linux: LF nel repo, così git archive non porta CRLF.
+# Copiare in <progetto>/.gitattributes
+* text=auto eol=lf
+*.sh text eol=lf
+*.py text eol=lf
+*.md text eol=lf

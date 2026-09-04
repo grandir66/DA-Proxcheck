@@ -1,0 +1,44 @@
+# === SEGRETI E DATI LOCALI (standard ~/Progetti, doppia difesa) ===
+# Incident 2026-06-16: report con credenziali committato, history riscritta,
+# token ruotati. I valori vivono SOLO nel vault ~/Documents/da-appliance-credentials/
+# o nel .env locale. Questi pattern non si rimuovono.
+.env
+.env.*
+!.env.example
+ACCESSI.md
+*-accessi.md
+*.accessi.md
+credentials.md
+*.credentials.md
+INSTALL-REPORT-*.md
+secrets/
+!secrets/*.enc
+*.key
+*.pem
+*.p12
+*.token
+*.password
+.passphrase
+# log e backup locali
+*.log
+logs/
+*.bak-*
+backups/
+# lock di LibreOffice (incident 2026-08-07: finito nell'indice con git add -A)
+.~lock.*#
+# Mac (il git archive non li porta; l'indice locale sì)
+.DS_Store
+.AppleDouble
+._*
+.venv/
+
+# report generati: dati di infrastrutture di clienti
+*_inventory.md
+*_report.md
+*.json
+!.claude/settings.json
+out/
+__pycache__/
+*.pyc
+.pytest_cache/
+.claude/launch.json
