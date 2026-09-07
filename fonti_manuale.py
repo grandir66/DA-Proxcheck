@@ -18,7 +18,7 @@ MANUALE = {
  "versione": "1.0",
  "verificato": "2026-09-01",
  "repo": "DA-Proxmox-Docs",
- "estratto_il": "2026-09-04"
+ "estratto_il": "2026-09-07"
 }
 
 FONTI = {

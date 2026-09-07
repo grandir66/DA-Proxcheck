@@ -20,6 +20,8 @@ Python **3.7+ sul client**, **solo stdlib** (il tecnico non installa nulla; su W
 ```bash
 python3 audit-nodo.py --host <nodo-di-prova> --cliente Prova --output /tmp/p   # giro vero (indirizzi in ACCESSI.md)
 python3 audit-nodo.py --da-json dati.json --cliente Prova --output /tmp/p   # rianalisi senza rete
+python3 strumenti/estrai-fonti.py                                            # rigenera le fonti (audit + questionario)
+node --test tests/test_questionario.mjs                                      # solo il questionario
 bash scripts/controlla.sh                                                   # cancello pre-«fatto»
 ```
 
@@ -39,10 +41,12 @@ Non c'è runtime Linux né deploy: lo script si distribuisce copiando il file (o
 2. **La password non entra mai nel processo Python.** La chiede `ssh` sul tty. Su disco solo `hosts.json` (host, cliente, parametri) e `profili-<cluster>.json`. (Richiesta esplicita 2026-09-04: "non la password".)
 3. **Ogni rilievo cita la fonte** (`fonte=` in `Esito.add`). Senza fonte è al massimo `INFO`.
 4. **I formati dei comandi si verificano su un nodo reale prima di scrivere il parser.** `qm --help` esce 255, `pvesm status` ha 7 colonne, `corosync-cfgtool -s` è multiriga, SMART ha due formati: ogni parser sbagliato di questo repo nasceva da un formato immaginato. Test: `tests/test_parser.py` fissa i formati verificati.
-5. **`fonti_manuale.py` non si modifica a mano**: è generato da `strumenti/estrai-fonti.py` a partire dal manuale. Una modifica a mano si perde alla prima rigenerazione, e nel frattempo il report cita un testo che nel manuale non c'è. Se una regola va cambiata, si cambia nel manuale.
+5. **`fonti_manuale.py` non si modifica a mano**: è generato da `strumenti/estrai-fonti.py` a partire dal manuale. Una modifica a mano si perde alla prima rigenerazione, e nel frattempo il report cita un testo che nel manuale non c'è. Se una regola va cambiata, si cambia nel manuale. **Vale identico per il blocco fra i marcatori `FONTI DAL MANUALE: BLOCCO GENERATO` e `fine del blocco generato` dentro `questionario/questionario-migrazione.html`**: il questionario è una pagina autonoma, quindi il testo delle regole deve stare dentro l'HTML, ma lo scrive lo stesso strumento e `--verifica` fallisce se qualcuno lo tocca. Il resto della pagina si edita normalmente.
 6. **Dal manuale escono solo i passaggi citati, e mai i blocchi `[INTERNO]`**: questo repository è pubblico. Test: `tests/test_parser.py::test_nessun_blocco_interno_nelle_regole`.
 7. **Ogni citazione deve risolvere** in una sezione reale del manuale: `scripts/controlla.sh` fallisce altrimenti. Tre citazioni sbagliate sono sopravvissute finché erano testo libero (2026-09-04).
-8. **Report di prova mai in git**: `*_inventory.md`, `*_report.md`, `*.json` sono ignorati; contengono dati di infrastrutture di clienti.
+8. **Nel questionario, «campo bloccante» e «parametro che blocca» sono due cose diverse.** `rosso:true` obbliga a *rispondere*; `REGOLE_BLOCCO` giudica *come* si è risposto. Non fondere i due meccanismi e non far dipendere l'export dall'esito: un blocco aperto va consegnato al cliente, non nascosto — impedire l'export spingerebbe a cancellare la risposta scomoda. (2026-09-07: per giorni «bloccante» ha significato solo «obbligatorio», e uno storage senza UNMAP passava con la barra al 100%.)
+9. **Il perimetro dell'essenziale e le regole di blocco si toccano solo con il test verde.** Le id vivono in `ESSENZIALE` e in `REGOLE_BLOCCO`, e una id sbagliata non dà errore: la domanda sparisce dalla vista minima, o la regola non si accende mai. Lo verifica `tests/test_questionario.mjs`, che è anche la specifica leggibile di cosa il questionario considera bloccante.
+10. **Report di prova mai in git**: `*_inventory.md`, `*_report.md`, `*.json` sono ignorati; contengono dati di infrastrutture di clienti.
 
 ## Quando cito un altro progetto
 

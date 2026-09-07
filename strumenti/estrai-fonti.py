@@ -38,6 +38,11 @@ from pathlib import Path
 QUI = Path(__file__).resolve().parent.parent
 GENERATO = QUI / "fonti_manuale.py"
 AUDIT = QUI / "audit-nodo.py"
+QUESTIONARIO = QUI / "questionario" / "questionario-migrazione.html"
+# Il questionario è una pagina autonoma: il testo delle regole deve stare DENTRO
+# l'HTML, o offline non si vede. Il blocco fra questi due marcatori è generato.
+MARCA_INIZIO = "/* ══ FONTI DAL MANUALE: BLOCCO GENERATO — non modificare a mano ══"
+MARCA_FINE = "/* ══ fine del blocco generato ══ */"
 MANUALE_DEFAULT = Path(os.environ.get("DA_PROXMOX_DOCS", Path.home() / "Progetti" / "manuali" / "proxmox"))
 
 MAX_CARATTERI = 1600          # oltre, si taglia a fine paragrafo: è una citazione, non un capitolo
@@ -235,6 +240,22 @@ def ancore_citate(codice: str) -> list:
     return sorted(trovate, key=lambda a: (len(a.split("›")), a))
 
 
+# Nel questionario ogni regola dichiara la fonte in un campo suo, fra virgolette
+# doppie: si legge con un regex ancorato al campo invece che con RE_ANCORA, che
+# non sa distinguere un apostrofo dentro un titolo («Regole per l'import wizard»)
+# dalla virgoletta che chiude la stringa e taglierebbe l'ancora a metà.
+RE_FONTE_QUESTIONARIO = re.compile(r'fonte:\s*"([^"]+)"')
+
+
+def ancore_questionario(html: str) -> list:
+    """Le ancore che le regole di blocco del questionario citano."""
+    trovate = {a.strip() for a in RE_FONTE_QUESTIONARIO.findall(html)}
+    non_ancore = sorted(a for a in trovate if not a.startswith("§"))
+    if non_ancore:
+        raise SystemExit("Fonti del questionario che non sono ancore del manuale:\n  - " + "\n  - ".join(non_ancore))
+    return sorted(trovate, key=lambda a: (len(a.split("›")), a))
+
+
 def risolvi(ancora: str, sezioni: dict, parti: dict) -> dict:
     """`§8.3 › Cache mode` → la sottosezione; `§8.3` → la sezione; `§8` → la parte."""
     corpo = ancora.lstrip("§").strip()
@@ -302,6 +323,49 @@ clienti — non entrano qui: questo repository è pubblico. Lo verifica
     return intestazione + "\n" + corpo
 
 
+def genera_questionario(radice: Path) -> tuple:
+    """Il blocco JS con le fonti che il questionario cita. Torna (blocco, n_ancore)."""
+    sezioni, parti = leggi_manuale(radice)
+    html = QUESTIONARIO.read_text(encoding="utf-8")
+    fonti, errori = {}, []
+    for ancora in ancore_questionario(html):
+        try:
+            fonti[ancora] = risolvi(ancora, sezioni, parti)
+        except KeyError as e:
+            errori.append(str(e))
+    if errori:
+        raise SystemExit("Citazioni del questionario che non risolvono nel manuale:\n  - " + "\n  - ".join(errori))
+    manuale = versione_manuale(radice)
+    manuale["estratto_il"] = date.today().isoformat()
+    blocco = (
+        MARCA_INIZIO + "═════════════════════════════\n"
+        "   Scritto da strumenti/estrai-fonti.py dal manuale operativo Proxmox VE di\n"
+        "   Domarc (DA-Proxmox-Docs). Contiene SOLO i passaggi che REGOLE_BLOCCO cita:\n"
+        "   il questionario è una pagina autonoma, e senza questo testo direbbe «vedi\n"
+        "   §11.13» a un cliente che il manuale non ce l'ha.\n"
+        "   I blocchi che il manuale marca come interni non entrano qui: questa pagina\n"
+        "   è pubblicata. Rigenerare con:  python3 strumenti/estrai-fonti.py           */\n"
+        "const MANUALE = " + json.dumps(manuale, ensure_ascii=False, indent=1) + ";\n"
+        "const FONTI = " + json.dumps(fonti, ensure_ascii=False, indent=1) + ";\n"
+        + MARCA_FINE
+    )
+    return blocco, len(fonti)
+
+
+def inserisci_nel_questionario(blocco: str) -> str:
+    """Sostituisce il blocco generato dentro l'HTML, o lo crea la prima volta."""
+    html = QUESTIONARIO.read_text(encoding="utf-8")
+    if MARCA_INIZIO in html and MARCA_FINE in html:
+        i = html.index(MARCA_INIZIO)
+        j = html.index(MARCA_FINE) + len(MARCA_FINE)
+        return html[:i] + blocco + html[j:]
+    ancora = "const REGOLE_BLOCCO = ["
+    if ancora not in html:
+        raise SystemExit("Non trovo REGOLE_BLOCCO nel questionario: il blocco delle fonti va prima di lì.")
+    i = html.index(ancora)
+    return html[:i] + blocco + "\n\n" + html[i:]
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--manuale", type=Path, default=MANUALE_DEFAULT, help="repo del manuale (DA-Proxmox-Docs)")
@@ -320,22 +384,41 @@ def main():
         if mancanti:
             print("Citazioni senza testo (rigenerare con estrai-fonti.py):\n  - " + "\n  - ".join(mancanti), file=sys.stderr)
             return 1
-        print(f"  {len(FONTI)} regole con il testo, tutte le citazioni risolvono")
+        html = QUESTIONARIO.read_text(encoding="utf-8")
+        if MARCA_INIZIO not in html:
+            print("Il questionario non ha il blocco delle fonti: rigenerare con estrai-fonti.py", file=sys.stderr)
+            return 1
+        blocco = html[html.index(MARCA_INIZIO):html.index(MARCA_FINE)]
+        if "[INTERNO]" in blocco:
+            print("Il blocco delle fonti del questionario contiene [INTERNO]: la pagina è pubblica.", file=sys.stderr)
+            return 1
+        senza = [a for a in ancore_questionario(html) if f'"{a}"' not in blocco]
+        if senza:
+            print("Citazioni del questionario senza testo (rigenerare):\n  - " + "\n  - ".join(senza), file=sys.stderr)
+            return 1
+        print(f"  {len(FONTI)} regole con il testo per l'audit, {len(ancore_questionario(html))} per il questionario")
         return 0
 
     nuovo = genera(args.manuale)
+    blocco_q, n_q = genera_questionario(args.manuale)
+    html_nuovo = inserisci_nel_questionario(blocco_q)
+    # la data di estrazione cambia ogni giorno e non è una differenza di contenuto
+    norm = lambda t: re.sub(r'"estratto_il": "[^"]*"', "", t)
     if args.verifica:
         vecchio = GENERATO.read_text(encoding="utf-8") if GENERATO.is_file() else ""
-        # la data di estrazione cambia ogni giorno e non è una differenza di contenuto
-        norm = lambda t: re.sub(r'"estratto_il": "[^"]*"', "", t)
         if norm(nuovo) != norm(vecchio):
             print("fonti_manuale.py non è allineato al manuale: rigenerare con estrai-fonti.py", file=sys.stderr)
             return 1
-        print("  fonti_manuale.py allineato al manuale")
+        if norm(html_nuovo) != norm(QUESTIONARIO.read_text(encoding="utf-8")):
+            print("Le fonti dentro il questionario non sono allineate al manuale: rigenerare con estrai-fonti.py", file=sys.stderr)
+            return 1
+        print("  fonti_manuale.py e le fonti del questionario allineati al manuale")
         return 0
     GENERATO.write_text(nuovo, encoding="utf-8")
+    QUESTIONARIO.write_text(html_nuovo, encoding="utf-8")
     n_manuale = sum(1 for k in json.loads(nuovo.split("FONTI = ", 1)[1]) if k.startswith("§"))
     print(f"Scritto {GENERATO.name}: {n_manuale} passaggi dal manuale + {len(FONTI_ESTERNE)} fonti esterne")
+    print(f"Scritto {QUESTIONARIO.name}: {n_q} passaggi citati dalle regole di blocco")
     return 0
 
 

@@ -2,6 +2,43 @@
 
 Cosa è cambiato e **perché**, per chi non usa git. Più recenti in alto.
 
+## 2026-09-07 (10)
+
+### Il questionario giudica le risposte, non solo la loro presenza — e nasce il livello «Essenziale»
+
+Richiesta: «servirebbe una versione del questionario con i dati assolutamente fondamentali da richiedere e i parametri che sarebbero bloccanti nella migrazione».
+
+Il questionario aveva già 37 campi marcati **BLOCCANTE**, ma «bloccante» voleva dire soltanto *«questa domanda va risposta»*: `storage_unmap = No` e `storage_unmap = Sì` valevano uguale — barra al 100%, esportazione permessa, e il blocco lo scopriva chi leggeva il Markdown, se lo notava. Mancavano due cose diverse fra loro: una vista più corta, e un giudizio su *come* si è risposto.
+
+- **Tre livelli al posto di due**: `Essenziale · Base · Completo`, annidati. L'essenziale sono **57 domande** e quattro tabelle ridotte alle colonne indispensabili (VM: nome, SO, vCPU, RAM, disco, firmware — nodi: modello, CPU, core, RAM, NIC — IP: management e i due anelli corosync — VLAN: id, uso, subnet), contro le 84 della base e le 120 della completa. Base e Completo mostrano **esattamente** quello che mostravano prima: si è aggiunto un gradino sotto, non spostato quelli esistenti. Si comincia dal minimo col cliente e si allarga senza ribattere niente, perché è la stessa pagina e la stessa bozza
+- **Il perimetro dell'essenziale sta in un elenco solo** (`ESSENZIALE`, in cima al modello dati) e non sparso dentro le 121 definizioni: è una scelta che si deve poter leggere e discutere tutta insieme
+- **Trenta regole di blocco** (`REGOLE_BLOCCO`) valutano le risposte e producono un **Esito**: quanti blocchi, quanti «da verificare», cosa comporta ciascuno e cosa serve per toglierlo di mezzo. Vale per vSAN, nomi di datastore con caratteri speciali, cifratura via Storage Policy, credenziali sui singoli ESXi, nessun host liberabile, nessuno spazio per il rollback, BitLocker senza recovery key, RDM, cluster applicativi, licenze legate all'hardware, thin provisioning, UNMAP, ZFS su RAID hardware, RPO zero su ZFS locale, capacità richiesta oltre lo spazio libero, SAS con meno porte che nodi, due nodi senza QDevice, una sola NIC per nodo, repository irraggiungibili, Veeam senza storage file-level
+- L'esito compare **in cima al documento**, come conteggio nella colonna di sinistra, e **in testa all'export Markdown** — che è la parte che arriva al cliente e al collega. I «da verificare» stanno in un riquadro che si apre a richiesta: con dieci rilievi aperti il questionario finiva sotto la piega
+- **Le regole guardano sempre tutte le risposte**, anche quelle di domande nascoste dal filtro attivo: un blocco che sparisce cambiando vista sarebbe una bugia. E **non impediscono l'esportazione**: un blocco aperto è un'informazione da consegnare, non un errore da nascondere. Resta invece il blocco sui campi bloccanti lasciati *vuoti*, che è un'altra cosa — lì manca il dato
+- **Il questionario entra nel cancello.** Aveva 121 campi e nessun test: `tests/test_questionario.mjs` carica la pagina in un DOM finto (node, già presente sul Mac) e verifica che ogni id citata esista davvero, che i tre livelli siano annidati, che ogni regola punti a un campo reale, che ogni testo abbia la traduzione inglese, e che ciascuna delle trenta regole si accenda e si spenga sulle risposte attese — 62 casi che si leggono come la specifica di cosa il questionario considera bloccante. `scripts/controlla.sh` lo esegue, e lo salta se node non c'è
+
+**Perché serviva il test**: una regola che punta a un campo inesistente non si accende mai e non lo dice a nessuno; una id sbagliata nell'elenco dell'essenziale toglie una domanda dalla vista minima senza un errore. Sono esattamente i guasti silenziosi che il resto del repo previene con `controlla.sh`, e che qui non erano coperti.
+
+**Provato**: 14 test verdi, cancello verde, e la pagina renderizzata in Chrome headless nei tre livelli, in italiano e in inglese, con un cliente di prova che accende otto blocchi e sei verifiche.
+
+## 2026-09-07 (11)
+
+### Le regole del questionario mostrano il manuale, non lo citano soltanto
+
+Richiesta: «le regole devono mostrare il manuale». È la stessa scelta fatta il 2026-09-04 per il report dell'audit — un rimando a un documento che il lettore non ha non ha spiegato niente — applicata alle trenta regole di blocco.
+
+- **Ogni regola dichiara la sua fonte** (`fonte:"§…"`): venti ancore distinte nel manuale operativo Proxmox VE di Domarc. La Parte 11 (*Migrare da VMware vSphere*) copre l'assessment per VM e le trappole note; la Parte 1 i vincoli di progetto, le reti, il conto degli snapshot su LVM e il vincolo Veeam; §3.5 il QDevice, §4.2 e §4.5 ZFS, §5.2 e §5.8 il SAS e il dimensionamento, §8.1 il tipo di CPU, §12.12 il dump dei database
+- **`strumenti/estrai-fonti.py` ora serve anche il questionario**: legge le ancore dalle regole, estrae i passaggi dal manuale e li scrive **dentro l'HTML**, fra due marcatori. Il questionario è una pagina autonoma che gira offline dal computer del tecnico: il testo deve stare lì dentro, non in un file accanto
+- **Nell'esito** ogni rilievo porta il rimando (`manuale §1.7 › 1.7.1 Il vincolo Veeam, per esteso`) che è un collegamento; **in coda al documento** la sezione **«Le regole applicate»** riporta ogni passaggio richiamato con il testo per esteso e la sua origine (`manuale/01-progettare.md:150 · Parte 1 · Manuale operativo Proxmox VE — Domarc 1.0 · verificato il 2026-09-01`). Un'affermazione tecnica senza provenienza, fra un anno, è indistinguibile da una sbagliata
+- **Ogni passaggio compare una volta sola**, anche se lo citano più regole: §11.2.1 è la fonte di cinque rilievi, ripeterlo cinque volte renderebbe illeggibile il documento. Compaiono solo le regole che le risposte hanno richiamato — il criterio del report dell'audit
+- **Un renderer minimo traduce il Markdown del manuale in HTML** (tabelle, blocchi di codice, citazioni, elenchi, grassetto, codice inline): §11.13 «Trappole note» è una tabella di venti righe, e senza sarebbe una colata di pipe
+- **Il blocco generato non si modifica a mano**, come `fonti_manuale.py`: `--verifica` confronta l'HTML con quello che il manuale produrrebbe oggi e fallisce se qualcuno l'ha toccato o se il manuale è cambiato sotto. Provato manomettendo un passaggio e inventando una citazione: entrambe le guardie scattano
+- **`[INTERNO]` non esce**, come per l'audit: il questionario è pubblicato su GitHub Pages, e un test lo verifica sull'intera pagina
+
+**Una trappola trovata scrivendo**: il regex che estrae le ancore dal sorgente dell'audit si ferma sull'apostrofo, perché non sa distinguerlo dalla virgoletta che chiude la stringa — `§11.5 › 11.5.1 Regole per l'import wizard` sarebbe stata tagliata a `§11.5 › 11.5.1 Regole per l`. Invece di toccare quel regex (condiviso con l'audit e fissato da un test) il questionario ne ha uno suo, agganciato al campo `fonte:"…"` fra virgolette doppie: legge l'ancora intera, e le due copie restano indipendenti.
+
+**Provato**: cancello verde; 23 test del questionario, nove nuovi (ogni regola cita il manuale e la citazione ha il suo testo · ogni fonte porta la sua origine · niente `[INTERNO]` nella pagina · il renderer regge la tabella di §11.13 · un passaggio citato da più regole compare una volta · le regole finiscono nel Markdown col testo e con l'origine). Pagina renderizzata in Chrome headless: 152 → 183 KB, sempre un file solo, sempre offline.
+
 ## 2026-09-04 (9)
 
 ### Il report riporta la regola, non solo il suo numero

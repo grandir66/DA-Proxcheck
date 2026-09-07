@@ -29,6 +29,13 @@ if [ -d "$MANUALE/manuale" ]; then
 else
   echo "→ fonti: manuale non presente su questa macchina, verifica saltata"
 fi
+echo "→ questionario: modello dati e regole di blocco"
+if command -v node >/dev/null 2>&1; then
+  node --test tests/test_questionario.mjs >/dev/null 2>&1 || { node --test tests/test_questionario.mjs; esito=1; }
+  echo "  questionario ok"
+else
+  echo "  node non presente su questa macchina, verifica saltata"
+fi
 echo "→ pytest"
 $PY -m pytest -q tests || esito=1
 [ $esito -eq 0 ] && echo "✔ tutto verde" || echo "✘ qualcosa non va"

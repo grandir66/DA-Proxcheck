@@ -61,6 +61,7 @@ button{font-family:inherit;cursor:pointer}
 .chips{display:flex;gap:5px}
 .chips button{flex:1;font-size:12.5px;font-weight:600;color:var(--ink-2);background:var(--ground);border:1px solid var(--rule-2);border-radius:6px;padding:7px 0;transition:.13s}
 .chips button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.chips.tre button{font-size:11px;padding:7px 1px;letter-spacing:-.01em}
 .filtro .hint{font-size:11.5px;color:var(--ink-3);margin-top:7px;line-height:1.4}
 .progresso{padding:14px 18px;border-bottom:1px solid var(--rule)}
 .progresso .num{font-family:var(--font-mono);font-variant-numeric:tabular-nums;font-size:22px;font-weight:600}
@@ -105,6 +106,60 @@ section.sez:first-of-type{margin-top:34px}
 .sez-num{font-family:var(--font-mono);color:var(--ink-3);font-size:13px}
 .sez-nota{color:var(--ink-2);font-size:13.5px;margin:2px 0 16px;max-width:68ch}
 
+/* esito: il verdetto sulle risposte date, in cima al documento */
+.esito{background:var(--surface);border:1px solid var(--rule);border-radius:12px;box-shadow:var(--shadow);padding:17px 20px 19px;margin:0 0 28px}
+.esito-testa{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.esito-testa h2{font-size:16px;font-weight:600;margin:0;letter-spacing:-.01em}
+.esito-conteggi{display:flex;gap:6px;flex-wrap:wrap}
+.esito-conteggi span{font-size:11px;font-weight:700;letter-spacing:.02em;border-radius:5px;padding:2px 7px;border:1px solid}
+.esito-conteggi .cnt-bl{color:var(--danger);background:var(--danger-bg);border-color:var(--danger-rule)}
+.esito-conteggi .cnt-vf{color:var(--ink);background:var(--warn-bg);border-color:var(--warn-rule)}
+.esito-conteggi .cnt-vu{color:var(--ink-2);background:var(--surface-2);border-color:var(--rule-2)}
+.esito-conteggi .cnt-ok{color:var(--ok);background:var(--ok-bg);border-color:var(--ok)}
+.esito-nota{font-size:12px;color:var(--ink-3);margin:9px 0 0;max-width:70ch}
+.esito ul{list-style:none;margin:15px 0 0;padding:0;display:grid;gap:9px}
+.esito li{border-left:3px solid var(--rule-2);border-radius:0 7px 7px 0;padding:9px 13px}
+.esito li.bl{border-left-color:var(--danger-rule);background:var(--danger-bg)}
+.esito li.vf{border-left-color:var(--warn-rule);background:var(--warn-bg)}
+.esito li b{font-size:13.5px;font-weight:600}
+.esito li p{margin:4px 0 0;font-size:13px;color:var(--ink-2);max-width:74ch;line-height:1.45}
+.esito li p.sblocco{color:var(--ink);font-weight:500;margin-top:5px}
+.esito .dove{font-size:10.5px;font-family:var(--font-mono);color:var(--ink-3);text-decoration:none;margin-left:7px;white-space:nowrap}
+.esito .dove:hover{color:var(--link);text-decoration:underline}
+.progresso .blocchi{font-size:11.5px;margin-top:5px}
+.progresso .blocchi a{text-decoration:none}
+.progresso .blocchi .bl{color:var(--danger)}
+.progresso .blocchi .vf{color:var(--warn-rule)}
+.riga.punta{outline:2px solid var(--link);outline-offset:4px;border-radius:6px;transition:outline-color 1.4s}
+.esito-altro{margin-top:13px}
+.esito-altro>summary{cursor:pointer;font-size:12.5px;font-weight:600;color:var(--ink-2);padding:6px 9px;background:var(--warn-bg);border:1px solid var(--warn-rule);border-radius:6px;list-style:none}
+.esito-altro>summary::-webkit-details-marker{display:none}
+.esito-altro>summary::before{content:'▸ ';color:var(--warn-rule)}
+.esito-altro[open]>summary::before{content:'▾ '}
+.esito-altro>summary:hover{color:var(--ink)}
+.esito-altro ul{margin-top:9px}
+@media print{.esito-altro>ul{display:grid!important}}
+.esito .fonte{display:inline-block;margin-top:7px;font-size:11px;font-family:var(--font-mono);color:var(--link);text-decoration:none;border-bottom:1px dotted var(--link)}
+.esito .fonte:hover{color:var(--link-h);border-bottom-style:solid}
+.regole-app .regola{border-top:1px solid var(--rule);padding:15px 0 4px;scroll-margin-top:20px}
+.regole-app .regola:target{background:var(--surface-2);border-radius:8px;padding-left:12px;padding-right:12px}
+.regole-app .regola h3{font-size:13.5px;font-weight:600;margin:0 0 9px;color:var(--ink)}
+.regola-testo{font-size:13px;color:var(--ink-2);line-height:1.5}
+.regola-testo p{margin:0 0 9px;max-width:76ch}
+.regola-testo h5{font-size:12.5px;font-weight:600;color:var(--ink);margin:12px 0 5px}
+.regola-testo ul{margin:0 0 9px;padding-left:19px}
+.regola-testo li{margin-bottom:3px}
+.regola-testo code{font-family:var(--font-mono);font-size:11.5px;background:var(--surface-2);border-radius:3px;padding:1px 4px}
+.regola-testo strong{color:var(--ink);font-weight:600}
+.regola-testo pre{font-family:var(--font-mono);font-size:11.5px;background:var(--surface-2);border:1px solid var(--rule);border-radius:6px;padding:9px 11px;overflow-x:auto;margin:0 0 9px}
+.regola-testo blockquote{margin:0 0 9px;padding:8px 12px;background:var(--warn-bg);border-left:3px solid var(--warn-rule);border-radius:0 6px 6px 0;color:var(--ink)}
+.regola-testo table{border-collapse:collapse;width:100%;margin:0 0 10px;font-size:12.5px;display:block;overflow-x:auto}
+.regola-testo th,.regola-testo td{border:1px solid var(--rule);padding:5px 8px;text-align:left;vertical-align:top}
+.regola-testo th{background:var(--surface-2);font-weight:600;color:var(--ink);white-space:nowrap}
+.regola-taglio{font-size:11.5px;color:var(--ink-3);font-style:italic;margin:0 0 6px}
+.regola-org{font-size:11px;font-family:var(--font-mono);color:var(--ink-3);margin:6px 0 0}
+@media print{.regole-app .regola{break-inside:avoid}}
+@media print{.esito{break-inside:avoid}}
 .gruppo{margin-bottom:22px}
 .gruppo h3{font-size:14.5px;font-weight:600;margin:0 0 3px}
 .gruppo .g-nota{font-size:12.5px;color:var(--ink-3);margin:0 0 10px;max-width:66ch}
@@ -178,16 +233,18 @@ table.din td.azione button{width:26px;height:26px;border:1px solid var(--rule-2)
     </div>
     <div class="filtro">
       <div class="lbl" data-i18n="Estensione">Estensione</div>
-      <div class="chips">
+      <div class="chips tre">
+        <button id="fEssenziale" aria-pressed="true" data-i18n="Essenziale">Essenziale</button>
         <button id="fBase" aria-pressed="false" data-i18n="Base">Base</button>
-        <button id="fCompleto" aria-pressed="true" data-i18n="Completo">Completo</button>
+        <button id="fCompleto" aria-pressed="false" data-i18n="Completo">Completo</button>
       </div>
-      <p class="hint" data-i18n="Base: installazioni da 2-3 nodi. Completo: aggiunge inventario host, SAS diretto, dipendenze tra servizi, conformità estesa.">Base: installazioni da 2-3 nodi. Completo: aggiunge inventario host, SAS diretto, dipendenze tra servizi, conformità estesa.</p>
+      <p class="hint" data-i18n="Essenziale: i dati senza cui non si progetta e i parametri che possono bloccare la migrazione. Base: installazioni da 2-3 nodi. Completo: aggiunge inventario host, SAS diretto, dipendenze tra servizi, conformità estesa.">Essenziale: i dati senza cui non si progetta e i parametri che possono bloccare la migrazione. Base: installazioni da 2-3 nodi. Completo: aggiunge inventario host, SAS diretto, dipendenze tra servizi, conformità estesa.</p>
     </div>
     <div class="progresso">
       <div class="num" id="pctNum">0<small>%</small></div>
       <div class="barra"><i id="pctBar" style="width:0%"></i></div>
       <div class="residui" id="pctResidui"></div>
+      <div class="blocchi" id="pctBlocchi"></div>
     </div>
     <nav class="toc" id="toc"></nav>
   </aside>
@@ -200,7 +257,7 @@ table.din td.azione button{width:26px;height:26px;border:1px solid var(--rule-2)
     <main class="doc">
       <header class="lede">
         <h2 data-i18n="Raccolta dati prima della migrazione">Raccolta dati prima della migrazione</h2>
-        <p id="ledeTesto">Le voci <span class="chip-r" style="position:static">BLOCCANTE</span> vanno risolte prima dell'installazione: emergendo a lavori avviati costano un rifacimento o un acquisto sbagliato. Se non si conosce una risposta, scrivere <b>"da verificare"</b> invece di lasciare vuoto — una casella vuota non distingue un dato mancante da una risposta negativa.</p>
+        <p id="ledeTesto">Le voci <span class="chip-r" style="position:static">BLOCCANTE</span> vanno risolte prima dell'installazione: emergendo a lavori avviati costano un rifacimento o un acquisto sbagliato. Se non si conosce una risposta, scrivere <b>"da verificare"</b> invece di lasciare vuoto — una casella vuota non distingue un dato mancante da una risposta negativa. Man mano che si compila, il riquadro <b>Esito</b> qui sotto dice quali risposte fermano davvero la migrazione, e cosa serve per toglierle di mezzo.</p>
         <div class="meta-testata">
           <div><label data-i18n="Cliente">Cliente</label><input id="meta_cliente" data-id="meta_cliente"></div>
           <div><label data-i18n="Data di compilazione">Data di compilazione</label><input type="date" id="meta_data" data-id="meta_data"></div>
@@ -227,8 +284,16 @@ table.din td.azione button{width:26px;height:26px;border:1px solid var(--rule-2)
 'use strict';
 /* ───────────────────────── modello dati ─────────────────────────
    C()      = un campo/input singolo
-   ridotto  = compare anche nella versione "Base" (altrimenti solo "Completo")
-   rosso    = bloccante: obbligatorio per l'esportazione, in QUALSIASI filtro attivo
+   livello  = quanto in profondità si scende. Tre gradini, non due:
+                0 essenziale → l'id sta nell'elenco ESSENZIALE (più sotto)
+                1 base       → il predefinito
+                2 completo   → o.base === false
+              Un elemento si vede se il suo livello è ≤ a quello del filtro attivo,
+              quindi «Base» e «Completo» mostrano esattamente quello che mostravano
+              prima che l'essenziale esistesse.
+   rosso    = bloccante: obbligatorio per l'esportazione, in QUALSIASI filtro attivo.
+              Attenzione: «rosso» dice che la domanda va risposta, non che la risposta
+              vada bene. A giudicare le risposte è REGOLE_BLOCCO, in fondo al file.
 ------------------------------------------------------------------ */
 function C(id, label, o={}) {
   return { id, label, rosso: !!o.rosso, base: o.base !== false, tipo: o.tipo || 'text',
@@ -610,12 +675,133 @@ const TRADUZIONI = {
 "☰ Sezioni": "☰ Sections",
 "Questionario migrazione": "Migration questionnaire",
 "Raccolta dati prima della migrazione": "Data collection before the migration",
-"Le voci <span class=\"chip-r\" style=\"position:static\">BLOCCANTE</span> vanno risolte prima dell'installazione: emergendo a lavori avviati costano un rifacimento o un acquisto sbagliato. Se non si conosce una risposta, scrivere <b>\"da verificare\"</b> invece di lasciare vuoto — una casella vuota non distingue un dato mancante da una risposta negativa.": "<span class=\"chip-r\" style=\"position:static\">BLOCKING</span> items must be settled before installation: discovered mid-project they cost a rework or a wrong purchase. If an answer is unknown, write <b>\"to be verified\"</b> instead of leaving it blank — an empty box does not tell a missing value from a negative answer.",
 "Data di compilazione": "Date",
 "Referente tecnico Domarc": "Domarc technical contact",
 "Carica bozza…": "Load draft…",
 "Salva bozza (.json)": "Save draft (.json)",
-"Esporta Markdown": "Export Markdown"
+"Esporta Markdown": "Export Markdown",
+
+/* ── livello essenziale ed esito sui parametri bloccanti (2026-09-07) ── */
+"Le regole applicate": "The rules applied",
+"Il testo per esteso delle regole che l'esito qui sopra cita, dal manuale operativo Proxmox VE di Domarc. Compaiono solo le regole richiamate dalle risposte date: il documento basta a sé stesso, chi lo legge non deve avere il manuale sottomano.": "The full text of the rules the outcome above cites, from Domarc's Proxmox VE operations manual (written in Italian). Only the rules called up by the answers given appear here: the document stands on its own, and whoever reads it does not need the manual to hand.",
+"Il testo per esteso delle regole che l'esito cita, dal manuale operativo Proxmox VE di Domarc. Compaiono solo le regole richiamate dalle risposte date: il documento basta a sé stesso.": "The full text of the rules the outcome cites, from Domarc's Proxmox VE operations manual (written in Italian). Only the rules called up by the answers given appear here: the document stands on its own.",
+"Estratto: la sezione del manuale prosegue.": "Extract: the manual section continues.",
+"verificato il": "verified on",
+"Testo non disponibile in questa copia della pagina.": "Text not available in this copy of the page.",
+"manuale": "manual",
+"questionario": "questionnaire",
+
+"possono diventare blocchi": "these may turn into blockers",
+"Le voci <span class=\"chip-r\" style=\"position:static\">BLOCCANTE</span> vanno risolte prima dell'installazione: emergendo a lavori avviati costano un rifacimento o un acquisto sbagliato. Se non si conosce una risposta, scrivere <b>\"da verificare\"</b> invece di lasciare vuoto — una casella vuota non distingue un dato mancante da una risposta negativa. Man mano che si compila, il riquadro <b>Esito</b> qui sotto dice quali risposte fermano davvero la migrazione, e cosa serve per toglierle di mezzo.": "<span class=\"chip-r\" style=\"position:static\">BLOCKING</span> items must be settled before installation: discovered mid-project they cost a rework or a wrong purchase. If an answer is unknown, write <b>\"to be verified\"</b> instead of leaving it blank — an empty box does not tell a missing value from a negative answer. As you fill it in, the <b>Outcome</b> panel below says which answers actually stop the migration, and what it takes to clear them.",
+
+"Essenziale": "Essential",
+"Essenziale: i dati senza cui non si progetta e i parametri che possono bloccare la migrazione. Base: installazioni da 2-3 nodi. Completo: aggiunge inventario host, SAS diretto, dipendenze tra servizi, conformità estesa.": "Essential: the data without which the project cannot be designed, and the parameters that can block the migration. Basic: 2-3 node installations. Full: adds host inventory, direct SAS, service dependencies, extended compliance.",
+"Esito": "Outcome",
+"blocco": "blocker",
+"blocchi": "blockers",
+"da verificare": "to be verified",
+"campi bloccanti vuoti": "blocking fields empty",
+"nessun blocco rilevato": "no blocker found",
+"vai alla domanda": "go to the question",
+"vai alla sezione": "go to the section",
+"Calcolato sulle risposte date, in qualunque vista — l'esito non cambia passando da Essenziale a Completo. Un blocco non impedisce di esportare: va consegnato, non nascosto.": "Computed from the answers given, in any view — the outcome does not change between Essential and Full. A blocker does not prevent the export: it is meant to be handed over, not hidden.",
+"La domanda è in una vista più estesa: passare a Base o Completo": "That question lives in a wider view: switch to Basic or Full",
+" — versione essenziale": " — essential version",
+"Calcolato sulle risposte date. I blocchi vanno risolti prima di installare: emergendo a lavori avviati costano un rifacimento o un acquisto sbagliato.": "Computed from the answers given. Blockers must be settled before installation: discovered mid-project they cost a rework or a wrong purchase.",
+"Blocchi — vanno risolti prima di installare": "Blockers — must be settled before installation",
+"Da verificare — possono diventare blocchi": "To be verified — these may turn into blockers",
+"Campi bloccanti ancora vuoti": "Blocking fields still empty",
+"Con le risposte date non emergono condizioni che bloccano la migrazione.": "With the answers given, no condition blocking the migration has emerged.",
+"VM su datastore vSAN": "VMs on a vSAN datastore",
+"L'import di Proxmox non legge i dischi che stanno su vSAN: quelle VM non si migrano.": "The Proxmox import cannot read disks held on vSAN: those VMs will not migrate.",
+"Spostarle su un datastore VMFS o NFS prima di cominciare, e verificare che ci sia lo spazio per farlo.": "Move them to a VMFS or NFS datastore before starting, and check there is room to do so.",
+"Caratteri speciali nel nome del datastore": "Special characters in the datastore name",
+"Un carattere speciale nel nome del datastore (tipicamente «+») fa fallire l'import.": "A special character in the datastore name (typically \"+\") makes the import fail.",
+"Rinominare il datastore, oppure spostare quelle VM su uno con un nome semplice.": "Rename the datastore, or move those VMs to one with a plain name.",
+"VM cifrate con Storage Policy": "VMs encrypted through a Storage Policy",
+"Le VM cifrate tramite Storage Policy non sono importabili.": "VMs encrypted through a Storage Policy cannot be imported.",
+"Rimuovere la policy di cifratura e attendere che i dischi siano riscritti in chiaro.": "Remove the encryption policy and wait for the disks to be rewritten in clear.",
+"Credenziali sui singoli host ESXi": "Credentials on the individual ESXi hosts",
+"L'import si collega al singolo host ESXi, non a vCenter: senza quelle credenziali non parte.": "The import connects to the individual ESXi host, not to vCenter: without those credentials it will not start.",
+"Farsi consegnare (o reimpostare) la password di root sugli host prima della finestra.": "Obtain (or reset) the root password on the hosts before the maintenance window.",
+"Nessun host liberabile per il primo nodo": "No host can be freed for the first node",
+"Riutilizzando gli host attuali serve almeno una macchina da svuotare su cui installare il primo nodo: senza, il cluster non ha da dove partire.": "Reusing the current hosts requires at least one machine to empty out for the first node: without it the cluster has nowhere to start from.",
+"Liberare un host spostandone le VM sugli altri, oppure mettere a budget un server di appoggio.": "Free one host by moving its VMs onto the others, or budget for a staging server.",
+"Nessuno spazio per tenere le VM di origine": "No room to keep the source VMs",
+"Senza spazio per tenere spente le VM di partenza non esiste rollback: l'unica via di ritorno è il ripristino da backup, con i tempi e i rischi che comporta.": "Without room to keep the source VMs powered off there is no rollback: the only way back is a restore from backup, with the time and risk that entails.",
+"Liberare spazio su VMware prima della migrazione, oppure far accettare il rischio per iscritto.": "Free space on VMware before the migration, or have the risk accepted in writing.",
+"Rollback a zero giorni": "Zero-day rollback",
+"Un problema applicativo che il collaudo non vede si manifesta giorni dopo: con zero giorni di conservazione non c'è più niente a cui tornare.": "An application problem the acceptance test misses shows up days later: with zero days of retention there is nothing left to go back to.",
+"Concordare 14-28 giorni di VM di origine spente ma intatte.": "Agree on 14-28 days with the source VMs powered off but intact.",
+"Referente applicativo non indicato": "No application contact named",
+"È l'unico che può confermare che il gestionale funziona davvero dopo la migrazione: senza, il collaudo resta senza firma e la contestazione arriva a lavori chiusi.": "They are the only person who can confirm the business system really works after the migration: without them the acceptance is unsigned, and the complaint arrives once the work is closed.",
+"Farsi indicare la persona che valida i servizi, e metterla in copia sul piano.": "Have the person who validates the services named, and copy them on the plan.",
+"BitLocker senza recovery key": "BitLocker without recovery keys",
+"Cambiando piattaforma cambia il TPM: una VM con l'intero disco cifrato e senza recovery key non riparte più, e il dato non è recuperabile.": "Changing platform changes the TPM: a VM with full-disk encryption and no recovery key will never boot again, and the data is unrecoverable.",
+"Recuperare le recovery key (Active Directory o Entra ID), oppure sospendere BitLocker prima di migrare.": "Retrieve the recovery keys (Active Directory or Entra ID), or suspend BitLocker before migrating.",
+"Dischi RDM, independent o shared": "RDM, independent or shared disks",
+"Questi dischi non passano dall'import: la VM arriva senza i suoi dati.": "These disks do not survive the import: the VM arrives without its data.",
+"Convertirli in dischi virtuali prima della migrazione, o pianificare a parte lo spostamento di quei volumi.": "Convert them to virtual disks before the migration, or plan the move of those volumes separately.",
+"Cluster applicativi": "Application clusters",
+"SQL Always On, failover cluster e Oracle RAC non si spostano con un import di massa: spegnere insieme i membri fa perdere il quorum applicativo.": "SQL Always On, failover clusters and Oracle RAC do not move with a bulk import: powering the members off together loses the application quorum.",
+"Migrare un nodo per volta lasciando il servizio attivo sugli altri, con il fornitore dell'applicativo al corrente.": "Migrate one node at a time, leaving the service running on the others, with the application vendor informed.",
+"Licenze legate all'hardware": "Hardware-bound licences",
+"Le licenze agganciate a MAC, UUID o dongle si invalidano al cambio di piattaforma, e il servizio riparte bloccato.": "Licences tied to a MAC, a UUID or a dongle are invalidated by the platform change, and the service comes back locked.",
+"Preservare il MAC nella configurazione Proxmox, farsi riemettere la licenza dal fornitore, o ricollocare il dongle su un host che lo espone in passthrough.": "Preserve the MAC in the Proxmox configuration, have the vendor reissue the licence, or relocate the dongle onto a host that exposes it in passthrough.",
+"Snapshot attivi da consolidare": "Active snapshots to consolidate",
+"Gli snapshot rallentano molto l'import e possono farlo scadere a metà, lasciando una VM incompleta.": "Snapshots slow the import down badly and can make it time out halfway, leaving an incomplete VM.",
+"Consolidarli fuori orario prima della migrazione, e verificare che il consolidamento sia finito davvero.": "Consolidate them out of hours before the migration, and check the consolidation really finished.",
+"Fault Tolerance in uso": "Fault Tolerance in use",
+"Fault Tolerance non esiste su Proxmox VE: il servizio che oggi non si ferma mai, dopo la migrazione si ferma per il tempo di un riavvio.": "Fault Tolerance does not exist on Proxmox VE: the service that never stops today will, after the migration, stop for the length of a reboot.",
+"Sostituirla con ridondanza applicativa, oppure far accettare il tempo di ripartenza dell'alta affidabilità.": "Replace it with application-level redundancy, or have the high-availability restart time accepted.",
+"Una sola interfaccia fisica per nodo": "A single physical interface per node",
+"Corosync condivide il percorso con storage e VM: quando la latenza sale i nodi si dichiarano isolati e si riavviano da soli (self-fencing), anche se la rete non è caduta.": "Corosync shares the path with storage and VM traffic: when latency rises the nodes declare themselves isolated and reboot on their own (self-fencing), even though the network never went down.",
+"Portare a quattro le NIC per nodo — management, corosync, storage, VM — o rinunciare al cluster e restare a nodi singoli.": "Bring the NICs per node up to four — management, corosync, storage, VM — or give up on the cluster and stay with standalone nodes.",
+"Meno di quattro interfacce per nodo": "Fewer than four interfaces per node",
+"Qualche funzione dovrà condividere un percorso con un'altra: è il compromesso più frequente, e va deciso adesso quale — non scoperto in produzione.": "Some function will have to share a path with another: it is the most common compromise, and which one must be decided now — not discovered in production.",
+"Documentare quali reti convivono e su quale collegamento, tenendo il secondo anello corosync su un percorso suo.": "Document which networks share which link, keeping the second corosync ring on a path of its own.",
+"Poche porte libere sugli switch": "Few free ports on the switches",
+"Le porte libere per nodo decidono se la rete di cluster si può separare fisicamente dalle altre: è il vincolo che più spesso costringe a un compromesso.": "The free ports per node decide whether the cluster network can be physically separated from the others: it is the constraint that most often forces a compromise.",
+"Verificare con chi gestisce gli switch se si liberano porte, o mettere a budget uno switch aggiuntivo.": "Check with whoever manages the switches whether ports can be freed, or budget for an additional switch.",
+"Sorgente NTP non dichiarata": "NTP source not stated",
+"Un drift dell'orologio rompe l'autenticazione Kerberos e destabilizza il quorum del cluster: sono guasti che sembrano tutt'altro.": "Clock drift breaks Kerberos authentication and destabilises the cluster quorum: the failures it causes look like something else entirely.",
+"Indicare la sorgente NTP che useranno i nodi, e verificare che sia raggiungibile dalla rete di management.": "State the NTP source the nodes will use, and check it is reachable from the management network.",
+"Indirizzi di management e corosync non riservati": "Management and corosync addresses not reserved",
+"Management e i due anelli corosync vogliono indirizzi liberi PRIMA dell'installazione: assegnarli dopo significa rifare la configurazione del cluster.": "Management and the two corosync rings need free addresses BEFORE the installation: assigning them afterwards means redoing the cluster configuration.",
+"Farli riservare sul piano di indirizzamento del cliente, uno per nodo per ciascuna delle tre reti.": "Have them reserved in the customer's addressing plan, one per node for each of the three networks.",
+"Storage senza thin provisioning": "Storage without thin provisioning",
+"Ogni snapshot occupa fisicamente la dimensione piena del disco: la capacità stimata sul consumo reale non basta.": "Every snapshot physically occupies the full size of the disk: capacity estimated on real consumption will not be enough.",
+"Verificarlo col fornitore prima dell'ordine; se manca davvero, dimensionare sul caso peggiore e rifare il conto della capacità.": "Check it with the vendor before ordering; if it really is missing, size for the worst case and redo the capacity figures.",
+"Storage senza SCSI UNMAP": "Storage without SCSI UNMAP",
+"Lo spazio dei dati cancellati non torna mai disponibile: l'occupazione cresce e non scende più.": "The space of deleted data never comes back: usage grows and never drops again.",
+"Verificare il supporto UNMAP / space reclamation sull'array; se manca, mettere a budget la capacità che non si recupererà.": "Check UNMAP / space reclamation support on the array; if it is missing, budget for the capacity that will never be reclaimed.",
+"ZFS su controller RAID hardware": "ZFS on a hardware RAID controller",
+"ZFS vuole i dischi in chiaro: un controller RAID che glieli nasconde gli toglie il controllo della ridondanza, e quando un disco si guasta ZFS non può ripararlo.": "ZFS wants the disks in the clear: a RAID controller that hides them takes redundancy out of its hands, and when a disk fails ZFS cannot repair it.",
+"Passare il controller in modalità IT/HBA, o sostituirlo con un HBA vero.": "Flash the controller to IT/HBA mode, or replace it with a real HBA.",
+"ZFS locale con RPO zero richiesto": "Local ZFS with a zero RPO required",
+"La replica ZFS è asincrona: fra due repliche i dati scritti si perdono. Se un RPO maggiore di zero non è accettabile, lo storage locale non è la strada.": "ZFS replication is asynchronous: data written between two replications is lost. If an RPO greater than zero is not acceptable, local storage is not the way.",
+"O si accetta un RPO pari all'intervallo di replica, o si passa a uno storage condiviso.": "Either accept an RPO equal to the replication interval, or move to shared storage.",
+"Capacità richiesta oltre lo spazio disponibile": "Required capacity beyond the available space",
+"Il totale calcolato (§TOT TB) supera lo spazio libero dichiarato sullo storage (§LIBERA TB): il progetto così com'è non ci sta.": "The calculated total (§TOT TB) exceeds the free space declared on the storage (§LIBERA TB): the project as it stands does not fit.",
+"Ampliare lo storage, ridurre il perimetro della migrazione, o rivedere lo spazio previsto per gli snapshot.": "Expand the storage, reduce the scope of the migration, or revisit the space allowed for snapshots.",
+"SAS direct-attached: porte e nodi": "Direct-attached SAS: ports and nodes",
+"Senza switch SAS ogni nodo occupa una porta per controller per avere ridondanza: un array dual-controller con due porte regge due nodi, ma il quorum ne vuole tre.": "Without a SAS switch each node takes one port per controller to be redundant: a dual-controller array with two ports supports two nodes, but the quorum wants three.",
+"Compilare §6.3 nella vista Completo; poi o si aggiunge uno switch SAS, o si sceglie un array con più porte, o si rinuncia al terzo nodo su quello storage.": "Fill in §6.3 in the Full view; then either add a SAS switch, or choose an array with more ports, or give up the third node on that storage.",
+"Cluster a due nodi senza terzo voto": "Two-node cluster with no third vote",
+"Senza QDevice un cluster a due nodi non fa alta affidabilità: la caduta di un nodo toglie il quorum e blocca anche quello rimasto.": "Without a QDevice a two-node cluster provides no high availability: losing one node removes the quorum and blocks the surviving one too.",
+"Collocare un QDevice su una macchina terza sempre accesa (anche piccola), oppure prevedere tre nodi.": "Place a QDevice on an always-on third machine (however small), or plan for three nodes.",
+"CPU dei nodi non identiche": "Node CPUs not identical",
+"Con CPU diverse il tipo `host` non è utilizzabile: senza un modello comune la migrazione a caldo fallisce nel momento in cui serve.": "With different CPUs the `host` type cannot be used: without a common model, live migration fails exactly when it is needed.",
+"Scegliere il modello CPU più basso comune a tutti i nodi, metterlo a verbale e provare una migrazione a caldo in collaudo.": "Pick the lowest CPU model common to every node, put it on record, and test a live migration during acceptance.",
+"Veeam senza storage file-level": "Veeam without file-level storage",
+"Il plug-in Veeam per Proxmox VE richiede almeno uno storage file-level nel cluster: su un'infrastruttura basata solo su LVM non funziona, e il backup non parte.": "The Veeam plug-in for Proxmox VE requires at least one file-level storage in the cluster: on an LVM-only infrastructure it does not work, and the backup never runs.",
+"Mettere a budget uno storage NFS — non è opzionale — oppure proteggere il cluster con Proxmox Backup Server.": "Budget for an NFS storage — it is not optional — or protect the cluster with Proxmox Backup Server.",
+"Database senza dump applicativo": "Databases without an application dump",
+"Il backup della VM cattura lo stato del disco, non la coerenza transazionale del DBMS: si ripristina un database che si è fermato di colpo.": "The VM backup captures the state of the disk, not the transactional consistency of the DBMS: what is restored is a database that stopped dead.",
+"Aggiungere un dump nativo (pg_dump, mysqldump, backup SQL Server) prima della finestra di backup della VM.": "Add a native dump (pg_dump, mysqldump, SQL Server backup) ahead of the VM backup window.",
+"Nessun accesso ai repository": "No access to the repositories",
+"Senza accesso a Internet e senza mirror interno non si installa e non si aggiorna: il cluster nasce alla versione del supporto di installazione e ci resta.": "With no Internet access and no internal mirror there is no installing and no updating: the cluster is born at the version of the installation media and stays there.",
+"Aprire l'accesso ai repository Proxmox e Debian, anche solo attraverso un proxy, oppure predisporre un mirror interno prima dell'installazione.": "Open access to the Proxmox and Debian repositories, even just through a proxy, or set up an internal mirror before the installation.",
 };   // it → en: la chiave è il testo italiano
 function t(s){ if(LINGUA==='it' || s==null) return s; const k=String(s); return TRADUZIONI[k] ?? k; }
 const SI_NO = ['', 'Sì', 'No', 'Da verificare'];
@@ -911,6 +1097,82 @@ const COLONNE_DIP = [
 ];
 const CLASSI_RPO = ['Critiche','Importanti','Standard','Test/sviluppo'];
 
+/* ───────────────────────── il livello «essenziale» ─────────────────────────
+   I dati senza cui non si può progettare, e i parametri la cui risposta può
+   bloccare la migrazione. Stanno elencati QUI, in un posto solo, e non sparsi
+   dentro le 121 definizioni: il perimetro dell'essenziale è una scelta che si
+   deve poter leggere e discutere tutta insieme, non ricostruire scorrendo il file.
+   Una id che non esiste finisce in ESSENZIALE_IGNOTI e fa fallire il cancello
+   (tests/test_questionario.mjs): senza quel controllo un refuso toglierebbe in
+   silenzio una domanda dall'essenziale.                                        */
+const ESSENZIALE = new Set([
+  // §1 chi decide, quando si può fermare, come si torna indietro
+  'ref_progetto','ref_infra','ref_applicativo',
+  'finestre_manutenzione','data_obiettivo','rollback_durata','rollback_spazio',
+  // §2 com'è fatto l'ambiente di partenza e cosa impedisce l'import
+  'vcenter_versione','esxi_host_numero','esxi_credenziali','vm_numero_tb',
+  'host_riuso','host_liberabile',
+  'vsan_vm','caratteri_speciali_vm','cifratura_policy_vm','feat_vsan',
+  // §3 le VM che non si spostano come le altre
+  'sp_bitlocker','sp_recovery_key','sp_snapshot','sp_rdm','sp_cluster_app',
+  'sp_licenze_hw','sp_dc','sp_appliance',
+  // §4 la rete che deve esistere prima di installare
+  'dns_interni','dominio_ad','ntp',
+  'switch_modello','switch_porte_libere','switch_ridondanza',
+  // §5 quanti percorsi fisici ha ogni nodo
+  'reti_interfacce',
+  // §6 lo storage: tipo, capacità e le due proprietà che decidono tutto
+  'storage_tipo','storage_marca','storage_protocollo','storage_capacita',
+  'storage_thin','storage_unmap','zfs_dischi','zfs_hba','zfs_rpo',
+  'cap_occupato','cap_crescita','cap_snapshot','cap_totale',
+  // §7 i nodi e il quorum
+  'nodi_cpu_identiche','cluster_nodi_num','cluster_qdevice','cluster_n1',
+  // §8 come si protegge, e il vincolo Veeam
+  'backup_soluzione','veeam_previsto','veeam_filelevel','pbs_fisico',
+  'pbs_capacita','pbs_dump_db',
+  // §9 senza queste due non si lavora
+  'sic_repo','sic_accesso_remoto',
+]);
+
+/* Tabelle: nell'essenziale restano, ridotte alle sole colonne indispensabili. */
+const ESSENZIALE_COLONNE = {
+  vm:     ['nome','so','vcpu','ram','disco','firmware'],
+  vlan:   ['id','uso','subnet'],
+  nodi:   ['modello','cpu','core','ram','nic'],
+  ipnodi: ['ip_mgmt','ip_coro1','ip_coro2'],
+};
+const ESSENZIALE_GRUPPI = new Set(['3.0','4.1','4.4a','7.0']);   // vm · vlan · ip per nodo · server
+const ESSENZIALE_SEZIONI = new Set(['s11']);                     // le decisioni da chiudere
+
+const COLONNE_PER_TABELLA = {
+  vm:     [...COLONNE_VM_BASE, ...COLONNE_VM_COMPLETO],
+  vlan:   COLONNE_VLAN,
+  nodi:   COLONNE_NODI,
+  ipnodi: COLONNE_IP,
+};
+
+const ESSENZIALE_IGNOTI = [];
+(function marcaEssenziale(){
+  const visti = new Set();
+  DOC.sezioni.forEach(s=>{
+    if(ESSENZIALE_SEZIONI.has(s.id)) s.ess = true;
+    (s.gruppi||[]).forEach(g=>{
+      if(ESSENZIALE_GRUPPI.has(g.id)) g.ess = true;
+      (g.righe||[]).forEach(c=>{
+        visti.add(c.id);
+        if(ESSENZIALE.has(c.id)){ c.ess = true; g.ess = true; }
+      });
+      if(g.ess) s.ess = true;     // la sezione si apre se contiene qualcosa di essenziale
+    });
+  });
+  ESSENZIALE.forEach(id=>{ if(!visti.has(id)) ESSENZIALE_IGNOTI.push(id); });
+  Object.entries(ESSENZIALE_COLONNE).forEach(([tab, chiavi])=>{
+    const colonne = COLONNE_PER_TABELLA[tab] || [];
+    chiavi.forEach(k=>{ if(!colonne.some(c=>c.key===k)) ESSENZIALE_IGNOTI.push(`${tab}.${k}`); });
+    colonne.forEach(c=>{ if(chiavi.includes(c.key)) c.ess = true; });
+  });
+})();
+
 const POWERCLI = `Connect-VIServer -Server <vcenter-o-esxi>
 
 Get-VM | Select-Object \`
@@ -944,7 +1206,7 @@ Write-Host "Fatto: tre file CSV nella cartella corrente."`;
 
 /* ───────────────────────── stato ───────────────────────── */
 let STATO = { meta:{}, campi:{}, vm:[], vlan:[], nodi:[], dip:[], rpo:{}, decisioni:{} };
-let FILTRO = 'completo';   // 'base' | 'completo'
+let FILTRO = 'essenziale';   // 'essenziale' | 'base' | 'completo' — chi apre per la prima volta parte dal minimo
 let idSeq = 1;
 const nuovoId = p => `${p}_${idSeq++}_${Date.now().toString(36)}`;
 
@@ -976,7 +1238,9 @@ function tutteCampiRosse(){
   return out;
 }
 
-function visibileSe(base){ return FILTRO==='completo' || base !== false; }
+const LIVELLI = { essenziale:0, base:1, completo:2 };
+function livelloDi(o){ return o && o.ess ? 0 : (o && o.base === false ? 2 : 1); }
+function visibile(o){ return livelloDi(o) <= (LIVELLI[FILTRO] ?? LIVELLI.completo); }
 
 function inputPer(campo, valore){
   let val = valore==null?'':valore;
@@ -1020,8 +1284,8 @@ function inputPer(campo, valore){
 function escHtml(s){ return String(s??'').replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 function renderQA(gruppo){
-  if(!visibileSe(gruppo.base)) return '';
-  const righeVisibili = gruppo.righe.filter(c=>visibileSe(c.base));
+  if(!visibile(gruppo)) return '';
+  const righeVisibili = gruppo.righe.filter(c=>visibile(c));
   if(!righeVisibili.length) return '';
   let h = `<div class="gruppo" data-base="${gruppo.base!==false}"><h3>${escHtml(t(gruppo.titolo||''))}</h3>`;
   if(gruppo.nota) h += `<p class="g-nota">${escHtml(t(gruppo.nota))}</p>`;
@@ -1038,17 +1302,17 @@ function renderQA(gruppo){
 
 function renderTabellaDin(id, titolo, nota, colonneBase, colonneExtra, righe, placeholderAggiungi, onAggiungi){
   const colonne = [...colonneBase, ...(colonneExtra||[])];
-  const colVisibili = colonne.filter(c=>visibileSe(c.base));
+  const colVisibili = colonne.filter(c=>visibile(c));
   let h = `<div class="gruppo"><h3>${escHtml(t(titolo))}</h3>`;
   if(nota) h += `<p class="g-nota">${escHtml(t(nota))}</p>`;
   h += `<div class="tw"><table class="din" data-tabella="${id}"><thead><tr><th>#</th>`;
-  colonne.forEach(c=>{ h += `<th class="${visibileSe(c.base)?'':'hidden-col'}" data-col="${c.key}">${escHtml(t(c.label))}${c.rosso?' <span class="chip-r">•</span>':''}</th>`; });
+  colonne.forEach(c=>{ h += `<th class="${visibile(c)?'':'hidden-col'}" data-col="${c.key}">${escHtml(t(c.label))}${c.rosso?' <span class="chip-r">•</span>':''}</th>`; });
   h += `<th></th></tr></thead><tbody>`;
   righe.forEach((r,i)=>{
     h += `<tr data-rid="${r.id}"><td>${r.numero ?? (i+1)}</td>`;
     colonne.forEach(c=>{
       const campoObj = {id:`${id}::${r.id}::${c.key}`, tipo:c.tipo, opzioni:c.opzioni};
-      h += `<td class="${visibileSe(c.base)?'':'hidden-col'}" data-col="${c.key}">${inputPer(campoObj, r[c.key])}</td>`;
+      h += `<td class="${visibile(c)?'':'hidden-col'}" data-col="${c.key}">${inputPer(campoObj, r[c.key])}</td>`;
     });
     h += `<td class="azione"><button type="button" data-rimuovi="${id}::${r.id}" title="${escHtml(t('Rimuovi riga'))}">✕</button></td></tr>`;
   });
@@ -1065,15 +1329,15 @@ function renderVLAN(){
   return renderTabellaDin('vlan', 'VLAN in uso', null, COLONNE_VLAN, [], STATO.vlan, 'Aggiungi VLAN');
 }
 function renderNodi(){
-  const colonne = COLONNE_NODI.filter(c=>visibileSe(c.base));
+  const colonne = COLONNE_NODI.filter(c=>visibile(c));
   let h = `<div class="gruppo"><h3>${escHtml(t('Server'))}</h3><div class="tw"><table class="din" data-tabella="nodi"><thead><tr><th>${escHtml(t('Nodo'))}</th>`;
-  COLONNE_NODI.forEach(c=>{ h += `<th class="${visibileSe(c.base)?'':'hidden-col'}" data-col="${c.key}">${escHtml(t(c.label))}</th>`; });
+  COLONNE_NODI.forEach(c=>{ h += `<th class="${visibile(c)?'':'hidden-col'}" data-col="${c.key}">${escHtml(t(c.label))}</th>`; });
   h += `<th></th></tr></thead><tbody>`;
   STATO.nodi.forEach((r,i)=>{
     h += `<tr data-rid="${r.id}"><td>${i+1}</td>`;
     COLONNE_NODI.forEach(c=>{
       const campoObj = {id:`nodi::${r.id}::${c.key}`, tipo:c.tipo};
-      h += `<td class="${visibileSe(c.base)?'':'hidden-col'}" data-col="${c.key}">${inputPer(campoObj, r[c.key])}</td>`;
+      h += `<td class="${visibile(c)?'':'hidden-col'}" data-col="${c.key}">${inputPer(campoObj, r[c.key])}</td>`;
     });
     h += `<td class="azione"><button type="button" data-rimuovi="nodi::${r.id}">✕</button></td></tr>`;
   });
@@ -1085,13 +1349,13 @@ function renderIpNodi(gruppo){
   let h = `<div class="gruppo"><h3>${escHtml(t(gruppo.titolo||''))}</h3>`;
   if(gruppo.nota) h += `<p class="g-nota">${escHtml(t(gruppo.nota))}</p>`;
   h += `<div class="tw"><table class="din" data-tabella="ipnodi"><thead><tr><th>${escHtml(t('Nodo'))}</th>`;
-  colonne.forEach(c=>{ h += `<th class="${visibileSe(c.base)?'':'hidden-col'}">${escHtml(t(c.label))}${c.rosso?' <span class="chip-r">•</span>':''}</th>`; });
+  colonne.forEach(c=>{ h += `<th class="${visibile(c)?'':'hidden-col'}">${escHtml(t(c.label))}${c.rosso?' <span class="chip-r">•</span>':''}</th>`; });
   h += `</tr></thead><tbody>`;
   STATO.nodi.forEach((r,i)=>{
     h += `<tr data-rid="${r.id}"><td>${i+1}${r.modello?` <small style="color:var(--ink-3)">${escHtml(r.modello)}</small>`:''}</td>`;
     colonne.forEach(c=>{
       const campoObj = {id:`nodi::${r.id}::${c.key}`, placeholder:c.placeholder||''};
-      h += `<td class="${visibileSe(c.base)?'':'hidden-col'}">${inputPer(campoObj, r[c.key])}</td>`;
+      h += `<td class="${visibile(c)?'':'hidden-col'}">${inputPer(campoObj, r[c.key])}</td>`;
     });
     h += `</tr>`;
   });
@@ -1099,7 +1363,6 @@ function renderIpNodi(gruppo){
   return h;
 }
 function renderDip(gruppo){
-  if(!visibileSe(gruppo.base)) return '';
   return renderTabellaDin('dip', 'Dipendenze tra servizi', null, COLONNE_DIP, [], STATO.dip, 'Aggiungi dipendenza');
 }
 function renderRPO(){
@@ -1128,11 +1391,12 @@ function renderDecisioni(){
 }
 
 function renderSezione(s){
-  if(!visibileSe(s.base)) return '';
+  if(!visibile(s)) return '';
   let h = `<section class="sez" id="${s.id}"><div class="sez-testa"><span class="sez-num">§${s.numero}</span><h2>${escHtml(t(s.titolo))}</h2></div>`;
   if(s.nota) h += `<p class="sez-nota">${escHtml(t(s.nota))}</p>`;
   if(s.tipo==='decisioni'){ h += renderDecisioni(); h += `</section>`; return h; }
   (s.gruppi||[]).forEach(g=>{
+    if(!visibile(g)) return;          // vale per ogni tipo di gruppo, tabelle comprese
     if(g.tipo==='qa') h += renderQA(g);
     else if(g.tipo==='vm') h += renderVM();
     else if(g.tipo==='vlan') h += renderVLAN();
@@ -1146,14 +1410,15 @@ function renderSezione(s){
 }
 
 function renderTutto(){
-  let h = DOC.sezioni.map(renderSezione).join('');
+  let h = renderEsito() + DOC.sezioni.map(renderSezione).join('');
+  h += renderRegoleApplicate();
   h += `<section class="sez"><div class="sez-testa"><span class="sez-num">App.</span><h2>${escHtml(t("Script PowerCLI per l'inventario automatico"))}</h2></div>
     <p class="sez-nota">${escHtml(t("Da eseguire su una postazione con VMware PowerCLI: genera i CSV per buona parte delle Sezioni 2 e 3. Funzione/ruolo, criticità, BitLocker e licenze legate all'hardware restano da compilare a mano."))}</p>
     <div class="script-wrap"><button class="copia" type="button" id="copiaScript">${escHtml(t('Copia'))}</button><div class="script">${escHtml(POWERCLI)}</div></div>
   </section>`;
   $corpo.innerHTML = h;
 
-  $toc.innerHTML = DOC.sezioni.filter(s=>visibileSe(s.base)).map(s=>
+  $toc.innerHTML = DOC.sezioni.filter(s=>visibile(s)).map(s=>
     `<a href="#${s.id}" data-target="${s.id}"><span>§${s.numero} ${escHtml(t(s.titolo))}</span><span class="puntino" data-punto="${s.id}"></span></a>`
   ).join('');
 
@@ -1235,6 +1500,20 @@ function cablaEventi(){
       if(el) el.focus();
       return;
     }
+    const vai = e.target.closest('[data-vai]');
+    if(vai){
+      e.preventDefault();
+      const riga = document.querySelector(`.riga[data-campo="${CSS.escape(vai.dataset.vai)}"]`);
+      if(riga){
+        riga.scrollIntoView({behavior:'smooth', block:'center'});
+        riga.classList.add('punta');
+        setTimeout(()=>riga.classList.remove('punta'), 2000);
+      } else {
+        // la domanda esiste ma è sotto un filtro più profondo: si dice dove trovarla
+        mostraToast(t('La domanda è in una vista più estesa: passare a Base o Completo'));
+      }
+      return;
+    }
     if(e.target.id==='copiaScript'){
       navigator.clipboard?.writeText(POWERCLI).then(()=>mostraToast(t('Script copiato'))).catch(()=>mostraToast(t('Copia non riuscita'),'err'));
     }
@@ -1265,15 +1544,590 @@ document.getElementById('lIt').addEventListener('click', ()=>impostaLingua('it')
 document.getElementById('lEn').addEventListener('click', ()=>impostaLingua('en'));
 
 /* ───────────────────────── filtro ───────────────────────── */
+function segnaFiltro(){
+  document.getElementById('fEssenziale').setAttribute('aria-pressed', FILTRO==='essenziale');
+  document.getElementById('fBase').setAttribute('aria-pressed', FILTRO==='base');
+  document.getElementById('fCompleto').setAttribute('aria-pressed', FILTRO==='completo');
+}
 function impostaFiltro(f){
-  FILTRO = f;
-  document.getElementById('fBase').setAttribute('aria-pressed', f==='base');
-  document.getElementById('fCompleto').setAttribute('aria-pressed', f==='completo');
-  try{ localStorage.setItem('qm.filtro', f); }catch(_){}
+  FILTRO = LIVELLI[f]==null ? 'completo' : f;   // una bozza salvata con un filtro ignoto non lascia la pagina vuota
+  segnaFiltro();
+  try{ localStorage.setItem('qm.filtro', FILTRO); }catch(_){}
   renderTutto();
 }
+document.getElementById('fEssenziale').addEventListener('click', ()=>impostaFiltro('essenziale'));
 document.getElementById('fBase').addEventListener('click', ()=>impostaFiltro('base'));
 document.getElementById('fCompleto').addEventListener('click', ()=>impostaFiltro('completo'));
+
+/* ───────────────────────── i parametri che bloccano ─────────────────────────
+   «rosso» dice che una domanda va risposta. Qui si dice cosa comporta il MODO in
+   cui è stata risposta: un parametro bloccante non è un campo obbligatorio, è una
+   condizione dell'ambiente del cliente che, finché resta così, ferma la migrazione.
+
+   Ogni regola dichiara: quando si accende · che cosa comporta · che cosa serve per
+   toglierla · dove si risponde. Tre esiti:
+     'blocco'    la risposta data ferma la migrazione finché non si interviene
+     'verifica'  non lo sappiamo ancora, oppure è una risposta che costringe a un
+                 compromesso da mettere a verbale
+     false       niente da segnalare
+
+   Due scelte da non ribaltare per distrazione:
+   · le regole guardano SEMPRE tutte le risposte, anche quelle di domande nascoste
+     dal filtro attivo: un blocco che sparisce cambiando vista sarebbe una bugia;
+   · le regole NON impediscono l'esportazione. Un blocco aperto è un'informazione
+     da consegnare al cliente, non un errore da nascondere. Resta invece il blocco
+     sui campi bloccanti lasciati VUOTI, che è un'altra cosa: lì manca il dato.  */
+
+const NEGATIVO = /^\s*(no|nessun[ao]?|niente|none|n\/a|-{1,2}|0)\s*$/i;
+const INCERTO  = /da\s+verificar|to\s+be\s+verified|non\s+so|\?\s*$/i;
+
+function elenco(id){ const x = v(id).trim(); return x !== '' && !NEGATIVO.test(x) && !INCERTO.test(x); }
+function incerto(id){ return INCERTO.test(v(id)); }
+function risposto(id){ return v(id).trim() !== ''; }
+function seVale(id, valoreCheBlocca){          // per i select Sì/No/Da verificare
+  const x = v(id).trim();
+  if(x === valoreCheBlocca) return 'blocco';
+  if(x === 'Da verificare') return 'verifica';
+  return false;
+}
+function num(id){ const n = parseFloat(v(id)); return isNaN(n) ? null : n; }
+
+/* ══ FONTI DAL MANUALE: BLOCCO GENERATO — non modificare a mano ═══════════════════════════════
+   Scritto da strumenti/estrai-fonti.py dal manuale operativo Proxmox VE di
+   Domarc (DA-Proxmox-Docs). Contiene SOLO i passaggi che REGOLE_BLOCCO cita:
+   il questionario è una pagina autonoma, e senza questo testo direbbe «vedi
+   §11.13» a un cliente che il manuale non ce l'ha.
+   I blocchi che il manuale marca come interni non entrano qui: questa pagina
+   è pubblicata. Rigenerare con:  python3 strumenti/estrai-fonti.py           */
+const MANUALE = {
+ "nome": "Manuale operativo Proxmox VE — Domarc",
+ "versione": "1.0",
+ "verificato": "2026-09-01",
+ "repo": "DA-Proxmox-Docs",
+ "estratto_il": "2026-09-07"
+};
+const FONTI = {
+ "§1.3": {
+  "titolo": "§1.3 Le reti: la decisione che si paga di più",
+  "file": "manuale/01-progettare.md",
+  "riga": 36,
+  "parte": "Parte 1",
+  "testo": "Proxmox usa reti con funzioni diverse. **Farle convivere sullo stesso collegamento fisico è la causa più frequente di problemi gravi.**\n\n| Rete | Funzione | Priorità di separazione | Banda tipica |\n|---|---|---|---|\n| Management | GUI, SSH, API | Media | 1 Gb |\n| **Corosync** | Heartbeat tra i nodi | **Massima — rete dedicata** | 1 Gb basta |\n| Corosync secondario | Ring ridondante | Alta | 1 Gb |\n| Storage | iSCSI o NFS | Alta, se presente | 10 Gb+ |\n| **Ceph** [D] | Replica tra OSD | **Massima, e separata dallo storage** | 10 Gb, 25 Gb con NVMe |\n| Migrazione | Trasferimento della RAM tra nodi | Media | 10 Gb |\n| Backup | Traffico verso PBS | Alta | 10 Gb |\n| VM | Traffico dei guest, trunk VLAN | Alta | secondo il carico |\n\n**Perché corosync va separato.** Corosync considera inutilizzabile una rete non solo se cade, ma **se la latenza sale troppo**. Il requisito dichiarato è **sotto i 5 ms**; oltre i **10 ms** il comportamento diventa inaffidabile, tanto più quanto più nodi ci sono. Traffico di storage o di backup può saturare il link e superare la soglia: i nodi che perdono il quorum eseguono **self-fencing**, cioè si resettano. Visto da fuori sembra un cluster che si riavvia da solo.\n\nCorosync gestisce fino a **8 link** e commuta da solo: **due ring su percorsi fisici distinti** è la configurazione corretta.\n\n> Un ring corosync su un bond LACP **non** aggiunge affidabilità reale: il bond resta un unico dominio di guasto per configurazione e per switch. Due ring su interfacce separate proteggono molto di più.",
+  "troncato": 1
+ },
+ "§1.6": {
+  "titolo": "§1.6 Licenze, repository e supporto",
+  "file": "manuale/01-progettare.md",
+  "riga": 122,
+  "parte": "Parte 1",
+  "testo": "| Repository | Chi lo usa | Stabilità |\n|---|---|---|\n| `pve-enterprise` | Chi ha una sottoscrizione | Massima, consigliato in produzione |\n| `pve-no-subscription` | Senza sottoscrizione | Pacchetti più recenti, meno collaudati |\n| `pve-test` | Sviluppo | Non in produzione |\n\nTre cose che si scoprono tardi:\n\n1. **Tutti i nodi devono avere lo stesso livello di sottoscrizione.** Un cluster metà enterprise e metà no-subscription riceve versioni diverse degli stessi pacchetti, ed è una fonte di problemi difficili da diagnosticare.\n2. **La chiave di sottoscrizione è legata all'architettura.** Una chiave arm64 non è valida su x86, e viceversa.\n3. **Proxmox VE 9 usa il formato deb822** (file `.sources`, non più righe singole in `sources.list`). Su un sistema aggiornato da versioni precedenti, `apt modernize-sources` converte le voci vecchie.",
+  "troncato": 0
+ },
+ "§1.8": {
+  "titolo": "§1.8 Indirizzi IP e porte da riservare",
+  "file": "manuale/01-progettare.md",
+  "riga": 156,
+  "parte": "Parte 1",
+  "testo": "| Uso | Quantità | Profili |\n|---|---|---|\n| Management dei nodi | 1 per nodo | tutti |\n| Corosync ring primario | 1 per nodo | B C D |\n| Corosync ring secondario | 1 per nodo | B C D |\n| Storage | 1-2 per nodo | se presente |\n| Ceph pubblica e cluster | 2 per nodo | D |\n| Migrazione | 1 per nodo | C D |\n| Backup | 1 per nodo | tutti |\n| Proxmox Backup Server | 1 | tutti |\n| QDevice | 1 | B, e cluster con numero pari di nodi |\n| Proxmox Datacenter Manager | 1 | D |\n| iDRAC / iLO / IPMI | 1 per nodo | tutti |\n\n**Le porte di switch** vanno contate insieme agli indirizzi: è il vincolo che di solito si scopre il giorno dell'installazione. Un nodo di profilo C ben fatto usa **sei porte** — due corosync, due storage o VM in bond, due management o backup — più una IPMI.\n\nLe porte TCP/UDP usate da Proxmox sono nell'Appendice B.",
+  "troncato": 0
+ },
+ "§11.11": {
+  "titolo": "§11.11 Collaudo",
+  "file": "manuale/11-migrazione.md",
+  "riga": 508,
+  "parte": "Parte 11",
+  "testo": "Da eseguire sull'ondata 0 e verbalizzare.\n\n| # | Test | Criterio |\n|---|---|---|\n| 1 | Avvio della VM migrata | Boot pulito, nessun errore in Gestione dispositivi / `dmesg` |\n| 2 | Rete: IP, DNS, gateway, route | Raggiungibilità nei due sensi |\n| 3 | Servizi applicativi | Funzionanti, testati dal referente applicativo |\n| 4 | Guest agent | IP e RAM corretti nella GUI Proxmox |\n| 5 | Spegnimento pulito da GUI | Il guest esegue lo shutdown, non viene killato |\n| 6 | Snapshot + rollback | Funzionanti (se lo storage li supporta) |\n| 7 | Migrazione live tra nodi | Riuscita, senza perdita di ping |\n| 8 | Backup PBS + **restore di prova** | Il restore è l'unico test che conta |\n| 9 | Benchmark I/O e rete vs baseline VMware | Da misurare **prima** su VMware per avere il confronto |\n| 10 | Failover HA (se previsto) | La VM riparte su altro nodo |\n| 11 | Reboot del nodo | Le VM ripartono secondo la configurazione |\n\n> **Il test 9 va preparato prima di iniziare.** Senza una baseline misurata su VMware, ogni discussione successiva sulle prestazioni è senza dati.\n\n---",
+  "troncato": 0
+ },
+ "§11.12": {
+  "titolo": "§11.12 Rollback",
+  "file": "manuale/11-migrazione.md",
+  "riga": 530,
+  "parte": "Parte 11",
+  "testo": "| Livello | Azione | Tempo |\n|---|---|---|\n| VM singola | Riaccendere la sorgente su VMware (mai cancellata) | Minuti |\n| VM con dati già modificati | Restore dal backup pre-migrazione | Ore |\n| Ondata | Sospendere la migrazione, riaccendere le sorgenti | Ore |\n\n**Condizioni:** la VM sorgente resta spenta ma **intatta** per il periodo concordato. Documentare per ogni VM chi decide il rollback e entro quando.\n\n---",
+  "troncato": 0
+ },
+ "§11.13": {
+  "titolo": "§11.13 Trappole note",
+  "file": "manuale/11-migrazione.md",
+  "riga": 542,
+  "parte": "Parte 11",
+  "testo": "| Trappola | Sintomo | Prevenzione |\n|---|---|---|\n| **Driver VirtIO non boot-critical** | `INACCESSIBLE_BOOT_DEVICE` (0x7B) | §11.6.2 + §11.9.2 |\n| **Firmware non corrispondente** | La VM non trova il bootloader | Rilevare con `msinfo32`, replicare esattamente |\n| **UEFI senza percorso standard** | UEFI non trova nulla pur essendo corretto | Entrare nel BIOS OVMF e aggiungere la voce di boot custom. Serve l'**EFI Disk** per renderla persistente |\n| **`/dev/sdX` in fstab** | Linux in emergency shell | §11.6.3 passo 1 |\n| **VirtIO fuori dall'initramfs** | Kernel panic all'avvio | §11.6.3 passo 2. **Ripetere dopo ogni update del kernel** |\n| **NIC fantasma su Windows** | \"IP già assegnato a un altro adattatore\" | Rimuovere l'IP statico prima; ripulire con `devmgr_show_nonpresent_devices` |\n| **vTPM / BitLocker** | Richiesta chiave di ripristino all'avvio | Sospendere BitLocker prima. Lo stato vTPM **non è migrabile** |\n| **Snapshot sulla sorgente** | Import lentissimo | Consolidare prima |\n| **Dischi su vSAN** | Import fallisce | Spostare i dischi su altro datastore |\n| **Dischi cifrati (storage policy)** | Import fallisce | Rimuovere la policy di cifratura |\n| **Datastore con `+` nel nome** | Import fallisce | Rinominare il datastore |\n| **Import via vCenter** | Lentezza estrema | Puntare direttamente agli host ESXi |\n| **Troppi import paralleli** | API ESXi bloccata, IO sospeso, rischio OOM | Max 4 dischi contemporanei |\n| ⚠️ **Storage ESXi lasciato configurato** | **`pvestatd` si blocca, errori su TUTTI gli storage incluso `local`** | **Rimuovere lo storage ESXi a migrazione conclusa** |\n| **Corosync su link condiviso** | Il cluster sembra riavviarsi da solo (self-fencing) | Rete dedicata a corosync |\n| **CPU type `host`** | Migrazione live impossibile tra CPU diverse | `x86-64-v2-AES`/`v3` in cluster eterogenei |\n| **Machine version < 10** | La VM non parte su storage volume-chain | Impostare machine ≥ 10 |\n| **RDM / dischi shared / MSCS** | Non migrabili con i metodi standard | Identificare in assessment, pianificare a parte |\n| **Licenze legate all'hardware** | Applicativi che si disattivano | Censire in assessment, coinvolgere il fornitore |",
+  "troncato": 1
+ },
+ "§11.4": {
+  "titolo": "§11.4 Preparazione del cluster Proxmox",
+  "file": "manuale/11-migrazione.md",
+  "riga": 106,
+  "parte": "Parte 11",
+  "testo": "Da completare **prima** della prima migrazione.\n\n| Elemento | Raccomandazione |\n|---|---|\n| **Corosync** | **Rete fisica dedicata**, più almeno un link ridondante. Corosync gestisce fino a 8 reti e commuta da solo |\n| Storage | Rete separata da corosync. Se iSCSI/NFS: VLAN dedicata, MTU 9000 se l'intero percorso lo supporta |\n| Migrazione | Rete dedicata configurabile in Datacenter → Options |\n| Backup | Il traffico verso PBS può saturare un link: tenerlo lontano da corosync |\n| Bridge | Linux bridge VLAN-aware. OVS raramente necessario: il bridge Linux ha colmato il divario |\n\n**L'errore più comune:** far convivere corosync, storage e backup sullo stesso link. Sotto carico i nodi si auto-fenciano e sembra che il cluster si riavvii senza motivo.\n\n- Repository: **enterprise** con subscription (consigliato in produzione), altrimenti `no-subscription`. Ogni nodo del cluster deve avere lo **stesso livello** di subscription\n- Aggiornare tutti i nodi alla stessa versione prima di iniziare\n- NTP funzionante e coerente su tutti i nodi\n- `Datacenter → Options → Next free VMID range` per non collidere con altri cluster\n- Se si usa ZFS: **limitare l'ARC** in base alla RAM da lasciare alle VM (`/etc/modprobe.d/zfs.conf` → `zfs_arc_max`)\n\nConfigurare **Proxmox Backup Server prima della migrazione**, non dopo. Serve anche come rete di sicurezza durante le ondate.\n\nAggiungere lo storage **ESXi** (Datacenter → Storage → Add → ESXi) puntando **direttamente agli host ESXi**, non a vCenter (§11.5.1).",
+  "troncato": 1
+ },
+ "§12.12": {
+  "titolo": "§12.12 Impostazioni di backup per carico di lavoro",
+  "file": "manuale/12-backup.md",
+  "riga": 255,
+  "parte": "Parte 12",
+  "testo": "| Carico | Modalità | Fleecing | Guest agent / freeze | Note |\n|---|---|---|---|---|\n| **Domain Controller** | Snapshot | No | **Obbligatorio**, VSS funzionante | Rete di sicurezza, non strumento primario di ripristino AD |\n| **File server** | Snapshot | Consigliato | Obbligatorio | `backup=0` sul disco dati solo con backup applicativo verificato |\n| **Web / App** | Snapshot | Se I/O sostenuto | Sì | Spesso ricostruibili: privilegiare la ripetibilità del deploy |\n| **Database** | Snapshot + **dump applicativo** | **Sì** | **Obbligatorio**, quiescing verificato | Il backup VM da solo non basta |\n| **Appliance di rete** | Snapshot | No | Spesso non disponibile | Esportare **anche** la configurazione con gli strumenti dell'appliance |\n| **Log server / SIEM** | Snapshot | **Sì** | Sì | Spesso `backup=0` sul disco dati + ridondanza applicativa |\n| **Terminal / VDI** | Snapshot | Se molti utenti | Sì | Profili utente su file server, non dentro la VM |\n| **Legacy** | Stop o Suspend | No | Non disponibile | Coerenza garantita solo a VM ferma |\n\n**Regola trasversale sui database:** il backup della VM cattura lo stato del disco, non la coerenza transazionale del DBMS. Serve **sempre** anche un dump nativo (`pg_dump`, backup MSSQL, XtraBackup), con la sua retention. Il backup VM ricostruisce il servizio in fretta; il dump recupera *i dati*.\n\n---",
+  "troncato": 0
+ },
+ "§2.1": {
+  "titolo": "§2.1 Prima di avviare l'installazione",
+  "file": "manuale/02-installare.md",
+  "riga": 3,
+  "parte": "Parte 2",
+  "testo": "Le cose che vanno sistemate nel firmware, perché dopo costano un riavvio o una reinstallazione.\n\n| Impostazione | Valore | Perché |\n|---|---|---|\n| **Modalità di boot** | UEFI | Secure Boot è supportato; il BIOS legacy limita le opzioni di avvio e ZFS su dischi grandi |\n| **Virtualizzazione** | Attiva (VT-x / AMD-V) | Senza, le VM non partono |\n| **IOMMU** | Attivo (VT-d / AMD-Vi) | Serve al passthrough PCI, anche se non è previsto oggi |\n| **Controller dischi** | **HBA o modalità IT** | Obbligatorio per ZFS e Ceph: devono vedere i dischi |\n| **Hyper-Threading / SMT** | Attivo | Salvo requisito di sicurezza esplicito |\n| **Profilo energetico** | Prestazioni | I profili di risparmio introducono latenza sui carichi a raffica |\n| **Watchdog** | Attivo, se disponibile | L'HA lo usa per il self-fencing (§7.3) |\n| **IPMI / iDRAC / iLO** | Configurato, su VLAN separata | È l'unico accesso quando il nodo non risponde |\n\n**L'orologio.** Un disallineamento tra i nodi rompe il cluster in modi difficili da leggere. NTP va verificato prima di creare il cluster, non dopo.",
+  "troncato": 0
+ },
+ "§3.5": {
+  "titolo": "§3.5 Due nodi: il QDevice",
+  "file": "manuale/03-cluster.md",
+  "riga": 56,
+  "parte": "Parte 3",
+  "testo": "Il QDevice è un servizio esterno che fornisce un voto. Non ospita VM, non tocca lo storage, non conosce le configurazioni: dice solo \"io ci sono\", e la sua presenza rompe la parità.\n\n```bash\n# sul dispositivo esterno (NAS, VM altrove, piccolo sistema dedicato)\napt install corosync-qnetd\n\n# su ogni nodo del cluster\napt install corosync-qdevice\n\n# da un nodo qualsiasi\npvecm qdevice setup <ip-del-qdevice>\npvecm status          # devono comparire 3 voti attesi\n```\n\n**Dove metterlo.** Non su uno dei due nodi — sarebbe inutile. Non su una VM ospitata dal cluster stesso, per la stessa ragione. Va bene un NAS, un piccolo sistema fisico, o una VM su un'infrastruttura diversa. Deve raggiungere entrambi i nodi in **UDP 5405**.\n\n**Cosa succede se cade il QDevice.** Il cluster resta a due voti su due: continua a funzionare finché entrambi i nodi sono vivi, ma torna a essere vulnerabile alla parità. Il QDevice va quindi monitorato come un componente dell'infrastruttura, non trattato come un accessorio.\n\n> ⚠️ **Il QDevice è pensato per cluster con numero PARI di nodi.** L'algoritmo predefinito `ffsplit` presuppone la parità. Su un cluster con numero dispari Proxmox rifiuta l'aggiunta e richiede `--force`, passando automaticamente all'algoritmo `lms` (last-man-standing), che dà al QDevice un peso diverso. *Comportamento verificato sul forum Proxmox il 2026-09-01; la documentazione ufficiale non lo descrive nel dettaglio.*\n\nPer rimuoverlo:\n\n```bash\npvecm qdevice remove\n```\n\n**Il QDevice va rimosso prima di togliere un nodo dal cluster** (§3.7).",
+  "troncato": 0
+ },
+ "§4.2": {
+  "titolo": "§4.2 ZFS locale",
+  "file": "manuale/04-storage.md",
+  "riga": 35,
+  "parte": "Parte 4",
+  "testo": "Tre decisioni non si correggono senza distruggere e ricreare il pool:\n\n| Decisione | Regola | Se sbagliata |\n|---|---|---|\n| **Livello di RAID** | **mirror o RAID10** per i carichi VM. RAIDZ solo se le prestazioni misurate bastano. dRAID da 10-15 dischi in su | Prestazioni casuali insufficienti, e non si converte |\n| **`ashift`** | 12 (4 KB) di default; mai *sotto* il settore fisico reale del disco | Amplificazione della scrittura per tutta la vita del pool |\n| **Special device** | Deve avere **la stessa ridondanza del pool** | È un punto singolo di guasto **dell'intero pool**, e non si può togliere |\n\n**Perché mirror e non RAIDZ.** Un vdev RAIDZ ha le IOPS casuali di *un solo disco*, per quanti dischi contenga. Su un fileserver che scrive sequenzialmente non si nota; su un database o su venti VM che leggono contemporaneamente sì, e molto.\n\nZFS usa la RAM libera come cache di lettura. Su un hypervisor questa RAM la vogliono le VM.\n\n**Dalla 8.1 il valore predefinito è il 10% della memoria con tetto a 16 GiB** — prima era il 50%, ed è la ragione per cui le guide più vecchie insistono tanto su questo punto. Il default attuale è ragionevole, ma su un nodo molto carico va comunque fissato esplicitamente:\n\n```ini\n# /etc/modprobe.d/zfs.conf\noptions zfs zfs_arc_max=8589934592     # 8 GiB\n```\n\n```bash\nupdate-initramfs -u -k all      # e riavvio, se la root è su ZFS\n```\n\nSu sistemi con più di 256 GiB di RAM conviene fissare anche `zfs_arc_min`.\n\n```bash\nzfs set compression=lz4 <pool>        # praticamente gratis, quasi sempre conveniente\n```",
+  "troncato": 1
+ },
+ "§4.5": {
+  "titolo": "§4.5 Replica ZFS tra nodi",
+  "file": "manuale/04-storage.md",
+  "riga": 123,
+  "parte": "Parte 4",
+  "testo": "È il modo di avere alta affidabilità senza storage condiviso: ZFS copia periodicamente le differenze del dataset su un altro nodo.\n\n```bash\npvesr create-local-job 100-0 pve2 --schedule \"*/5\"    # ogni 5 minuti\npvesr status\npvesr list\n```\n\n| Caratteristica | Valore |\n|---|---|\n| Storage supportato | **Solo ZFS locale.** Nient'altro |\n| Intervallo | Da 1 minuto a 1 settimana |\n| Ritentativo dopo un errore | Ogni 30 minuti |\n| Destinazioni per job | **Una sola** |\n| RPO | Uguale all'intervallo configurato |\n\n**Che cosa succede davvero quando il nodo di origine muore.** I dati sono sull'altro nodo, aggiornati all'ultima replica riuscita. Se la VM è gestita in HA, riparte automaticamente **perdendo il lavoro dall'ultima replica**. Se non lo è, serve spostare a mano la configurazione e avviarla.\n\n> ⚠️ **La replica non è alta affidabilità sincrona, ed è la confusione più costosa che si possa fare in fase di vendita.** Con intervallo di 5 minuti si possono perdere 5 minuti di transazioni. Su un fileserver è spesso accettabile; su un gestionale o un database non lo è, e va detto prima, per iscritto, con il numero dentro.\n\n**Su cosa non usarla:** database transazionali, code di messaggi, qualunque cosa dove la coerenza di cinque minuti fa più danno di un fermo di venti.",
+  "troncato": 0
+ },
+ "§5.2": {
+  "titolo": "§5.2 Differenze tra SAS direct-attached e iSCSI",
+  "file": "manuale/05-storage-blocchi.md",
+  "riga": 23,
+  "parte": "Parte 5",
+  "testo": "Da leggere prima di riusare qualsiasi procedura scritta per iSCSI.\n\n| Elemento | iSCSI | **SAS direct-attached** |\n|---|---|---|\n| Trasporto | Ethernet, VLAN dedicata, MTU 9000 | Cavo SAS punto-punto. **Niente rete da progettare** |\n| Discovery / login | `iscsiadm` discovery + login + `node.startup automatic` | **Nulla.** La LUN compare da sola all'accensione |\n| Identità dell'initiator | IQN (`iqn.1993-08.org.debian:...`) | **WWN delle porte SAS** dell'HBA |\n| Masking lato array | igroup / host group con gli IQN | Host mapping con i WWN SAS |\n| Servizi da abilitare | `iscsid` + `multipathd` | **Solo `multipathd`** |\n| Storage \"iSCSI\" in Proxmox | Sì, come base per LVM | **NO — non esiste un plugin SAS** |\n| Creazione del VG | Fatta dal wizard LVM della GUI | **Manuale via CLI**, poi la GUI lo adotta |\n| Rescan dopo resize | `iscsiadm -m node -R` | `rescan-scsi-bus.sh` o rescan via sysfs |\n| Contesa con corosync | ⚠️ Reale se condivide la VLAN | ✅ **Inesistente** — il SAS è fuori banda |\n| Numero massimo di nodi | Praticamente illimitato | ⚠️ **Limitato dalle porte dei controller** |\n| Latenza | 0,2–1 ms tipici | Più bassa, tipicamente < 0,2 ms |\n\nSenza switch SAS, ogni nodo occupa **una porta per controller** (due cavi per nodo, per avere ridondanza). Un array dual-controller con 2 porte per controller regge quindi **2 nodi** in piena ridondanza, 4 con controller a 4 porte.",
+  "troncato": 1
+ },
+ "§5.8": {
+  "titolo": "§5.8 Dimensionamento",
+  "file": "manuale/05-storage-blocchi.md",
+  "riga": 309,
+  "parte": "Parte 5",
+  "testo": "**Spazio LVM richiesto ≈ Σ(dischi VM) × (1 + snapshot medi contemporanei) + ~5% di overhead qcow2**\n\nEsempio, 2 TB di dischi VM con snapshot brevi pre-patch:\n\n| Scenario | Dischi | Snapshot | LV allocati |\n|---|---|---|---|\n| Regime normale | 2 TB | 0 | 2 TB |\n| Patch, 20% delle VM | 2 TB | 0,4 TB | ~2,5 TB |\n| Caso peggiore, tutte | 2 TB | 2 TB | ~4,2 TB |\n\nIl VG va dimensionato sul **caso peggiore**. Sull'array il consumo reale resta basso grazie al thin provisioning.\n\nIl modello cambia completamente: **ogni snapshot occupa fisicamente la dimensione piena del disco**, e lo spazio non torna dopo la cancellazione.\n\nContro-esempio per capire l'ordine di grandezza: un disco da 1 TB con 24 snapshot orari richiede **~27,5 TB** di spazio allocato.\n\nSe l'array è thick-only, le opzioni sono:\n\n1. Limitare gli snapshot a finestre di manutenzione, uno per volta, cancellati subito\n2. Sovradimensionare pesantemente la LUN\n3. **Rinunciare a `snapshot-as-volume-chain`** e usare gli snapshot dell'array (crash-consistent, per LUN intera, senza rollback per singola VM dalla GUI)\n\nVa deciso con il cliente **prima** di installare, non dopo.\n\n---",
+  "troncato": 0
+ },
+ "§8.1": {
+  "titolo": "§8.1 CPU",
+  "file": "manuale/08-parametri-vm.md",
+  "riga": 6,
+  "parte": "Parte 8",
+  "testo": "| Valore | Quando | Effetto |\n|---|---|---|\n| `host` | Tutti i nodi hanno **CPU identica** | Espone tutte le istruzioni del processore fisico (AES-NI, AVX-512…). Prestazioni migliori |\n| `x86-64-v2-AES` | Cluster misto, hardware dal 2010 circa | Compromesso sicuro, ampiamente compatibile |\n| `x86-64-v3` | Cluster misto ma hardware recente (Haswell+) | Include AVX2 |\n| `kvm64` (default storico) | Da evitare | Set di istruzioni minimo, prestazioni penalizzate |\n\n> ⚠️ **`host` impedisce la migrazione live verso un nodo con CPU diversa.** In un cluster che potrebbe crescere con hardware differente, usare un modello generico. Il guadagno di `host` è reale ma tipicamente inferiore al costo operativo di perdere la migrazione live — salvo carichi che sfruttano istruzioni specifiche (crittografia, compressione, database).\n\n> ⚠️ **Su host Intel con Windows 11/2022/2025 e VBS attiva**, `host` richiede machine version `11.0+pve2` o successiva: vedi il problema noto qui sopra.\n\n**Regola: 1 socket, N core.** Semplifica il licensing di Windows Server e SQL Server, ed è gestito meglio dalla maggior parte dei sistemi operativi.\n\nEccezione: attivando NUMA, la documentazione raccomanda **socket pari al numero di nodi NUMA dell'host**.\n\n```bash\nnumactl --hardware | grep available    # sull'host\n```\n\nPiù di un nodo ⇒ host NUMA. In quel caso **attivare NUMA sulle VM significative**: permette a Proxmox di distribuire correttamente vCPU e memoria sui nodi fisici, evitando accessi cross-socket che costano latenza. È inoltre **necessario per l'hot-plug di CPU e RAM**.",
+  "troncato": 1
+ },
+ "§1.4 › 1.4.1 Il conto degli snapshot su LVM": {
+  "titolo": "§1.4 Scegliere lo storage › 1.4.1 Il conto degli snapshot su LVM",
+  "file": "manuale/01-progettare.md",
+  "riga": 85,
+  "parte": "Parte 1",
+  "testo": "Su storage a blocchi ogni snapshot alloca **un volume della dimensione piena** del disco. Con 2 TB di dischi VM e uno snapshot per VM servono circa 4 TB allocati. Il calcolo va fatto sul caso peggiore.\n\nPerché lo spazio reale resti basso servono **due condizioni sulla SAN**, da verificare prima dell'acquisto:\n\n| Requisito | Senza |\n|---|---|\n| **Thin provisioning** | Ogni snapshot occupa fisicamente la dimensione piena |\n| **SCSI UNMAP / space reclamation** | Lo spazio dei dati cancellati non torna mai disponibile |",
+  "troncato": 0
+ },
+ "§1.7 › 1.7.1 Il vincolo Veeam, per esteso": {
+  "titolo": "§1.7 I vincoli che decidono l'architettura › 1.7.1 Il vincolo Veeam, per esteso",
+  "file": "manuale/01-progettare.md",
+  "riga": 150,
+  "parte": "Parte 1",
+  "testo": "> ⚠️ **Il plug-in Veeam per Proxmox VE richiede almeno uno storage file-level (per esempio NFS) nel cluster: non supporta ambienti basati esclusivamente su LVM.** I dischi delle worker appliance devono inoltre stare su storage che supporti gli snapshot.\n\nSe il progetto prevede solo una SAN a blocchi e il cliente usa Veeam, va messo a budget **anche uno storage NFS**. Non è un'aggiunta opzionale: è un blocco di progetto. Il perché tecnico è nella §21.1.",
+  "troncato": 0
+ },
+ "§11.1 › 11.1.1 Le tre differenze concettuali da spiegare prima di iniziare": {
+  "titolo": "§11.1 Perché e con quale urgenza › 11.1.1 Le tre differenze concettuali da spiegare prima di iniziare",
+  "file": "manuale/11-migrazione.md",
+  "riga": 14,
+  "parte": "Parte 11",
+  "testo": "Chi arriva da vSphere si aspetta equivalenze che non esistono. Chiarirle in anticipo evita metà delle discussioni successive.\n\n| vSphere | Proxmox VE | Nota |\n|---|---|---|\n| vCenter come punto di controllo | **Nessun vCenter.** Ogni nodo espone GUI, CLI e API; il cluster è multi-master a quorum | Esiste Proxmox Datacenter Manager per gestire più cluster, ma non è un vCenter |\n| DRS / vMotion automatico | Migrazione live manuale + CRS con bilanciamento dinamico (dalla 9.2, solo guest HA) | Non è un DRS equivalente |\n| HA con agent | HA a quorum con **self-fencing**: un nodo che perde il quorum si resetta da solo | Cambia il modello di rischio: la rete di cluster diventa critica |\n| VMFS | Storage plugin per tipo (ZFS, LVM, NFS, Ceph…) | Non esiste un filesystem cluster nativo equivalente |\n| Snapshot su qualunque datastore | Dipende dal tipo di storage (§11.3) | **È il punto che sorprende di più** |\n\n**Il quorum.** Servono almeno 3 nodi per un cluster stabile; con 2 nodi serve un QDevice come terzo voto. Non è negoziabile: senza quorum il cluster si blocca.\n\n**La rete di cluster.** Corosync considera inutilizzabile una rete non solo se cade, ma anche **se la latenza sale troppo**. Traffico di storage o di backup sullo stesso link fisico può saturarlo e far auto-fenciare i nodi: il sintomo è un cluster che sembra riavviarsi da solo. Best practice Proxmox: **una rete fisica dedicata a corosync**, più almeno un link ridondante. Questo va progettato **prima** della migrazione, non dopo.\n\n---",
+  "troncato": 0
+ },
+ "§11.2 › 11.2.1 Per ogni VM": {
+  "titolo": "§11.2 Assessment: cosa raccogliere prima di toccare qualcosa › 11.2.1 Per ogni VM",
+  "file": "manuale/11-migrazione.md",
+  "riga": 36,
+  "parte": "Parte 11",
+  "testo": "| Dato | Perché serve |\n|---|---|\n| Nome, vCPU, RAM, dimensione e numero dischi | Dimensionamento e configurazione target |\n| **Firmware: BIOS o UEFI** | Determina SeaBIOS vs OVMF. **Se sbagliato la VM non trova il bootloader** |\n| **Controller disco attuale** (LSI Logic / PVSCSI / SATA) | Determina la strategia di switch a VirtIO |\n| Sistema operativo e versione | Disponibilità driver VirtIO |\n| **vTPM presente?** | Lo stato vTPM **non è migrabile** da VMware. Impatta BitLocker |\n| **BitLocker o crittografia full-disk?** | Serve sospendere/decrittare, o avere le chiavi di ripristino |\n| Configurazione di rete (IP, DNS, gateway, route, VLAN) | Il nome dell'adattatore cambierà |\n| MAC address | Per mantenere le reservation DHCP |\n| **Snapshot presenti** | Rallentano enormemente l'import: da consolidare prima |\n| Dischi RDM / independent / shared | **Non migrabili** con i metodi standard |\n| Disk su **vSAN** | **Non importabili**: spostare prima su altro datastore |\n| **Cifratura VM (storage policy)** | **Non importabile**: rimuovere la policy prima |\n| Licenze legate a hardware ID / dongle USB | Rischio di riattivazione o blocco |\n| Criticità, finestra di manutenzione, RTO/RPO | Pianificazione delle ondate |",
+  "troncato": 0
+ },
+ "§11.2 › 11.2.2 Sull'infrastruttura sorgente": {
+  "titolo": "§11.2 Assessment: cosa raccogliere prima di toccare qualcosa › 11.2.2 Sull'infrastruttura sorgente",
+  "file": "manuale/11-migrazione.md",
+  "riga": 55,
+  "parte": "Parte 11",
+  "testo": "- Versione ESXi di ogni host e nome dei datastore (**caratteri speciali come `+` rompono l'import**)\n- Credenziali amministrative sugli host ESXi — **non solo su vCenter**, vedi §11.5.1\n- Banda disponibile tra ESXi e Proxmox\n\n---",
+  "troncato": 0
+ },
+ "§11.5 › 11.5.1 Regole per l'import wizard": {
+  "titolo": "§11.5 Metodi di migrazione › 11.5.1 Regole per l'import wizard",
+  "file": "manuale/11-migrazione.md",
+  "riga": 154,
+  "parte": "Parte 11",
+  "testo": "- **Puntare agli host ESXi, non a vCenter.** L'import via vCenter riduce le prestazioni in modo drammatico.\n- **La VM sorgente deve essere spenta** (anche con live-import).\n- **Consolidare o eliminare gli snapshot** sulla sorgente: la presenza di snapshot rallenta enormemente l'import.\n- Testato da ESXi 6.5 a 8.0.\n- Con certificati self-signed: aggiungere la CA al trust store o spuntare *Skip Certificate Verification*.\n- La scheda *Advanced* consente di scegliere storage diversi per ogni disco, modelli di NIC, e di **escludere dischi o CD-ROM** dall'import.",
+  "troncato": 0
+ }
+};
+/* ══ fine del blocco generato ══ */
+
+const REGOLE_BLOCCO = [
+  /* ── §2 le tre condizioni che l'import non supera ── */
+  { id:'vsan', sez:'s2', fonte:"§11.2 › 11.2.1 Per ogni VM", campo:'vsan_vm',
+    titolo:"VM su datastore vSAN",
+    quando: ()=> elenco('vsan_vm') ? 'blocco' : (v('feat_vsan')==='Sì' ? 'blocco' : (incerto('vsan_vm') ? 'verifica' : false)),
+    effetto:"L'import di Proxmox non legge i dischi che stanno su vSAN: quelle VM non si migrano.",
+    sblocco:"Spostarle su un datastore VMFS o NFS prima di cominciare, e verificare che ci sia lo spazio per farlo." },
+
+  { id:'datastore_nome', sez:'s2', fonte:"§11.2 › 11.2.2 Sull'infrastruttura sorgente", campo:'caratteri_speciali_vm',
+    titolo:"Caratteri speciali nel nome del datastore",
+    quando: ()=> elenco('caratteri_speciali_vm') ? 'blocco' : (incerto('caratteri_speciali_vm') ? 'verifica' : false),
+    effetto:"Un carattere speciale nel nome del datastore (tipicamente «+») fa fallire l'import.",
+    sblocco:"Rinominare il datastore, oppure spostare quelle VM su uno con un nome semplice." },
+
+  { id:'cifratura', sez:'s2', fonte:"§11.2 › 11.2.1 Per ogni VM", campo:'cifratura_policy_vm',
+    titolo:"VM cifrate con Storage Policy",
+    quando: ()=> elenco('cifratura_policy_vm') ? 'blocco' : (incerto('cifratura_policy_vm') ? 'verifica' : false),
+    effetto:"Le VM cifrate tramite Storage Policy non sono importabili.",
+    sblocco:"Rimuovere la policy di cifratura e attendere che i dischi siano riscritti in chiaro." },
+
+  { id:'credenziali_esxi', sez:'s2', fonte:"§11.2 › 11.2.2 Sull'infrastruttura sorgente", campo:'esxi_credenziali',
+    titolo:"Credenziali sui singoli host ESXi",
+    quando: ()=> seVale('esxi_credenziali','No'),
+    effetto:"L'import si collega al singolo host ESXi, non a vCenter: senza quelle credenziali non parte.",
+    sblocco:"Farsi consegnare (o reimpostare) la password di root sugli host prima della finestra." },
+
+  { id:'host_liberabile', sez:'s2', fonte:"§11.4", campo:'host_liberabile',
+    titolo:"Nessun host liberabile per il primo nodo",
+    quando: ()=> v('host_riuso')==='Sì' ? seVale('host_liberabile','No') : false,
+    effetto:"Riutilizzando gli host attuali serve almeno una macchina da svuotare su cui installare il primo nodo: senza, il cluster non ha da dove partire.",
+    sblocco:"Liberare un host spostandone le VM sugli altri, oppure mettere a budget un server di appoggio." },
+
+  /* ── §1 la via di ritorno ── */
+  { id:'rollback_spazio', sez:'s1', fonte:"§11.12", campo:'rollback_spazio',
+    titolo:"Nessuno spazio per tenere le VM di origine",
+    quando: ()=> seVale('rollback_spazio','No'),
+    effetto:"Senza spazio per tenere spente le VM di partenza non esiste rollback: l'unica via di ritorno è il ripristino da backup, con i tempi e i rischi che comporta.",
+    sblocco:"Liberare spazio su VMware prima della migrazione, oppure far accettare il rischio per iscritto." },
+
+  { id:'rollback_zero', sez:'s1', fonte:"§11.12", campo:'rollback_durata',
+    titolo:"Rollback a zero giorni",
+    quando: ()=> num('rollback_durata')===0 ? 'verifica' : false,
+    effetto:"Un problema applicativo che il collaudo non vede si manifesta giorni dopo: con zero giorni di conservazione non c'è più niente a cui tornare.",
+    sblocco:"Concordare 14-28 giorni di VM di origine spente ma intatte." },
+
+  { id:'ref_applicativo', sez:'s1', fonte:"§11.11", campo:'ref_applicativo',
+    titolo:"Referente applicativo non indicato",
+    quando: ()=> risposto('ref_applicativo') ? false : 'verifica',
+    effetto:"È l'unico che può confermare che il gestionale funziona davvero dopo la migrazione: senza, il collaudo resta senza firma e la contestazione arriva a lavori chiusi.",
+    sblocco:"Farsi indicare la persona che valida i servizi, e metterla in copia sul piano." },
+
+  /* ── §3 le VM che non si spostano come le altre ── */
+  { id:'bitlocker_key', sez:'s3', fonte:"§11.2 › 11.2.1 Per ogni VM", campo:'sp_recovery_key',
+    titolo:"BitLocker senza recovery key",
+    quando: ()=> elenco('sp_bitlocker') ? (elenco('sp_recovery_key') ? false : 'blocco') : false,
+    effetto:"Cambiando piattaforma cambia il TPM: una VM con l'intero disco cifrato e senza recovery key non riparte più, e il dato non è recuperabile.",
+    sblocco:"Recuperare le recovery key (Active Directory o Entra ID), oppure sospendere BitLocker prima di migrare." },
+
+  { id:'rdm', sez:'s3', fonte:"§11.2 › 11.2.1 Per ogni VM", campo:'sp_rdm',
+    titolo:"Dischi RDM, independent o shared",
+    quando: ()=> elenco('sp_rdm') ? 'blocco' : false,
+    effetto:"Questi dischi non passano dall'import: la VM arriva senza i suoi dati.",
+    sblocco:"Convertirli in dischi virtuali prima della migrazione, o pianificare a parte lo spostamento di quei volumi." },
+
+  { id:'cluster_app', sez:'s3', fonte:"§11.13", campo:'sp_cluster_app',
+    titolo:"Cluster applicativi",
+    quando: ()=> elenco('sp_cluster_app') ? 'blocco' : false,
+    effetto:"SQL Always On, failover cluster e Oracle RAC non si spostano con un import di massa: spegnere insieme i membri fa perdere il quorum applicativo.",
+    sblocco:"Migrare un nodo per volta lasciando il servizio attivo sugli altri, con il fornitore dell'applicativo al corrente." },
+
+  { id:'licenze_hw', sez:'s3', fonte:"§11.2 › 11.2.1 Per ogni VM", campo:'sp_licenze_hw',
+    titolo:"Licenze legate all'hardware",
+    quando: ()=> elenco('sp_licenze_hw') ? 'blocco' : false,
+    effetto:"Le licenze agganciate a MAC, UUID o dongle si invalidano al cambio di piattaforma, e il servizio riparte bloccato.",
+    sblocco:"Preservare il MAC nella configurazione Proxmox, farsi riemettere la licenza dal fornitore, o ricollocare il dongle su un host che lo espone in passthrough." },
+
+  { id:'snapshot', sez:'s3', fonte:"§11.5 › 11.5.1 Regole per l'import wizard", campo:'sp_snapshot',
+    titolo:"Snapshot attivi da consolidare",
+    quando: ()=> elenco('sp_snapshot') ? 'verifica' : false,
+    effetto:"Gli snapshot rallentano molto l'import e possono farlo scadere a metà, lasciando una VM incompleta.",
+    sblocco:"Consolidarli fuori orario prima della migrazione, e verificare che il consolidamento sia finito davvero." },
+
+  { id:'ft', sez:'s2', fonte:"§11.1 › 11.1.1 Le tre differenze concettuali da spiegare prima di iniziare", campo:'feat_ft',
+    titolo:"Fault Tolerance in uso",
+    quando: ()=> v('feat_ft')==='Sì' ? 'verifica' : false,
+    effetto:"Fault Tolerance non esiste su Proxmox VE: il servizio che oggi non si ferma mai, dopo la migrazione si ferma per il tempo di un riavvio.",
+    sblocco:"Sostituirla con ridondanza applicativa, oppure far accettare il tempo di ripartenza dell'alta affidabilità." },
+
+  /* ── §4-5 la rete ── */
+  { id:'nic_una', sez:'s5', fonte:"§1.3", campo:'reti_interfacce',
+    titolo:"Una sola interfaccia fisica per nodo",
+    quando: ()=> { const n = num('reti_interfacce'); return (n!==null && n>0 && n<2) ? 'blocco' : false; },
+    effetto:"Corosync condivide il percorso con storage e VM: quando la latenza sale i nodi si dichiarano isolati e si riavviano da soli (self-fencing), anche se la rete non è caduta.",
+    sblocco:"Portare a quattro le NIC per nodo — management, corosync, storage, VM — o rinunciare al cluster e restare a nodi singoli." },
+
+  { id:'nic_poche', sez:'s5', fonte:"§1.3", campo:'reti_interfacce',
+    titolo:"Meno di quattro interfacce per nodo",
+    quando: ()=> { const n = num('reti_interfacce'); return (n!==null && n>=2 && n<4) ? 'verifica' : false; },
+    effetto:"Qualche funzione dovrà condividere un percorso con un'altra: è il compromesso più frequente, e va deciso adesso quale — non scoperto in produzione.",
+    sblocco:"Documentare quali reti convivono e su quale collegamento, tenendo il secondo anello corosync su un percorso suo." },
+
+  { id:'switch_porte', sez:'s4', fonte:"§1.3", campo:'switch_porte_libere',
+    titolo:"Poche porte libere sugli switch",
+    quando: ()=> { const n = parseFloat(v('switch_porte_libere.porte')); if(isNaN(n)) return false; if(n>0 && n<2) return 'blocco'; return n<4 ? 'verifica' : false; },
+    effetto:"Le porte libere per nodo decidono se la rete di cluster si può separare fisicamente dalle altre: è il vincolo che più spesso costringe a un compromesso.",
+    sblocco:"Verificare con chi gestisce gli switch se si liberano porte, o mettere a budget uno switch aggiuntivo." },
+
+  { id:'ntp', sez:'s4', fonte:"§2.1", campo:'ntp',
+    titolo:"Sorgente NTP non dichiarata",
+    quando: ()=> risposto('ntp') && !incerto('ntp') ? false : 'verifica',
+    effetto:"Un drift dell'orologio rompe l'autenticazione Kerberos e destabilizza il quorum del cluster: sono guasti che sembrano tutt'altro.",
+    sblocco:"Indicare la sorgente NTP che useranno i nodi, e verificare che sia raggiungibile dalla rete di management." },
+
+  { id:'ip_corosync', sez:'s4', fonte:"§1.8", campo:null,
+    titolo:"Indirizzi di management e corosync non riservati",
+    quando: ()=> campoValorizzato('__ipnodi') ? false : 'verifica',
+    effetto:"Management e i due anelli corosync vogliono indirizzi liberi PRIMA dell'installazione: assegnarli dopo significa rifare la configurazione del cluster.",
+    sblocco:"Farli riservare sul piano di indirizzamento del cliente, uno per nodo per ciascuna delle tre reti." },
+
+  /* ── §6 lo storage ── */
+  { id:'thin', sez:'s6', fonte:"§1.4 › 1.4.1 Il conto degli snapshot su LVM", campo:'storage_thin',
+    titolo:"Storage senza thin provisioning",
+    quando: ()=> seVale('storage_thin','No'),
+    effetto:"Ogni snapshot occupa fisicamente la dimensione piena del disco: la capacità stimata sul consumo reale non basta.",
+    sblocco:"Verificarlo col fornitore prima dell'ordine; se manca davvero, dimensionare sul caso peggiore e rifare il conto della capacità." },
+
+  { id:'unmap', sez:'s6', fonte:"§1.4 › 1.4.1 Il conto degli snapshot su LVM", campo:'storage_unmap',
+    titolo:"Storage senza SCSI UNMAP",
+    quando: ()=> seVale('storage_unmap','No'),
+    effetto:"Lo spazio dei dati cancellati non torna mai disponibile: l'occupazione cresce e non scende più.",
+    sblocco:"Verificare il supporto UNMAP / space reclamation sull'array; se manca, mettere a budget la capacità che non si recupererà." },
+
+  { id:'zfs_raid', sez:'s6', fonte:"§4.2", campo:'zfs_hba',
+    titolo:"ZFS su controller RAID hardware",
+    quando: ()=> /raid/i.test(v('zfs_hba')) && !/\b(it|hba|passthrough|jbod)\b/i.test(v('zfs_hba')) ? 'blocco' : false,
+    effetto:"ZFS vuole i dischi in chiaro: un controller RAID che glieli nasconde gli toglie il controllo della ridondanza, e quando un disco si guasta ZFS non può ripararlo.",
+    sblocco:"Passare il controller in modalità IT/HBA, o sostituirlo con un HBA vero." },
+
+  { id:'zfs_rpo', sez:'s6', fonte:"§4.5", campo:'zfs_rpo',
+    titolo:"ZFS locale con RPO zero richiesto",
+    quando: ()=> v('storage_tipo')==='ZFS locale' ? seVale('zfs_rpo','No') : false,
+    effetto:"La replica ZFS è asincrona: fra due repliche i dati scritti si perdono. Se un RPO maggiore di zero non è accettabile, lo storage locale non è la strada.",
+    sblocco:"O si accetta un RPO pari all'intervallo di replica, o si passa a uno storage condiviso." },
+
+  { id:'capacita', sez:'s6', fonte:"§5.8", campo:'cap_totale',
+    titolo:"Capacità richiesta oltre lo spazio disponibile",
+    quando: ()=> { const c = trovaCampo('cap_totale'); const tot = c ? numeroCalc(c) : 0;
+                   const libera = parseFloat(v('storage_capacita.libera'));
+                   return (tot>0 && !isNaN(libera) && libera>0 && tot>libera) ? 'blocco' : false; },
+    effetto: ()=> { const c = trovaCampo('cap_totale'); const tot = Math.round((c?numeroCalc(c):0)*10)/10;
+                    return t("Il totale calcolato (§TOT TB) supera lo spazio libero dichiarato sullo storage (§LIBERA TB): il progetto così com'è non ci sta.")
+                            .replace('§TOT', tot).replace('§LIBERA', v('storage_capacita.libera')); },
+    sblocco:"Ampliare lo storage, ridurre il perimetro della migrazione, o rivedere lo spazio previsto per gli snapshot." },
+
+  { id:'sas', sez:'s6', fonte:"§5.2", campo:null,
+    titolo:"SAS direct-attached: porte e nodi",
+    quando: ()=> { if(v('storage_tipo')!=='SAS direct-attached') return false;
+                   const porte = num('sas_porte'), server = num('sas_server');
+                   if(porte===null || server===null) return 'verifica';
+                   return (v('sas_switch')!=='Sì' && porte < server) ? 'blocco' : false; },
+    effetto:"Senza switch SAS ogni nodo occupa una porta per controller per avere ridondanza: un array dual-controller con due porte regge due nodi, ma il quorum ne vuole tre.",
+    sblocco:"Compilare §6.3 nella vista Completo; poi o si aggiunge uno switch SAS, o si sceglie un array con più porte, o si rinuncia al terzo nodo su quello storage." },
+
+  /* ── §7 i nodi e il quorum ── */
+  { id:'qdevice', sez:'s7', fonte:"§3.5", campo:'cluster_qdevice',
+    titolo:"Cluster a due nodi senza terzo voto",
+    quando: ()=> num('cluster_nodi_num')===2 ? (risposto('cluster_qdevice') && !incerto('cluster_qdevice') ? false : 'blocco') : false,
+    effetto:"Senza QDevice un cluster a due nodi non fa alta affidabilità: la caduta di un nodo toglie il quorum e blocca anche quello rimasto.",
+    sblocco:"Collocare un QDevice su una macchina terza sempre accesa (anche piccola), oppure prevedere tre nodi." },
+
+  { id:'cpu_diverse', sez:'s7', fonte:"§8.1", campo:'nodi_cpu_identiche',
+    titolo:"CPU dei nodi non identiche",
+    quando: ()=> { const x = v('nodi_cpu_identiche'); if(x==='No') return 'verifica'; if(x==='Da verificare') return 'verifica'; return false; },
+    effetto:"Con CPU diverse il tipo `host` non è utilizzabile: senza un modello comune la migrazione a caldo fallisce nel momento in cui serve.",
+    sblocco:"Scegliere il modello CPU più basso comune a tutti i nodi, metterlo a verbale e provare una migrazione a caldo in collaudo." },
+
+  /* ── §8 il backup ── */
+  { id:'veeam', sez:'s8', fonte:"§1.7 › 1.7.1 Il vincolo Veeam, per esteso", campo:'veeam_filelevel',
+    titolo:"Veeam senza storage file-level",
+    quando: ()=> v('veeam_previsto')==='Sì' ? seVale('veeam_filelevel','No') : false,
+    effetto:"Il plug-in Veeam per Proxmox VE richiede almeno uno storage file-level nel cluster: su un'infrastruttura basata solo su LVM non funziona, e il backup non parte.",
+    sblocco:"Mettere a budget uno storage NFS — non è opzionale — oppure proteggere il cluster con Proxmox Backup Server." },
+
+  { id:'dump_db', sez:'s8', fonte:"§12.12", campo:'pbs_dump_db',
+    titolo:"Database senza dump applicativo",
+    quando: ()=> { const x = v('pbs_dump_db').trim(); if(x==='') return false; return NEGATIVO.test(x) ? 'verifica' : false; },
+    effetto:"Il backup della VM cattura lo stato del disco, non la coerenza transazionale del DBMS: si ripristina un database che si è fermato di colpo.",
+    sblocco:"Aggiungere un dump nativo (pg_dump, mysqldump, backup SQL Server) prima della finestra di backup della VM." },
+
+  /* ── §9 senza queste non si lavora ── */
+  { id:'repo', sez:'s9', fonte:"§1.6", campo:'sic_repo',
+    titolo:"Nessun accesso ai repository",
+    quando: ()=> seVale('sic_repo','No'),
+    effetto:"Senza accesso a Internet e senza mirror interno non si installa e non si aggiorna: il cluster nasce alla versione del supporto di installazione e ci resta.",
+    sblocco:"Aprire l'accesso ai repository Proxmox e Debian, anche solo attraverso un proxy, oppure predisporre un mirror interno prima dell'installazione." },
+];
+
+/* Le id citate dalle regole devono esistere davvero: una regola che punta a un
+   campo inesistente non si accende mai, e non se ne accorge nessuno. */
+const REGOLE_CAMPI_IGNOTI = [];
+
+function valutaBlocchi(){
+  const blocchi = [], verifiche = [];
+  REGOLE_BLOCCO.forEach(r=>{
+    let esito = false;
+    try{ esito = r.quando(); }catch(_){ esito = false; }
+    if(esito === 'blocco') blocchi.push(r);
+    else if(esito === 'verifica') verifiche.push(r);
+  });
+  return { blocchi, verifiche };
+}
+function testoRegola(r, chiave){
+  const x = r[chiave];
+  return t(typeof x === 'function' ? x() : x);
+}
+function rossiMancanti(){
+  return campiRossiVisibili().filter(c=>!campoValorizzato(c.id));
+}
+
+/* ───────────────────────── il manuale dentro la pagina ─────────────────────────
+   Il testo delle regole citate sta nel blocco generato qui sopra. Va mostrato,
+   non solo citato: un questionario che dice «vedi §11.13» a un cliente che il
+   manuale non ce l'ha non ha spiegato niente. È la stessa scelta del report
+   dell'audit, e il passaggio compare UNA volta sola in fondo — §11.2.1 è citato
+   da cinque regole, ripeterlo cinque volte sarebbe illeggibile.                */
+
+const FONTI_DISPONIBILI = typeof FONTI !== 'undefined' ? FONTI : {};
+const ancoraId = a => 'regola-' + String(a).replace(/§/g,'').replace(/[^0-9A-Za-z]+/g,'-').replace(/^-|-$/g,'').toLowerCase();
+
+/* Il manuale è Markdown: qui se ne rende il sottoinsieme che usa davvero —
+   tabelle, blocchi di codice, citazioni, elenchi, grassetto, codice inline.
+   Senza questo, §11.13 (che è una tabella) arriverebbe come una colata di pipe. */
+function inline(t){
+  return escHtml(t)
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[\s(])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+}
+function celle(riga){ return riga.replace(/^\||\|$/g,'').split('|').map(c=>c.trim()); }
+const separatore = r => /^\|?[\s:-]*-[\s:|-]*\|?$/.test(r) && r.includes('-');
+
+function mdInHtml(md){
+  const righe = String(md||'').split('\n');
+  const out = [];
+  let i = 0;
+  while(i < righe.length){
+    const r = righe[i];
+    if(r.trim().startsWith('```')){                       // blocco di codice
+      const dentro = [];
+      i++;
+      while(i < righe.length && !righe[i].trim().startsWith('```')){ dentro.push(righe[i]); i++; }
+      i++;
+      out.push(`<pre>${escHtml(dentro.join('\n'))}</pre>`);
+      continue;
+    }
+    if(r.trim().startsWith('|') && righe[i+1] !== undefined && separatore(righe[i+1])){
+      const intestazione = celle(r);
+      i += 2;
+      const corpo = [];
+      while(i < righe.length && righe[i].trim().startsWith('|')){ corpo.push(celle(righe[i])); i++; }
+      out.push(`<table><thead><tr>${intestazione.map(c=>`<th>${inline(c)}</th>`).join('')}</tr></thead>`
+             + `<tbody>${corpo.map(rr=>`<tr>${rr.map(c=>`<td>${inline(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>`);
+      continue;
+    }
+    if(/^\s*>/.test(r)){
+      const dentro = [];
+      while(i < righe.length && /^\s*>/.test(righe[i])){ dentro.push(righe[i].replace(/^\s*>\s?/, '')); i++; }
+      out.push(`<blockquote>${inline(dentro.join(' '))}</blockquote>`);
+      continue;
+    }
+    if(/^\s*[-*]\s+/.test(r)){
+      const voci = [];
+      while(i < righe.length && /^\s*[-*]\s+/.test(righe[i])){ voci.push(righe[i].replace(/^\s*[-*]\s+/, '')); i++; }
+      out.push(`<ul>${voci.map(v=>`<li>${inline(v)}</li>`).join('')}</ul>`);
+      continue;
+    }
+    if(/^#{1,6}\s+/.test(r)){ out.push(`<h5>${inline(r.replace(/^#{1,6}\s+/, ''))}</h5>`); i++; continue; }
+    if(!r.trim()){ i++; continue; }
+    const par = [];
+    while(i < righe.length && righe[i].trim() && !/^\s*[-*>|#]/.test(righe[i]) && !righe[i].trim().startsWith('```')){ par.push(righe[i]); i++; }
+    if(par.length) out.push(`<p>${inline(par.join(' '))}</p>`);
+    else i++;
+  }
+  return out.join('');
+}
+
+/* Le fonti citate dalle regole accese: una voce per passaggio, come fa il
+   report dell'audit — e con l'origine, perché un'affermazione tecnica senza
+   provenienza fra un anno è indistinguibile da una sbagliata. */
+function fontiCitate(regole){
+  const viste = [];
+  regole.forEach(r=>{ if(r.fonte && !viste.includes(r.fonte)) viste.push(r.fonte); });
+  return viste;
+}
+function renderRegoleApplicate(){
+  const { blocchi, verifiche } = valutaBlocchi();
+  const citate = fontiCitate([...blocchi, ...verifiche]);
+  if(!citate.length) return '';
+  const m = typeof MANUALE !== 'undefined' ? MANUALE : {};
+  let h = `<section class="sez regole-app" id="regole-applicate"><div class="sez-testa"><span class="sez-num">Reg.</span><h2>${escHtml(t('Le regole applicate'))}</h2></div>`;
+  h += `<p class="sez-nota">${escHtml(t("Il testo per esteso delle regole che l'esito qui sopra cita, dal manuale operativo Proxmox VE di Domarc. Compaiono solo le regole richiamate dalle risposte date: il documento basta a sé stesso, chi lo legge non deve avere il manuale sottomano."))}</p>`;
+  citate.forEach(a=>{
+    const f = FONTI_DISPONIBILI[a];
+    h += `<div class="regola" id="${ancoraId(a)}">`;
+    h += `<h3>${escHtml(f ? f.titolo : a)}</h3>`;
+    if(f){
+      h += `<div class="regola-testo">${mdInHtml(f.testo)}</div>`;
+      if(f.troncato) h += `<p class="regola-taglio">${escHtml(t('Estratto: la sezione del manuale prosegue.'))}</p>`;
+      h += `<p class="regola-org">${escHtml(f.file)}${f.riga?':'+f.riga:''}${f.parte?' · '+escHtml(f.parte):''}`
+         + ` · ${escHtml(m.nome||'')}${m.versione&&m.versione!=='?'?' '+escHtml(m.versione):''}`
+         + `${m.verificato&&m.verificato!=='?'?' — '+escHtml(t('verificato il'))+' '+escHtml(m.verificato):''}</p>`;
+    } else {
+      h += `<p class="regola-org">${escHtml(t('Testo non disponibile in questa copia della pagina.'))}</p>`;
+    }
+    h += `</div>`;
+  });
+  return h + `</section>`;
+}
+
+function renderEsito(){
+  const { blocchi, verifiche } = valutaBlocchi();
+  const vuoti = rossiMancanti().length;
+  const conteggi = [];
+  if(blocchi.length)   conteggi.push(`<span class="cnt-bl">${blocchi.length} ${escHtml(t(blocchi.length===1?'blocco':'blocchi'))}</span>`);
+  if(verifiche.length) conteggi.push(`<span class="cnt-vf">${verifiche.length} ${escHtml(t('da verificare'))}</span>`);
+  if(vuoti)            conteggi.push(`<span class="cnt-vu">${vuoti} ${escHtml(t('campi bloccanti vuoti'))}</span>`);
+  if(!conteggi.length) conteggi.push(`<span class="cnt-ok">${escHtml(t('nessun blocco rilevato'))}</span>`);
+
+  const voce = (r, cls) => {
+    const dove = r.campo ? `<a class="dove" href="#${r.sez}" data-vai="${escHtml(r.campo)}">${escHtml(t('vai alla domanda'))}</a>`
+                         : `<a class="dove" href="#${r.sez}">${escHtml(t('vai alla sezione'))}</a>`;
+    const fonte = r.fonte
+      ? `<a class="fonte" href="#${ancoraId(r.fonte)}">${escHtml(t('manuale'))} ${escHtml(r.fonte)}</a>`
+      : '';
+    return `<li class="${cls}"><b>${escHtml(testoRegola(r,'titolo'))}</b>${dove}
+      <p>${escHtml(testoRegola(r,'effetto'))}</p>
+      <p class="sblocco">→ ${escHtml(testoRegola(r,'sblocco'))}</p>${fonte}</li>`;
+  };
+
+  let h = `<section class="esito" id="esito"><div class="esito-testa"><h2>${escHtml(t('Esito'))}</h2><div class="esito-conteggi">${conteggi.join('')}</div></div>`;
+  h += `<p class="esito-nota">${escHtml(t("Calcolato sulle risposte date, in qualunque vista — l'esito non cambia passando da Essenziale a Completo. Un blocco non impedisce di esportare: va consegnato, non nascosto."))}</p>`;
+  if(blocchi.length) h += `<ul>` + blocchi.map(r=>voce(r,'bl')).join('') + `</ul>`;
+  if(verifiche.length){
+    // i «da verificare» si aprono a richiesta: con dieci rilievi aperti il
+    // questionario finisce sotto la piega e non lo compila più nessuno
+    h += `<details class="esito-altro"><summary>${verifiche.length} ${escHtml(t('da verificare'))} — ${escHtml(t('possono diventare blocchi'))}</summary>`
+       + `<ul>` + verifiche.map(r=>voce(r,'vf')).join('') + `</ul></details>`;
+  }
+  return h + `</section>`;
+}
 
 /* ───────────────────────── progresso e validazione ───────────────────────── */
 function campoValorizzato(id){
@@ -1289,11 +2143,15 @@ function trovaCampo(id){
   return null;
 }
 function numeroCalc(campo){ return campo.calc.reduce((t,k)=>t+(parseFloat(STATO.campi[k])||0), 0); }
+/* I campi bloccanti che si vedono nel filtro attivo: il conteggio deve parlare
+   di quello che si ha davanti, altrimenti la barra chiede domande invisibili. */
+function campiRossiVisibili(){
+  return tutteCampiRosse().filter(c=> c.speciale ? true :
+    DOC.sezioni.some(s=> s.id===c.sez && (s.gruppi||[]).some(g=>
+      visibile(g) && g.tipo==='qa' && g.righe.some(r=> r.id===c.id && visibile(r)))));
+}
 function aggiornaProgresso(){
-  const rossi = tutteCampiRosse().filter(c=> FILTRO==='completo' || c.speciale ? true : (
-    // in base contano solo i rossi effettivamente visibili in quel filtro
-    DOC.sezioni.some(s=> s.id===c.sez && (s.gruppi||[]).some(g=> g.tipo==='qa' && g.righe.some(r=>r.id===c.id && visibileSe(r.base))))
-  ));
+  const rossi = campiRossiVisibili();
   const mancanti = rossi.filter(c=>!campoValorizzato(c.id));
   const fatti = rossi.length - mancanti.length;
   const pct = rossi.length ? Math.round(100*fatti/rossi.length) : 100;
@@ -1315,6 +2173,34 @@ function aggiornaProgresso(){
     const id = r.dataset.campo;
     r.classList.toggle('mancante', !campoValorizzato(id));
   });
+
+  // esito: si ridisegna solo il pannello, per non togliere il fuoco a chi sta scrivendo
+  const vecchio = document.getElementById('esito');
+  if(vecchio){
+    const tmp = document.createElement('div');
+    tmp.innerHTML = renderEsito();
+    vecchio.replaceWith(tmp.firstElementChild);
+  }
+  const vecchieRegole = document.getElementById('regole-applicate');
+  const nuoveRegole = renderRegoleApplicate();
+  if(vecchieRegole && nuoveRegole){
+    const tmp2 = document.createElement('div'); tmp2.innerHTML = nuoveRegole;
+    vecchieRegole.replaceWith(tmp2.firstElementChild);
+  } else if(vecchieRegole && !nuoveRegole){
+    vecchieRegole.remove();
+  } else if(!vecchieRegole && nuoveRegole){
+    const app = document.querySelector('.script-wrap')?.closest('section.sez');
+    if(app){ const tmp2 = document.createElement('div'); tmp2.innerHTML = nuoveRegole; app.before(tmp2.firstElementChild); }
+  }
+  const { blocchi, verifiche } = valutaBlocchi();
+  const spia = document.getElementById('pctBlocchi');
+  if(spia){
+    spia.innerHTML = blocchi.length || verifiche.length
+      ? `<a href="#esito">${blocchi.length ? `<b class="bl">${blocchi.length} ${escHtml(t(blocchi.length===1?'blocco':'blocchi'))}</b>` : ''}`
+        + `${blocchi.length && verifiche.length ? ' · ' : ''}`
+        + `${verifiche.length ? `<b class="vf">${verifiche.length} ${escHtml(t('da verificare'))}</b>` : ''}</a>`
+      : '';
+  }
 }
 
 /* ───────────────────────── indice attivo / navigazione ───────────────────────── */
@@ -1394,10 +2280,7 @@ document.getElementById('fileCarica').addEventListener('change', e=>{
 });
 
 document.getElementById('btnEsporta').addEventListener('click', ()=>{
-  const mancanti = tutteCampiRosse().filter(c=>{
-    const inFiltro = c.speciale || DOC.sezioni.some(s=> s.id===c.sez && (s.gruppi||[]).some(g=> g.tipo==='qa' && g.righe.some(r=>r.id===c.id && visibileSe(r.base))));
-    return inFiltro && !campoValorizzato(c.id);
-  });
+  const mancanti = rossiMancanti();
   if(mancanti.length){
     mostraToast(`${mancanti.length} ${t('campi bloccanti ancora vuoti — completare o scrivere "da verificare"')}`, 'err');
     const primo = document.querySelector('.riga.mancante') || (mancanti[0].speciale ? document.querySelector('[data-tabella="ipnodi"]') : null);
@@ -1423,18 +2306,94 @@ function valoreMd(c){
 }
 function rigaMd(cols, r){ return '| ' + cols.map(c=>(r[c.key]??'').toString().replace(/\|/g,'/')).join(' | ') + ' |'; }
 
+function regoleApplicateMarkdown(){
+  const { blocchi, verifiche } = valutaBlocchi();
+  const citate = fontiCitate([...blocchi, ...verifiche]);
+  if(!citate.length) return [];
+  const m = typeof MANUALE !== 'undefined' ? MANUALE : {};
+  const out = ['# ' + t('Le regole applicate'), ''];
+  out.push('> ' + t("Il testo per esteso delle regole che l'esito cita, dal manuale operativo Proxmox VE di Domarc. Compaiono solo le regole richiamate dalle risposte date: il documento basta a sé stesso."));
+  out.push('');
+  citate.forEach(a=>{
+    const f = FONTI_DISPONIBILI[a];
+    out.push(`## ${f ? f.titolo : a}`);
+    out.push('');
+    if(f){
+      out.push(f.testo);
+      out.push('');
+      if(f.troncato){ out.push('*' + t('Estratto: la sezione del manuale prosegue.') + '*'); out.push(''); }
+      const org = [f.file + (f.riga ? ':' + f.riga : ''), f.parte,
+                   (m.nome||'') + (m.versione && m.versione!=='?' ? ' ' + m.versione : ''),
+                   (m.verificato && m.verificato!=='?' ? t('verificato il') + ' ' + m.verificato : '')].filter(Boolean);
+      out.push('*' + org.join(' · ') + '*');
+      out.push('');
+    }
+  });
+  out.push('---');
+  out.push('');
+  return out;
+}
+
+function esitoMarkdown(){
+  const { blocchi, verifiche } = valutaBlocchi();
+  const vuoti = rossiMancanti();
+  const out = [];
+  const conteggi = [];
+  if(blocchi.length)   conteggi.push(`${blocchi.length} ${t(blocchi.length===1?'blocco':'blocchi')}`);
+  if(verifiche.length) conteggi.push(`${verifiche.length} ${t('da verificare')}`);
+  if(vuoti.length)     conteggi.push(`${vuoti.length} ${t('campi bloccanti vuoti')}`);
+  out.push(`# ${t('Esito')} — ${conteggi.length ? conteggi.join(', ') : t('nessun blocco rilevato')}`);
+  out.push('');
+  out.push(`> ${t("Calcolato sulle risposte date. I blocchi vanno risolti prima di installare: emergendo a lavori avviati costano un rifacimento o un acquisto sbagliato.")}`);
+  out.push('');
+
+  const voce = (r) => {
+    out.push(`**${testoRegola(r,'titolo')}** — ${t('questionario')} §${(r.sez||'').replace('s','')}${r.fonte ? ` · ${t('manuale')} ${r.fonte}` : ''}`);
+    out.push('');
+    out.push(testoRegola(r,'effetto'));
+    out.push('');
+    out.push(`→ ${testoRegola(r,'sblocco')}`);
+    out.push('');
+  };
+  if(blocchi.length){
+    out.push(`## 🔴 ${t('Blocchi — vanno risolti prima di installare')}`);
+    out.push('');
+    blocchi.forEach(voce);
+  }
+  if(verifiche.length){
+    out.push(`## 🟡 ${t('Da verificare — possono diventare blocchi')}`);
+    out.push('');
+    verifiche.forEach(voce);
+  }
+  if(vuoti.length){
+    out.push(`## ⬜ ${t('Campi bloccanti ancora vuoti')}`);
+    out.push('');
+    vuoti.forEach(c=> out.push(`- ${t(c.label)} (§${(c.sez||'').replace('s','')})`));
+    out.push('');
+  }
+  if(!blocchi.length && !verifiche.length && !vuoti.length){
+    out.push(t('Con le risposte date non emergono condizioni che bloccano la migrazione.'));
+    out.push('');
+  }
+  out.push('---');
+  out.push('');
+  return out;
+}
+
 function esportaMarkdown(){
   const M = STATO.meta;
   let out = [];
-  out.push(`# ${t(DOC.titolo)}${FILTRO==='base'?t(' — versione base'):''}`);
+  const suffisso = FILTRO==='base' ? t(' — versione base') : FILTRO==='essenziale' ? t(' — versione essenziale') : '';
+  out.push(`# ${t(DOC.titolo)}${suffisso}`);
   out.push('');
   out.push(`**${t('Cliente')}:** ${M.meta_cliente||'______'}  **${t('Data')}:** ${M.meta_data||'______'}  **${t('Compilato da')}:** ${M.meta_compilatore||'______'}  **${t('Referente Domarc')}:** ${M.meta_referente||'______'}`);
   out.push('');
   out.push('---');
   out.push('');
+  out.push(...esitoMarkdown());
 
   DOC.sezioni.forEach(s=>{
-    if(!visibileSe(s.base)) return;
+    if(!visibile(s)) return;
     out.push(`# ${t('SEZIONE')} ${s.numero} — ${t(s.titolo)}`);
     out.push('');
     if(s.nota){ out.push(`> ${t(s.nota)}`); out.push(''); }
@@ -1451,9 +2410,9 @@ function esportaMarkdown(){
     }
 
     (s.gruppi||[]).forEach(g=>{
+      if(!visibile(g)) return;
       if(g.tipo==='qa'){
-        if(!visibileSe(g.base)) return;
-        const righeVis = g.righe.filter(c=>visibileSe(c.base));
+        const righeVis = g.righe.filter(c=>visibile(c));
         if(!righeVis.length) return;
         if(g.titolo) out.push(`## ${s.numero}.x ${t(g.titolo)}`);
         if(g.nota) out.push(`> ${t(g.nota)}`);
@@ -1465,34 +2424,33 @@ function esportaMarkdown(){
         });
         out.push('');
       } else if(g.tipo==='vm'){
-        const cols = [...COLONNE_VM_BASE, ...COLONNE_VM_COMPLETO].filter(c=>visibileSe(c.base));
+        const cols = [...COLONNE_VM_BASE, ...COLONNE_VM_COMPLETO].filter(c=>visibile(c));
         out.push('| # | ' + cols.map(c=>t(c.label)).join(' | ') + ' |');
         out.push('|---|' + cols.map(()=>'---').join('|') + '|');
         STATO.vm.forEach((r,i)=>{ out.push(`| ${i+1} | ` + cols.map(c=>(r[c.key]||'').toString().replace(/\|/g,'/')).join(' | ') + ' |'); });
         out.push('');
       } else if(g.tipo==='vlan'){
         if(g.titolo) out.push(`## ${s.numero}.x ${t(g.titolo)}`);
-        const cols = COLONNE_VLAN.filter(c=>visibileSe(c.base));
+        const cols = COLONNE_VLAN.filter(c=>visibile(c));
         out.push('| ' + cols.map(c=>t(c.label)).join(' | ') + ' |');
         out.push('|' + cols.map(()=>'---').join('|') + '|');
         STATO.vlan.forEach(r=>{ out.push(rigaMd(cols, r)); });
         out.push('');
       } else if(g.tipo==='nodi'){
         if(g.titolo) out.push(`## ${s.numero}.x ${t(g.titolo)}`);
-        const cols = COLONNE_NODI.filter(c=>visibileSe(c.base));
+        const cols = COLONNE_NODI.filter(c=>visibile(c));
         out.push(`| ${t('Nodo')} | ` + cols.map(c=>t(c.label)).join(' | ') + ' |');
         out.push('|---|' + cols.map(()=>'---').join('|') + '|');
         STATO.nodi.forEach((r,i)=>{ out.push(`| ${i+1} | ` + cols.map(c=>(r[c.key]||'').toString().replace(/\|/g,'/')).join(' | ') + ' |'); });
         out.push('');
       } else if(g.tipo==='ipnodi'){
         out.push(`## ${s.numero}.x ${t(g.titolo)}`);
-        const cols = COLONNE_IP.filter(c=>visibileSe(c.base));
+        const cols = COLONNE_IP.filter(c=>visibile(c));
         out.push(`| ${t('Nodo')} | ` + cols.map(c=>(c.rosso?'🔴 ':'')+t(c.label)).join(' | ') + ' |');
         out.push('|---|' + cols.map(()=>'---').join('|') + '|');
         STATO.nodi.forEach((r,i)=>{ out.push(`| ${i+1}${r.modello?' '+r.modello:''} | ` + cols.map(c=>(r[c.key]||'').toString().replace(/\|/g,'/')).join(' | ') + ' |'); });
         out.push('');
       } else if(g.tipo==='dip'){
-        if(!visibileSe(g.base)) return;
         if(g.titolo) out.push(`## ${s.numero}.x ${t(g.titolo)}`);
         if(g.nota) out.push(`> ${t(g.nota)}`);
         out.push('| ' + COLONNE_DIP.map(c=>t(c.label)).join(' | ') + ' |');
@@ -1514,6 +2472,7 @@ function esportaMarkdown(){
     out.push('');
   });
 
+  out.push(...regoleApplicateMarkdown());
   out.push('# ' + t("APPENDICE — Script PowerCLI per l'inventario automatico"));
   out.push('');
   out.push('```powershell');
@@ -1536,8 +2495,8 @@ function mostraToast(msg, tipo=''){
 /* ───────────────────────── avvio ───────────────────────── */
 statoIniziale();
 if(caricaLocale()){ mostraToast(t('Bozza precedente ripristinata')); }
-document.getElementById('fBase').setAttribute('aria-pressed', FILTRO==='base');
-document.getElementById('fCompleto').setAttribute('aria-pressed', FILTRO==='completo');
+if(LIVELLI[FILTRO]==null) FILTRO = 'completo';
+segnaFiltro();
 renderTutto();
 </script>
 </body>
