@@ -192,7 +192,8 @@ def test_invio_al_portale_e_codice_distinto_dal_codice_cliente():
     è la chiave d'accesso al portale. Averli chiamati uguale faceva fallire
     argparse all'avvio: un guasto che il tecnico avrebbe scoperto davanti al
     cluster (2026-09-09)."""
-    import subprocess, sys
+    import subprocess
+    import sys
     from pathlib import Path
     aiuto = subprocess.run([sys.executable, str(Path(__file__).resolve().parents[1] / "audit-nodo.py"), "--help"],
                            capture_output=True, text=True, timeout=60)
