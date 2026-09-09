@@ -12,6 +12,11 @@ USO DAL CLIENT (macOS, Linux o Windows con Python 3.7+ e il client ssh)
     python3 audit-nodo.py --host 192.168.40.1 --solo-questo-nodo
     python3 audit-nodo.py                                     # menu (host salvati)
 
+    # con il portale dei clienti: le tipologie delle VM si assegnano da lì,
+    # e qui non viene chiesto niente
+    python3 audit-nodo.py --host 192.168.40.1 \\
+        --invia https://survey.domarc.it/proxmox --codice-portale PXM-XXXX-XXXX-XXXX
+
 Produce sempre DUE file Markdown nella cartella di --output (default: quella
 corrente), con il nome composto da codice cliente, nome cliente e indirizzo:
     C0123_Rossi-Srl_192.168.40.1_inventory.md   cosa c'è (cluster, nodi, hardware, VM)
@@ -2189,7 +2194,14 @@ def esegui(args):
 
     vms = costruisci_vms(inv) if not args.solo_nodo else []
     asseg = dict(noti)
-    if vms and sys.stdin.isatty():
+    # Le domande si fanno solo se c'è qualcuno che può rispondere E nessuno
+    # gestisce già le tipologie altrove. Con --invia le gestisce il portale:
+    # chiederle qui vorrebbe dire raccogliere due volte la stessa decisione e
+    # non sapere quale delle due vale.
+    chiedere = (vms and sys.stdin.isatty()
+                and not getattr(args, "senza_domande", False)
+                and not getattr(args, "invia", None))
+    if chiedere:
         asseg = assegna_profili_da_tabella(vms, noti, multi)
     for v in vms:
         # senza terminale (o per VM nuove) vale la proposta automatica: meglio i controlli del profilo probabile che nessuno
@@ -2294,6 +2306,9 @@ def main():
                     help="il codice di accesso al portale, per --invia")
     ap.add_argument("--profili", type=Path, help="file JSON {vmid: profilo} esplicito (default: automatico per cluster/host)")
     ap.add_argument("--salva-profili", type=Path, help="dove salvare le classificazioni (default: automatico)")
+    ap.add_argument("--senza-domande", action="store_true", dest="senza_domande",
+                    help="non chiede le tipologie a terminale: usa quelle salvate e, per le altre, "
+                         "la proposta dal nome. Implicito con --invia, dove le tipologie le gestisce il portale")
     ap.add_argument("--breve", action="store_true", help="a terminale solo riepilogo e bloccanti")
     ap.add_argument("--max-vm", type=int, default=0, help="limita il numero di VM per nodo (prove)")
     ap.add_argument("--menu", action="store_true", help="apre il menu interattivo")

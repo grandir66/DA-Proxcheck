@@ -201,3 +201,18 @@ def test_invio_al_portale_e_codice_distinto_dal_codice_cliente():
     assert "--codice CODCLI" in aiuto.stdout
     assert "--codice-portale" in aiuto.stdout
     assert "--invia" in aiuto.stdout
+
+
+def test_le_domande_a_terminale_sono_opzionali():
+    """Una sola versione dello strumento, non due: `--senza-domande` la rende
+    silenziosa, e `--invia` lo implica perché le tipologie le gestisce il
+    portale — chiederle anche qui raccoglierebbe due volte la stessa decisione
+    senza sapere quale vale (2026-09-09)."""
+    import subprocess
+    import sys
+    from pathlib import Path
+    aiuto = subprocess.run([sys.executable, str(Path(__file__).resolve().parents[1] / "audit-nodo.py"), "--help"],
+                           capture_output=True, text=True, timeout=60)
+    assert "--senza-domande" in aiuto.stdout
+    sorgente = (Path(__file__).resolve().parents[1] / "audit-nodo.py").read_text(encoding="utf-8")
+    assert 'not getattr(args, "invia", None)' in sorgente, "l'invio deve spegnere le domande"
