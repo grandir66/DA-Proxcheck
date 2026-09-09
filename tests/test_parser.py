@@ -185,3 +185,18 @@ def test_appendice_riporta_il_testo_della_regola_citata():
     assert an.REGOLE["§8.3 › Cache mode"]["testo"].splitlines()[0] in md
     # una regola non citata non compare
     assert "§9.4" not in md
+
+
+def test_invio_al_portale_e_codice_distinto_dal_codice_cliente():
+    """`--codice` è il codice CLIENTE (finisce nel nome dei file), `--codice-portale`
+    è la chiave d'accesso al portale. Averli chiamati uguale faceva fallire
+    argparse all'avvio: un guasto che il tecnico avrebbe scoperto davanti al
+    cluster (2026-09-09)."""
+    import subprocess, sys
+    from pathlib import Path
+    aiuto = subprocess.run([sys.executable, str(Path(__file__).resolve().parents[1] / "audit-nodo.py"), "--help"],
+                           capture_output=True, text=True, timeout=60)
+    assert aiuto.returncode == 0, aiuto.stderr
+    assert "--codice CODCLI" in aiuto.stdout
+    assert "--codice-portale" in aiuto.stdout
+    assert "--invia" in aiuto.stdout

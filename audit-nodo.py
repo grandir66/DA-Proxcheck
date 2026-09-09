@@ -2139,7 +2139,13 @@ def esegui(args):
         print(c(f"Nessun utente specificato: uso '{HOST_REMOTO}'.", GRIGIO), file=sys.stderr)
     t0 = time.time()
     if getattr(args, "da_json", None):
-        inv = json.loads(Path(args.da_json).read_text(encoding="utf-8"))
+        # Un percorso sbagliato o un file monco non devono dare una traccia di
+        # stack a chi sta davanti a un cluster: si dice cosa non va e si esce.
+        try:
+            inv = json.loads(Path(args.da_json).read_text(encoding="utf-8"))
+        except (OSError, ValueError) as e:
+            print(f"Non riesco a leggere {args.da_json}: {e}", file=sys.stderr)
+            return None
     else:
         inv = raccogli(solo_accese=args.solo_accese, performance=args.performance,
                        tutto_cluster=not getattr(args, "solo_questo_nodo", False), max_vm=getattr(args, "max_vm", 0))
@@ -2149,6 +2155,11 @@ def esegui(args):
     if args.json:
         Path(args.json).write_text(json.dumps(inv, indent=1, ensure_ascii=False), encoding="utf-8")
         print(f"Dati grezzi salvati in {args.json}", file=sys.stderr)
+    if getattr(args, "invia", None):
+        if not getattr(args, "codice_portale", None):
+            print("Con --invia serve anche --codice-portale (quello che vi ha dato Domarc).", file=sys.stderr)
+        else:
+            invia_al_portale(inv, args.invia, args.codice_portale)
 
     cluster_nome = next((x.get("name") for x in (inv.get("cluster", {}).get("status") or []) if x.get("type") == "cluster"), None)
     multi = len(inv.get("nodi") or {}) > 1
@@ -2222,6 +2233,45 @@ def esegui(args):
             "output": str(f_rep), "profili": str(auto)}
 
 
+def invia_al_portale(inv: dict, portale: str, codice: str) -> bool:
+    """Manda la raccolta GREZZA al portale dei clienti, che la archivia e ne
+    produce il report da sé.
+
+    Si manda il grezzo e non i due documenti per una ragione precisa: il
+    portale rifà l'analisi con le regole aggiornate, e la stessa raccolta
+    riletta fra un anno dice quello che sappiamo allora, non quello che
+    sapevamo il giorno della verifica. I documenti li genera lui, con questo
+    stesso strumento.
+    """
+    import urllib.error
+    import urllib.request
+    indirizzo = portale.rstrip("/") + "/api/scansione"
+    corpo = json.dumps(inv, ensure_ascii=False).encode()
+    print(c(f"Invio della raccolta a {indirizzo} ({len(corpo)/1024:.0f} kB)…", GRIGIO), file=sys.stderr)
+    req = urllib.request.Request(indirizzo, data=corpo, method="POST",
+                                 headers={"Content-Type": "application/json",
+                                          "X-Codice": codice.strip().upper()})
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            esito = json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        motivo = {401: "codice non valido o revocato", 413: "raccolta troppo grande",
+                  400: "il portale non ha riconosciuto il formato"}.get(e.code, e.reason)
+        print(c(f"Invio non riuscito ({e.code}): {motivo}", ROSSO), file=sys.stderr)
+        return False
+    except OSError as e:
+        print(c(f"Invio non riuscito: {e}", ROSSO), file=sys.stderr)
+        return False
+    if esito.get("errore"):
+        print(c(f"Raccolta archiviata, ma il portale non l'ha analizzata: {esito['errore']}", GIALLO), file=sys.stderr)
+    else:
+        print(c(f"Archiviata: {esito.get('bloccanti', '?')} bloccanti, "
+                f"{esito.get('attenzioni', '?')} da valutare.", VERDE), file=sys.stderr)
+    if esito.get("pagina"):
+        print(f"Il report è consultabile su {esito['pagina']}", file=sys.stderr)
+    return True
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--host", metavar="[utente@]host", help="nodo d'ingresso via SSH (default utente root)")
@@ -2235,6 +2285,13 @@ def main():
                     help="cartella dove scrivere <codcli>_<cliente>_<ip>_inventory.md e _report.md (default: cartella corrente)")
     ap.add_argument("--json", type=Path, help="salva i dati grezzi raccolti in JSON")
     ap.add_argument("--da-json", type=Path, help="non raccoglie: analizza un JSON salvato con --json")
+    ap.add_argument("--invia", metavar="URL", help="manda la raccolta al portale clienti "
+                    "(es. https://survey.domarc.it/proxmox), che la archivia e ne pubblica il report")
+    # NON «--codice»: quello esiste già ed è il codice CLIENTE che finisce nel
+    # nome dei file. Due opzioni con lo stesso nome fanno fallire argparse
+    # all'avvio, e sarebbe un guasto scoperto dal tecnico davanti al cluster.
+    ap.add_argument("--codice-portale", metavar="PXM-…", dest="codice_portale",
+                    help="il codice di accesso al portale, per --invia")
     ap.add_argument("--profili", type=Path, help="file JSON {vmid: profilo} esplicito (default: automatico per cluster/host)")
     ap.add_argument("--salva-profili", type=Path, help="dove salvare le classificazioni (default: automatico)")
     ap.add_argument("--breve", action="store_true", help="a terminale solo riepilogo e bloccanti")
