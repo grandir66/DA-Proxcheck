@@ -18,7 +18,7 @@ MANUALE = {
  "versione": "1.0",
  "verificato": "2026-09-01",
  "repo": "DA-Proxmox-Docs",
- "estratto_il": "2026-09-07"
+ "estratto_il": "2026-09-10"
 }
 
 FONTI = {
@@ -78,6 +78,14 @@ FONTI = {
   "testo": "Sono tre operazioni diverse che vengono spesso confuse, e la confusione produce datastore che si riempiono senza che nessuno capisca perché.\n\n| Operazione | Che cosa fa | Libera spazio? |\n|---|---|---|\n| **Prune** | Rimuove i **riferimenti** agli snapshot da non conservare | **No** |\n| **Garbage collection** | Cancella i **chunk** che nessuno referenzia più | **Sì** |\n| **Verify** | Rilegge i chunk e ne confronta gli hash | No: dimostra che i dati sono integri |\n\n> ⚠️ **Il prune da solo non libera un byte.** Cancella l'indice, non i dati. Chi vede il datastore pieno dopo aver ridotto la retention sta aspettando una garbage collection che non è pianificata.\n\n`keep-last`, `keep-hourly`, `keep-daily`, `keep-weekly`, `keep-monthly`, `keep-yearly`. **Ogni opzione copre solo il proprio periodo e non tiene conto di quanto già conservato dalle altre**: si sommano, non si sovrappongono.\n\nRiferimento di partenza per la produzione: **7 giornalieri, 4 settimanali, 3 mensili**. Requisiti di conformità ne chiedono molti di più, e vanno chiesti al cliente prima di configurare (non dopo).\n\nLa GC lavora in due fasi: **marca** aggiornando l'`atime` di ogni chunk ancora referenziato, poi **spazza** cancellando i chunk il cui `atime` è più vecchio del taglio — **24 ore e 5 minuti** prima dell'inizio, o l'inizio del backup attivo più vecchio.\n\nQuella finestra apparentemente arbitraria dipende da `relatime`, il comportamento predefinito dei filesystem Linux, che aggiorna l'`atime` solo se è più vecchio di 24 ore. È un margine di sicurezza, non un ritardo da eliminare.",
   "troncato": 1
  },
+ "§14.7": {
+  "titolo": "§14.7 Passo passo — zona VLAN (lo scenario più frequente)",
+  "file": "manuale/14-sdn.md",
+  "riga": 99,
+  "parte": "Parte 14",
+  "testo": "Obiettivo: gestire dal datacenter le VLAN già esistenti sugli switch.\n\n**Prerequisito.** Su ogni nodo deve esistere un bridge **VLAN-aware** collegato alla rete fisica, per esempio `vmbr1` con *VLAN aware* spuntato.\n\n**Passo 1 — Creare la zona.**\n`Datacenter → SDN → Zones → Add → VLAN`:\n\n| Campo | Valore |\n|---|---|\n| ID | `prod` (max 8 caratteri) |\n| Bridge | `vmbr1` |\n| Nodes | I nodi su cui deve esistere |\n| MTU | Vuoto per ereditare dal bridge |\n\n**Passo 2 — Creare la VNet.**\n`VNets → Create`:\n\n| Campo | Valore |\n|---|---|\n| Name | `srv20` (max 8 caratteri) |\n| Alias | `Server produzione` |\n| Zone | `prod` |\n| Tag | `20` — il numero della VLAN |\n| VLAN Aware | Solo se le VM devono a loro volta taggare |\n\n**Passo 3 — Aggiungere la subnet** (facoltativo, serve per IPAM e DHCP).\nSelezionare la VNet → `Subnets → Create`: `172.16.20.0/24`, gateway `172.16.20.1`.\n\n**Passo 4 — Applicare.**\n`Datacenter → SDN → Apply`. **Finché non si preme Apply non cambia nulla**: le modifiche restano in stato *pending*.\n\n**Passo 5 — Usarla.** Nella scheda di rete di una VM, scegliere il bridge `srv20`. Il tag VLAN è già gestito dalla VNet.",
+  "troncato": 0
+ },
  "§15.3": {
   "titolo": "§15.3 Il doppio interruttore",
   "file": "manuale/15-firewall.md",
@@ -93,6 +101,14 @@ FONTI = {
   "parte": "Parte 19",
   "testo": "**Un hypervisor non aggiornato è il problema più comune che si trova nei parchi esistenti**, e la ragione è quasi sempre la stessa: nessuno ha mai deciso *quando* si aggiorna, quindi non si aggiorna mai.\n\nLa decisione da prendere in fase di progetto, e da scrivere:\n\n| Cosa | Cadenza consigliata | Riavvio |\n|---|---|---|\n| Patch di sicurezza Debian | Automatiche, senza riavvio (§18.4) | No |\n| Aggiornamenti Proxmox | **Mensile o trimestrale**, in finestra pianificata | Solo se kernel o microcodice |\n| Versione maggiore (9 → 10) | Entro 6-12 mesi dall'uscita, mai il primo mese | Sì |\n| Firmware di server e array | Annuale, o quando risolve un problema noto | Sì |\n\n**Il riavvio serve solo per kernel e microcodice.** Tutto il resto si applica a caldo. Ma un nodo che non si riavvia da un anno è un nodo che sta usando un kernel vecchio di un anno, e che nessuno ha mai visto ripartire: il primo riavvio dopo un guasto è il momento peggiore per scoprire che non riparte.\n\n```bash\napt update && apt full-upgrade\npveversion -v            # cosa gira davvero adesso\n```",
   "troncato": 0
+ },
+ "§19.3": {
+  "titolo": "§19.3 Aggiornare un cluster senza fermare le VM",
+  "file": "manuale/19-esercizio.md",
+  "riga": 33,
+  "parte": "Parte 19",
+  "testo": "**Un nodo alla volta, verificando ognuno prima di passare al successivo.** Aggiornare tutto insieme è il modo documentato di ritrovarsi con un cluster rotto e nessun nodo funzionante da cui capire cosa è successo.\n\n```bash\n# ── PRIMA: solo se c'è Ceph ────────────────────────────────\nceph osd set noout\nceph osd set norebalance\nceph osd set norecover\nceph osd set noscrub\nceph osd set nodeep-scrub\n\n# ── PER OGNI NODO, uno alla volta ──────────────────────────\nha-manager crm-command node-maintenance enable <nodo>\n# attendere che i guest si siano spostati: ha-manager status\n\napt update && apt full-upgrade\nreboot                                   # se serve\n\n# a nodo tornato: verificare PRIMA di procedere\npvecm status                             # quorato, entrambi i link\npvesm status                             # tutti gli storage online\nceph -s                                  # se presente: nessun OSD down inatteso\n\nha-manager crm-command node-maintenance disable <nodo>\n\n# ── DOPO l'ultimo nodo, se c'è Ceph ────────────────────────\nceph osd unset norecover                 # per primo: lascia recuperare\n# attendere HEALTH_OK, poi:\nceph osd unset noout\nceph osd unset norebalance\nceph osd unset noscrub\nceph osd unset nodeep-scrub\n```\n\n**Modalità di manutenzione o riavvio semplice?** Sono due comportamenti diversi ed è la confusione più frequente:\n\n| | Cosa succede ai guest |\n|---|---|\n| `node-maintenance enable` | Vengono **migrati** su altri nodi e riportati indietro alla fine |\n| `reboot` con HA attiva | Vengono **congelati** e ripartono sullo stesso nodo dopo il riavvio |",
+  "troncato": 1
  },
  "§2.1": {
   "titolo": "§2.1 Prima di avviare l'installazione",
@@ -236,6 +252,14 @@ FONTI = {
   "riga": 44,
   "parte": "Parte 7",
   "testo": "```bash\nha-manager add vm:100 --state started\nha-manager status\nha-manager set vm:100 --state stopped\nha-manager remove vm:100\n```\n\nLa configurazione sta in `/etc/pve/ha/resources.cfg`, replicata su tutti i nodi.\n\n| Stato | Significato |\n|---|---|\n| `started` | Deve essere in esecuzione: se cade, l'HA la riavvia |\n| `stopped` | Deve restare ferma: l'HA la tiene ferma |\n| `disabled` | Ferma e ignorata |\n| `ignored` | L'HA non se ne occupa, ma la risorsa resta in elenco |\n| `error` | Tutti i tentativi sono falliti: richiede intervento |\n\n**Due parametri, entrambi con valore predefinito 1:**\n\n- `max_restart` — quante volte riprovare ad avviare la risorsa **sullo stesso nodo**;\n- `max_relocate` — quante volte provare a spostarla **su un altro nodo**.\n\n**Uscire dallo stato `error` richiede un passaggio esplicito**, ed è progettato così perché nessuno riavvii in ciclo una VM rotta:\n\n```bash\nha-manager set vm:100 --state disabled     # 1. disabilita\n# 2. ripara la causa\nha-manager set vm:100 --state started      # 3. riabilita\n```",
+  "troncato": 0
+ },
+ "§7.5": {
+  "titolo": "§7.5 Le regole HA",
+  "file": "manuale/07-ha.md",
+  "riga": 76,
+  "parte": "Parte 7",
+  "testo": "Dalla versione 9.0 i **gruppi HA sono sostituiti dalle regole**, che vivono in `/etc/pve/ha/rules.cfg`. Chi arriva da configurazioni più vecchie trova i gruppi migrati automaticamente, ma la logica da usare da qui in avanti è questa.\n\n**Regole di affinità con i nodi** — dove una risorsa può o deve girare:\n\n```bash\nha-manager rules add node-affinity solo-nodi-licenziati \\\n  --resources vm:100,vm:101 --nodes pve1,pve2 --strict 1\n```\n\n- `--strict 1`: la risorsa gira **solo** su quei nodi. Se non sono disponibili, resta ferma.\n- `--strict 0` (predefinito): sono una preferenza; in emergenza la risorsa va altrove.\n\nI nodi possono avere priorità diverse, e la risorsa torna sul nodo preferito quando ridiventa disponibile.\n\n**Regole di affinità tra risorse** — quali VM devono stare insieme e quali separate:\n\n```bash\n# tenerle insieme: applicativo e suo database\nha-manager rules add resource-affinity app-e-db \\\n  --resources vm:200,vm:201 --affinity positive\n\n# tenerle separate: i due domain controller\nha-manager rules add resource-affinity dc-separati \\\n  --resources vm:10,vm:11 --affinity negative\n```\n\n**L'affinità negativa è quella che salva davvero.** Due domain controller, due nodi di un cluster applicativo o due bilanciatori che finiscono sullo stesso nodo annullano la ridondanza che il cliente ha pagato — e nessuno se ne accorge finché quel nodo non muore.\n\n**L'affinità positiva ha un caso d'uso preciso:** VM che comunicano tanto tra loro, o vincoli di licenza che legano un software a un insieme di socket fisici.",
   "troncato": 0
  },
  "§8.3": {

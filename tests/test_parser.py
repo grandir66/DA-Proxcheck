@@ -239,3 +239,116 @@ def test_stato_sconosciuto_non_e_spenta():
     silenzio dal report di un cliente."""
     assert not an.e_spenta(_VMFinta(status=None, lista=None))
     assert not an.e_spenta(_VMFinta(status={}, lista={}))
+
+
+# ── coerenza del cluster ────────────────────────────────────────────────────
+
+def _nodo(rete=None, ip_link="", **extra):
+    return {"nodo": {"network": rete or [], "ip_link": ip_link, **extra}, "vms": {}, "lxc": {}}
+
+
+def test_vlan_con_reti_diverse_e_bloccante():
+    """Il difetto trovato su OpenCRM il 2026-09-10: la stessa VLAN con un'altra
+    rete su un nodo. Non si vede da nessun nodo preso da solo, e rompe la
+    migrazione senza avvisare — la VM parte e si trova altrove."""
+    inv = {"nodi": {
+        "A": _nodo([{"iface": "vlan20", "type": "vlan", "vlan-id": "20", "cidr": "172.18.20.1/24"}]),
+        "B": _nodo([{"iface": "vlan20", "type": "vlan", "vlan-id": "20", "cidr": "172.20.20.2/24"}]),
+    }}
+    e = an.Esito()
+    an.controlla_coerenza_rete(inv, e)
+    b = [r for r in e.rilievi if r.livello == an.BLOCCANTE and "VLAN 20" in r.messaggio]
+    assert len(b) == 1
+    # il rilievo mostra i valori a confronto, non solo l'anomalia
+    assert "172.18.20.1/24" in b[0].messaggio and "172.20.20.2/24" in b[0].messaggio
+
+
+def test_stessa_vlan_stessa_rete_non_e_un_rilievo():
+    inv = {"nodi": {
+        "A": _nodo([{"iface": "vlan20", "type": "vlan", "vlan-id": "20", "cidr": "172.18.20.1/24"}]),
+        "B": _nodo([{"iface": "vlan20", "type": "vlan", "vlan-id": "20", "cidr": "172.18.20.2/24"}]),
+    }}
+    e = an.Esito()
+    an.controlla_coerenza_rete(inv, e)
+    assert not [r for r in e.rilievi if "VLAN 20" in r.messaggio]
+
+
+def test_un_nodo_solo_non_genera_coerenza():
+    """Le regole di coerenza confrontano: con un host solo non c'è niente da
+    confrontare e devono tacere, non inventare."""
+    inv = {"nodi": {"A": _nodo([{"iface": "vlan20", "type": "vlan", "vlan-id": "20", "cidr": "10.0.0.1/24"}])}}
+    e = an.Esito()
+    an.controlla_coerenza_rete(inv, e)
+    an.controlla_coerenza_host(inv, e)
+    assert e.rilievi == []
+
+
+def test_catena_fisica_arriva_agli_slave():
+    rete = {
+        "vlan30": {"iface": "vlan30", "type": "vlan", "vlan-raw-device": "vmbr_int"},
+        "vmbr_int": {"iface": "vmbr_int", "type": "bridge", "bridge_ports": "bond50"},
+        "bond50": {"iface": "bond50", "type": "bond", "slaves": "eth0 eth1"},
+    }
+    assert an._sotto(rete, "vlan30") == {"vmbr_int", "bond50", "eth0", "eth1"}
+
+
+def test_mtu_ignora_le_interfacce_effimere():
+    """`tap*` e `fwbr*` compaiono e spariscono con le VM: confrontarle fra i
+    nodi produrrebbe divergenze che non significano niente."""
+    testo = ("1: lo: <LOOPBACK> mtu 65536 qdisc noqueue\n"
+             "2: bond50: <BROADCAST> mtu 9000 qdisc noqueue\n"
+             "3: tap100i0: <BROADCAST> mtu 1500 qdisc pfifo\n")
+    assert an.mtu_di({"nodo": {"ip_link": testo}}) == {"bond50": 9000}
+
+
+def test_eta_della_replica_si_misura_dalla_raccolta_non_da_adesso():
+    """L'incidente del 2026-09-10: rianalizzando un JSON di tre ore prima, sette
+    job in orario risultavano in ritardo di tre ore. Un'età si misura dall'ora
+    che era ALLORA."""
+    quando = 1789033958
+    inv = {"raccolto_il": quando,
+           "cluster": {"replication": [{"id": "1-0", "guest": 1}], "ha_resources": []},
+           "nodi": {"A": {"nodo": {"replication": [{"id": "1-0", "last_sync": quando - 458, "fail_count": 0}]},
+                          "vms": {}, "lxc": {}}}}
+    e = an.Esito()
+    an.controlla_replica_ha(inv, e)
+    assert not [r for r in e.rilievi if "sincronizzazione" in r.messaggio]
+    # e con un ritardo vero il rilievo compare
+    inv["nodi"]["A"]["nodo"]["replication"][0]["last_sync"] = quando - 6 * 3600
+    e2 = an.Esito()
+    an.controlla_replica_ha(inv, e2)
+    assert [r for r in e2.rilievi if r.livello == an.BLOCCANTE and "sincronizzazione" in r.messaggio]
+
+
+def test_senza_istante_di_raccolta_la_regola_tace():
+    """Meglio muta che bugiarda: una regola che misura il tempo senza sapere che
+    ora era non deve scattare."""
+    inv = {"cluster": {"replication": [{"id": "1-0"}], "ha_resources": []},
+           "nodi": {"A": {"nodo": {"replication": [{"id": "1-0", "last_sync": 1}], "timedatectl": ""},
+                          "vms": {}, "lxc": {}}}}
+    assert an.istante_raccolta(inv) is None
+    e = an.Esito()
+    an.controlla_replica_ha(inv, e)
+    assert not [r for r in e.rilievi if "sincronizzazione" in r.messaggio]
+
+
+def test_migrazione_non_dichiarata_e_bloccante():
+    inv = {"ingresso": "A", "cluster": {"options": {}, "replication": []},
+           "nodi": {"A": _nodo(corosync_conf="node { ring0_addr: 10.9.0.1 }"), "B": _nodo()}}
+    e = an.Esito()
+    an.controlla_migrazione(inv, e)
+    assert [r for r in e.rilievi if r.livello == an.BLOCCANTE and "rete di migrazione" in r.messaggio]
+
+
+def test_bond_con_un_solo_membro_non_e_ridondante():
+    inv = {"nodi": {"A": _nodo([{"iface": "bond0", "type": "bond", "slaves": "eth0"}])}}
+    e = an.Esito()
+    an.controlla_rete_nodo("A", inv["nodi"]["A"], inv, e)
+    assert [r for r in e.rilievi if r.livello == an.BLOCCANTE and "bond0" in r.messaggio]
+
+
+def test_categoria_coerenza_e_prima_nel_report():
+    """I confronti fra nodi non appartengono a nessun nodo: vanno letti insieme,
+    e per primi."""
+    assert an.categoria_di("Coerenza — rete") == "Coerenza del cluster"
+    assert an.ORDINE_CATEGORIE[0] == "Coerenza del cluster"

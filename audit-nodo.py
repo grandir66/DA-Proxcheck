@@ -1411,13 +1411,494 @@ def assegna_profili_da_tabella(vms: list, noti: dict, multi: bool) -> dict:
             print(f"  '{s}' non è un VMID di questa scansione.")
 
 
+# ══════════════════════════════ coerenza del cluster ══════════════════════════════
+# Le regole di questa parte non guardano un nodo: guardano la DIFFERENZA fra i
+# nodi. Sono deterministiche nel senso stretto — ognuna nomina il campo che la
+# decide — e nascono dal catalogo in docs/superpowers/specs/2026-09-10.
+#
+# Regola di stile: ogni rilievo mostra i VALORI a confronto, non solo
+# l'anomalia. «PX-01 172.18.20.1 · PX-03 172.20.20.3» dice da sé qual è quello
+# fuori posto; «vlan20 incoerente» costringe chi legge ad andare a cercare.
+
+RE_MTU = re.compile(r"^\d+:\s+([^:@]+)[:@].*?\bmtu\s+(\d+)", re.M)
+
+
+def mtu_di(blocco: dict) -> dict:
+    """Il MTU davvero applicato, da `ip link`. Non quello dichiarato: un MTU
+    scritto in /etc/network/interfaces e mai applicato non protegge nessuno."""
+    fuori = {}
+    for nome, valore in RE_MTU.findall((blocco.get("nodo") or {}).get("ip_link") or ""):
+        nome = nome.strip()
+        if not nome.startswith(("lo", "tap", "fwbr", "fwln", "fwpr", "veth")):
+            fuori[nome] = int(valore)
+    return fuori
+
+
+def reti_di(blocco: dict) -> dict:
+    """Le interfacce dichiarate, indicizzate per nome."""
+    return {i.get("iface"): i for i in ((blocco.get("nodo") or {}).get("network") or []) if i.get("iface")}
+
+
+def _sotto(rete: dict, iface: str, visti=None) -> set:
+    """I dispositivi su cui poggia un'interfaccia, fino ai fisici.
+
+    vlan30 → vmbr_int → bond50 → enp129s0f0np0, enp129s0f1np1. Serve a
+    rispondere alla sola domanda che conta: due reti diverse passano sullo
+    stesso rame?
+    """
+    visti = visti if visti is not None else set()
+    if not iface or iface in visti:
+        return set()
+    visti.add(iface)
+    voce = rete.get(iface) or {}
+    giu = set()
+    for chiave in ("vlan-raw-device", "bridge_ports", "slaves"):
+        for pezzo in str(voce.get(chiave) or "").split():
+            giu.add(pezzo)
+            giu |= _sotto(rete, pezzo, visti)
+    return giu
+
+
+def iface_con_ip(rete: dict, ip: str) -> str:
+    """Quale interfaccia porta questo indirizzo. Confronto sulla rete /24 e non
+    sull'indirizzo esatto: l'IP di corosync di un nodo sta su quel nodo, ma
+    stiamo cercando la rete, non l'host."""
+    if not ip:
+        return ""
+    prefisso = ip.rsplit(".", 1)[0] + "."
+    for nome, voce in rete.items():
+        cidr = str(voce.get("cidr") or "")
+        if cidr.startswith(prefisso):
+            return nome
+    return ""
+
+
+def _valori_per_nodo(inv: dict, estrai) -> dict:
+    """{valore: [nodi]} — la forma in cui una divergenza si racconta da sé."""
+    per = {}
+    for nome, blocco in (inv.get("nodi") or {}).items():
+        try:
+            v = estrai(nome, blocco)
+        except Exception:  # noqa: BLE001 — un nodo che non risponde non è un difetto del cliente
+            v = None
+        if v is not None:
+            per.setdefault(str(v), []).append(nome)
+    return per
+
+
+def _elenca(per: dict, limite: int = 4) -> str:
+    voci = [f"{', '.join(sorted(n))}: {v}" for v, n in sorted(per.items(), key=lambda x: -len(x[1]))]
+    return " · ".join(voci[:limite]) + (" · …" if len(voci) > limite else "")
+
+
+def controlla_coerenza_rete(inv: dict, esito: Esito):
+    """RETE-01/02/03, MTU-01, BOND-01/04 — quello che diverge fra i nodi."""
+    nodi = inv.get("nodi") or {}
+    if len(nodi) < 2:
+        return
+    A = "Coerenza — rete"
+    reti = {n: reti_di(b) for n, b in nodi.items()}
+    mtus = {n: mtu_di(b) for n, b in nodi.items()}
+
+    # RETE-01/02: stessa VLAN, reti IP diverse. È il difetto che rompe la
+    # migrazione senza avvisare: la VM parte, e si trova su un'altra rete.
+    per_vlan = {}
+    for nodo, rete in reti.items():
+        for nome, voce in rete.items():
+            vid = voce.get("vlan-id")
+            cidr = voce.get("cidr")
+            if vid and cidr:
+                per_vlan.setdefault(str(vid), {}).setdefault(_rete_di(cidr), []).append(f"{nodo} {cidr}")
+    for vid, reti_viste in sorted(per_vlan.items(), key=lambda x: int(x[0]) if x[0].isdigit() else 0):
+        if len(reti_viste) > 1:
+            dettaglio = " · ".join(f"{', '.join(v)}" for v in reti_viste.values())
+            esito.add(BLOCCANTE, A, f"VLAN {vid}: reti IP diverse fra i nodi — {dettaglio}.", "manuale §1.3, §2.6")
+
+    # RETE-03: un bridge o un bond che esiste solo su alcuni nodi.
+    for genere, etichetta in (("bridge", "bridge"), ("bond", "bond")):
+        presenza = {}
+        for nodo, rete in reti.items():
+            for nome, voce in rete.items():
+                if voce.get("type") == genere:
+                    presenza.setdefault(nome, []).append(nodo)
+        for nome, dove in sorted(presenza.items()):
+            mancano = sorted(set(nodi) - set(dove))
+            if mancano:
+                esito.add(ATTENZIONE, A, f"{etichetta} {nome} esiste su {', '.join(sorted(dove))} ma non su {', '.join(mancano)}.",
+                          "manuale §2.6")
+
+    # MTU-01: stessa interfaccia, MTU diverso. Un MTU asimmetrico non si
+    # manifesta subito: passa il ping e si perdono i pacchetti grandi.
+    nomi = {i for m in mtus.values() for i in m}
+    for iface in sorted(nomi):
+        per = {}
+        for nodo, m in mtus.items():
+            if iface in m:
+                per.setdefault(str(m[iface]), []).append(nodo)
+        if len(per) > 1:
+            esito.add(BLOCCANTE, A, f"{iface}: MTU diverso fra i nodi — {_elenca(per)}.", "manuale §1.3")
+
+    # BOND-01/04: modo e cadenza LACP dello stesso bond.
+    for chiave, etichetta, liv in (("bond_mode", "modo", BLOCCANTE), ("lacp_rate", "lacp_rate", ATTENZIONE)):
+        per_bond = {}
+        for nodo, rete in reti.items():
+            for nome, voce in rete.items():
+                if voce.get("type") == "bond" and voce.get(chiave):
+                    per_bond.setdefault(nome, {}).setdefault(str(voce[chiave]), []).append(nodo)
+        for nome, per in sorted(per_bond.items()):
+            if len(per) > 1:
+                esito.add(liv, A, f"bond {nome}: {etichetta} diverso fra i nodi — {_elenca(per)}.", "manuale §1.3")
+
+
+def _rete_di(cidr: str) -> str:
+    """«172.18.20.3/24» → «172.18.20.0/24». Confronto per rete, non per host."""
+    try:
+        indirizzo, bit = cidr.split("/")
+        parti = [int(x) for x in indirizzo.split(".")]
+        maschera = (0xFFFFFFFF << (32 - int(bit))) & 0xFFFFFFFF
+        num = (parti[0] << 24) | (parti[1] << 16) | (parti[2] << 8) | parti[3]
+        num &= maschera
+        return f"{(num >> 24) & 255}.{(num >> 16) & 255}.{(num >> 8) & 255}.{num & 255}/{bit}"
+    except (ValueError, IndexError):
+        return cidr
+
+
+def controlla_rete_nodo(nome: str, blocco: dict, inv: dict, esito: Esito):
+    """RETE-06/07/08/09, MTU-02/03, BOND-02/03 — quello che si vede su un nodo solo."""
+    multi = len(inv.get("nodi") or {}) > 1
+    A = f"Rete — nodo {nome}" if multi else "Rete del nodo"
+    rete = reti_di(blocco)
+    mtu = mtu_di(blocco)
+
+    for iface, voce in sorted(rete.items()):
+        tipo = voce.get("type")
+        # RETE-07/08: dichiarata e non attiva, o attiva e non dichiarata all'avvio.
+        if not voce.get("active") and voce.get("autostart"):
+            esito.add(ATTENZIONE, A, f"{iface}: dichiarata all'avvio ma non attiva.", "manuale §2.6")
+        if voce.get("active") and not voce.get("autostart") and tipo in ("bridge", "bond", "vlan"):
+            esito.add(ATTENZIONE, A, f"{iface}: attiva ma senza autostart — sparisce al primo riavvio.", "manuale §2.6")
+        # MTU-03: la catena deve avere un MTU non decrescente verso il basso.
+        mio = mtu.get(iface)
+        if mio:
+            for sotto in _sotto(rete, iface):
+                giu = mtu.get(sotto)
+                if giu and giu < mio:
+                    esito.add(BLOCCANTE, A, f"{iface} ha MTU {mio} ma poggia su {sotto} che è a {giu}: i pacchetti grandi si perdono.",
+                              "manuale §2.6")
+        # BOND-02: un'aggregazione con un solo membro non aggrega niente.
+        if tipo == "bond":
+            membri = str(voce.get("slaves") or "").split()
+            if len(membri) < 2:
+                esito.add(BLOCCANTE, A, f"bond {iface}: {len(membri)} membro/i — un'aggregazione con un solo cavo non è ridondante.",
+                          "manuale §1.3")
+        # RETE-09: bridge non vlan-aware usato con tag (PVE crea bridge dinamici).
+        if tipo == "bridge" and not voce.get("bridge_vlan_aware"):
+            if any(f"{iface}v" in x for x in rete):
+                esito.add(ATTENZIONE, A, f"{iface} non è vlan-aware ma viene usato con dei tag: PVE crea bridge dinamici per ogni VLAN.",
+                          "manuale §2.6, §14.7")
+        # RETE-06: lo stesso bridge porta la gestione e il traffico ospite.
+        if tipo == "bridge" and voce.get("cidr") and _guest_sul_bridge(inv, iface):
+            esito.add(INFO, A, f"{iface} porta un indirizzo dell'host e il traffico dei guest: gestione e ospiti sullo stesso segmento.",
+                      "manuale §1.3")
+
+
+def _guest_sul_bridge(inv: dict, bridge: str) -> int:
+    n = 0
+    for blocco in (inv.get("nodi") or {}).values():
+        for v in (blocco.get("vms") or {}).values():
+            cfg = normalizza_config(v.get("config"))
+            for k, val in cfg.items():
+                if k.startswith("net") and f"bridge={bridge}" in str(val):
+                    n += 1
+    return n
+
+
+def reti_di_servizio(inv: dict) -> dict:
+    """Le reti che il cluster usa per sé: corosync e storage.
+
+    Non sono «una VLAN come le altre»: un guest attestato lì, o una migrazione
+    che ci passa sopra, competono con il battito del cluster.
+    """
+    fuori = {}
+    ing = nodo_ingresso(inv)
+    for ip in re.findall(r"ring\d+_addr:\s*(\d+\.\d+\.\d+\.\d+)", ing.get("corosync_conf") or ""):
+        fuori.setdefault(ip.rsplit(".", 1)[0], "corosync")
+    ceph = (inv.get("cluster") or {}).get("ceph") or {}
+    for m in ((ceph.get("monmap") or {}).get("mons") or []):
+        ind = str(m.get("public_addr") or "").split(":")[0]
+        if ind.count(".") == 3:
+            fuori.setdefault(ind.rsplit(".", 1)[0], "storage Ceph")
+    return fuori
+
+
+def controlla_reti_di_servizio(inv: dict, esito: Esito):
+    """BOND-05 e RETE-05: chi altro passa sul rame del cluster."""
+    servizio = reti_di_servizio(inv)
+    if not servizio:
+        return
+    A = "Cluster — reti di servizio"
+    ing_nome = inv.get("ingresso")
+    blocco = (inv.get("nodi") or {}).get(ing_nome) or {}
+    rete = reti_di(blocco)
+
+    # BOND-05: corosync e storage sullo stesso dispositivo fisico.
+    dove = {}
+    for prefisso, a_che_serve in servizio.items():
+        iface = iface_con_ip(rete, prefisso + ".1") or iface_con_ip(rete, prefisso + ".0")
+        if iface:
+            dove[a_che_serve] = (iface, _sotto(rete, iface) | {iface})
+    if len(dove) > 1:
+        nomi = list(dove)
+        for i in range(len(nomi)):
+            for j in range(i + 1, len(nomi)):
+                a, b = dove[nomi[i]], dove[nomi[j]]
+                comuni = {x for x in (a[1] & b[1]) if x.startswith(("bond", "en", "eth"))}
+                if comuni:
+                    esito.add(BLOCCANTE, A,
+                              f"{nomi[i]} ({a[0]}) e {nomi[j]} ({b[0]}) passano sullo stesso rame: {', '.join(sorted(comuni))}. "
+                              f"Il traffico dello storage compete con il battito del cluster.",
+                              "manuale §1.3, §3.3")
+
+    # RETE-05: un guest attestato su una VLAN di servizio.
+    vlan_servizio = {}
+    for prefisso, a_che_serve in servizio.items():
+        iface = iface_con_ip(rete, prefisso + ".1")
+        vid = (rete.get(iface) or {}).get("vlan-id")
+        if vid:
+            vlan_servizio[str(vid)] = a_che_serve
+    if vlan_servizio:
+        multi = len(inv.get("nodi") or {}) > 1
+        for nome, b in (inv.get("nodi") or {}).items():
+            for vmid, v in sorted((b.get("vms") or {}).items(), key=lambda x: int(x[0]) if x[0].isdigit() else 0):
+                cfg = normalizza_config(v.get("config"))
+                for k, val in cfg.items():
+                    if not k.startswith("net"):
+                        continue
+                    m = re.search(r"tag=(\d+)", str(val))
+                    if m and m.group(1) in vlan_servizio:
+                        AV = f"VM {vmid} ({cfg.get('name', '')})" + (f" @{nome}" if multi else "")
+                        esito.add(ATTENZIONE, AV,
+                                  f"{k} sul tag VLAN {m.group(1)}, che è la rete di {vlan_servizio[m.group(1)]} del cluster.",
+                                  "manuale §1.3, §3.3")
+
+
+def controlla_migrazione(inv: dict, esito: Esito):
+    """MIGR-01/02/03/04/05 — dove passa una migrazione a caldo.
+
+    È la famiglia con il rilievo più grave del catalogo, e la meno visibile: non
+    c'è niente di rotto da guardare finché non si migra una macchina grossa e il
+    cluster perde il quorum.
+    """
+    nodi = inv.get("nodi") or {}
+    if len(nodi) < 2:
+        return
+    A = "Cluster — migrazione"
+    opzioni = (inv.get("cluster") or {}).get("options") or {}
+    dichiarata = str(opzioni.get("migration") or "")
+    servizio = reti_di_servizio(inv)
+
+    if not dichiarata:
+        quale = ", ".join(sorted(p + ".0" for p, s in servizio.items() if s == "corosync")) or "quella del cluster"
+        esito.add(BLOCCANTE, A,
+                  f"Nessuna rete di migrazione dichiarata: la migrazione a caldo usa la rete del cluster ({quale}), "
+                  f"cioè la stessa di corosync.", "manuale §1.3, §3.3")
+        return
+
+    m = re.search(r"network=([0-9./]+)", dichiarata)
+    if m:
+        prefisso = m.group(1).split("/")[0].rsplit(".", 1)[0]
+        a_che_serve = servizio.get(prefisso)
+        if a_che_serve:
+            liv = BLOCCANTE if a_che_serve == "corosync" else ATTENZIONE
+            esito.add(liv, A, f"La rete di migrazione ({m.group(1)}) è la stessa di {a_che_serve}.", "manuale §1.3, §3.3")
+    if "type=insecure" in dichiarata and not m:
+        esito.add(BLOCCANTE, A, "Migrazione «insecure» senza una rete dedicata dichiarata: i dati viaggiano in chiaro sulla rete comune.",
+                  "manuale §1.3")
+
+    # MIGR-05: la replica ZFS non ha una rete sua e segue quella del cluster.
+    if ((inv.get("cluster") or {}).get("replication") or []) and not m:
+        esito.add(ATTENZIONE, A, "Ci sono job di replica ma nessuna rete dedicata: la replica passa sulla rete del cluster.",
+                  "manuale §4.5")
+
+
+def controlla_coerenza_host(inv: dict, esito: Esito):
+    """COER-01..07 — gli host devono somigliarsi. Dove non si somigliano, la
+    manutenzione di uno non vale per gli altri."""
+    nodi = inv.get("nodi") or {}
+    if len(nodi) < 2:
+        return
+    A = "Coerenza — host"
+
+    per = _valori_per_nodo(inv, lambda n, b: ((b.get("nodo") or {}).get("status") or {}).get("pveversion"))
+    if len(per) > 1:
+        esito.add(BLOCCANTE, A, f"Versione di Proxmox diversa fra i nodi — {_elenca(per)}.", "manuale §19.3")
+
+    per = _valori_per_nodo(inv, lambda n, b: ((b.get("nodo") or {}).get("status") or {}).get("current-kernel", {}).get("release"))
+    if len(per) > 1:
+        esito.add(ATTENZIONE, A, f"Kernel in esecuzione diverso fra i nodi — {_elenca(per)}. "
+                                 f"Un nodo non è stato riavviato dopo l'aggiornamento.", "manuale §19.3")
+
+    conti = _valori_per_nodo(inv, lambda n, b: len((b.get("nodo") or {}).get("apt_update") or []))
+    numeri = [int(x) for x in conti]
+    if numeri and max(numeri) - min(numeri) > 20:
+        esito.add(ATTENZIONE, A, f"Aggiornamenti pendenti molto diversi fra i nodi — {_elenca(conti)}.", "manuale §19.1")
+
+    def repo_attivi(_n, b):
+        righe = []
+        for f in ((b.get("nodo") or {}).get("apt_repos") or {}).get("files") or []:
+            for r in f.get("repositories") or []:
+                if r.get("Enabled") is not False:
+                    righe += [f"{u} {' '.join(r.get('Suites') or [])}" for u in (r.get("URIs") or [])]
+        return " | ".join(sorted(set(righe))) or None
+    per = _valori_per_nodo(inv, repo_attivi)
+    if len(per) > 1:
+        esito.add(BLOCCANTE, A, f"Repository configurati diversi fra i nodi: {len(per)} combinazioni. "
+                                f"Gli aggiornamenti non porteranno gli stessi pacchetti.", "manuale §1.6")
+
+    per = _valori_per_nodo(inv, lambda n, b: ((b.get("nodo") or {}).get("subscription") or {}).get("level") or "nessuna")
+    if len(per) > 1:
+        esito.add(ATTENZIONE, A, f"Livello di subscription diverso fra i nodi — {_elenca(per)}.", "manuale §1.6")
+
+    def fuso(_n, b):
+        m = re.search(r"Time zone:\s*(\S+)", (b.get("nodo") or {}).get("timedatectl") or "")
+        return m.group(1) if m else None
+    per = _valori_per_nodo(inv, fuso)
+    if len(per) > 1:
+        esito.add(BLOCCANTE, A, f"Fuso orario diverso fra i nodi — {_elenca(per)}. I log non si confrontano più.",
+                  "manuale §2.5")
+
+    def risorse(_n, b):
+        st = (b.get("nodo") or {}).get("status") or {}
+        return f"{(st.get('cpuinfo') or {}).get('cpus')} vCPU, {round(((st.get('memory') or {}).get('total') or 0) / 1e9)} GB"
+    per = _valori_per_nodo(inv, risorse)
+    if len(per) > 1:
+        esito.add(INFO, A, f"Nodi di taglia diversa — {_elenca(per)}. In HA il più piccolo deve reggere il carico degli altri.",
+                  "manuale §1.5, §7.2")
+
+    # STOR-01/02/04: gli storage devono essere gli stessi ovunque.
+    per_storage = {}
+    for nome, b in nodi.items():
+        for s in ((b.get("nodo") or {}).get("storage") or []):
+            per_storage.setdefault(s.get("storage"), {})[nome] = s
+    for nome, dove in sorted(per_storage.items()):
+        mancano = sorted(set(nodi) - set(dove))
+        if mancano:
+            liv = BLOCCANTE if any(s.get("shared") for s in dove.values()) else ATTENZIONE
+            esito.add(liv, "Coerenza — storage", f"Lo storage «{nome}» non c'è su {', '.join(mancano)} "
+                                                 f"(c'è su {', '.join(sorted(dove))}).", "manuale §4.1")
+        contenuti = {n: ",".join(sorted((s.get("content") or "").split(","))) for n, s in dove.items()}
+        distinti = {}
+        for n, c in contenuti.items():
+            distinti.setdefault(c, []).append(n)
+        if len(distinti) > 1:
+            esito.add(ATTENZIONE, "Coerenza — storage", f"Lo storage «{nome}» dichiara contenuti diversi fra i nodi — {_elenca(distinti)}.",
+                      "manuale §4.1")
+
+
+RE_ORA_UTC = re.compile(r"Universal time:\s+\w+\s+(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})")
+
+
+def istante_raccolta(inv: dict):
+    """Quando è stata fatta la raccolta, in secondi. **Non** «adesso».
+
+    Una raccolta si rianalizza mesi dopo — è il motivo per cui si conserva il
+    grezzo. Ogni regola che misura un'età deve partire da qui, o rianalizzando
+    un JSON di tre ore prima dichiara in ritardo sette job che erano in orario
+    (visto il 2026-09-10, sette falsi positivi in un colpo).
+
+    Torna None se non si sa: una regola che misura il tempo senza sapere che ora
+    era non deve scattare affatto.
+    """
+    if inv.get("raccolto_il"):
+        return float(inv["raccolto_il"])
+    m = RE_ORA_UTC.search(nodo_ingresso(inv).get("timedatectl") or "")
+    if not m:
+        return None
+    import calendar
+    return calendar.timegm((int(m.group(1)), int(m.group(2)), int(m.group(3)),
+                            int(m.group(4)), int(m.group(5)), int(m.group(6)), 0, 0, 0))
+
+
+def cadenza_replica(job: dict) -> int:
+    """Ogni quanto dovrebbe girare, in secondi. Senza schedule vale il valore
+    predefinito di PVE, che è un quarto d'ora."""
+    s = str(job.get("schedule") or "").strip()
+    m = re.fullmatch(r"\*/(\d+)", s)
+    if m:
+        return max(60, int(m.group(1)) * 60)
+    if re.fullmatch(r"\*/\d+:\d+", s) or re.fullmatch(r"\d+:\d+", s):
+        m2 = re.search(r"(\d+):", s)
+        return max(3600, int(m2.group(1)) * 3600) if m2 else 3600
+    return 15 * 60
+
+
+def controlla_replica_ha(inv: dict, esito: Esito):
+    """HA-01..09 — la replica c'è, l'HA la accende, e i due devono guardarsi."""
+    cl = inv.get("cluster") or {}
+    repliche = cl.get("replication") or []
+    risorse = cl.get("ha_resources") or []
+    regole = cl.get("ha_rules") or []
+    stato = cl.get("ha_status") or []
+    A = "Cluster — replica e HA"
+    if not repliche and not risorse:
+        return
+
+    in_ha = {str(r.get("sid", "")).split(":")[-1] for r in risorse}
+    replicati = {str(r.get("guest")) for r in repliche}
+    soli = sorted(replicati - in_ha, key=lambda x: int(x) if x.isdigit() else 0)
+    if soli and risorse:
+        esito.add(ATTENZIONE, A, f"{len(soli)} guest replicati ma non in HA ({', '.join(soli)}): la copia c'è, "
+                                 f"ma in caso di guasto non la accende nessuno.", "manuale §4.5, §7.1")
+
+    if risorse and not regole:
+        esito.add(ATTENZIONE, A, "Nessuna regola HA definita: una risorsa può ripartire su un nodo dove la sua replica non arriva.",
+                  "manuale §7.5")
+
+    senza = [r.get("id") for r in repliche if not r.get("schedule")]
+    if senza:
+        esito.add(INFO, A, f"{len(senza)} job di replica senza schedule esplicito: vale il valore predefinito (*/15).",
+                  "manuale §4.5")
+
+    quando = istante_raccolta(inv)
+    cadenze = {str(r.get("id")): cadenza_replica(r) for r in repliche}
+    for nome, b in (inv.get("nodi") or {}).items():
+        for r in ((b.get("nodo") or {}).get("replication") or []):
+            if (r.get("fail_count") or 0) > 0 or r.get("error"):
+                motivo = r.get("error") or f"{r.get('fail_count')} tentativi falliti"
+                esito.add(BLOCCANTE, A, f"Job di replica {r.get('id')} in errore su {nome}: {motivo}.",
+                          "manuale §4.5")
+            ultimo = r.get("last_sync") or 0
+            atteso = cadenze.get(str(r.get("id")), 15 * 60)
+            # Senza l'istante della raccolta la regola tace: meglio muta che bugiarda.
+            if quando and ultimo and quando - ultimo > max(3 * atteso, 3600):
+                ore = (quando - ultimo) / 3600
+                esito.add(BLOCCANTE, A, f"Job di replica {r.get('id')}: al momento della verifica l'ultima "
+                                        f"sincronizzazione risaliva a {ore:.0f} ore prima, contro una cadenza "
+                                        f"di {atteso // 60} minuti.", "manuale §4.5")
+
+    if risorse and len(inv.get("nodi") or {}) < 3:
+        qd = "qdevice" in (nodo_ingresso(inv).get("corosync_conf") or "").lower()
+        if not qd:
+            esito.add(BLOCCANTE, A, "HA attivo con meno di tre nodi e senza QDevice: al primo guasto non c'è quorum "
+                                    "e l'HA non riparte niente.", "manuale §7.2, §3.5")
+
+    for s in stato:
+        if s.get("type") == "lrm" and not any(x in str(s.get("status", "")) for x in ("idle", "active")):
+            esito.add(ATTENZIONE, A, f"LRM di {s.get('node')} in stato inatteso: {s.get('status')}.", "manuale §7.4")
+
+
 # ────────────────────────────── report ──────────────────────────────
 
-ORDINE_CATEGORIE = ["Cluster / corosync", "Nodo", "Hardware", "Storage", "Rete", "Performance",
-                    "VM — profilo di carico", "VM — parametri", "Container"]
+ORDINE_CATEGORIE = ["Coerenza del cluster", "Cluster / corosync", "Nodo", "Hardware", "Storage", "Rete",
+                    "Performance", "VM — profilo di carico", "VM — parametri", "Container"]
 
 
 def categoria_di(ambito: str) -> str:
+    # I rilievi che nascono dal CONFRONTO fra nodi non appartengono a nessun
+    # nodo: «vlan20 ha una rete diversa su PX-03» è un difetto del cluster, e
+    # sotto «Nodo PX-03» chi legge non lo collega agli altri due.
+    if ambito.startswith("Coerenza"):
+        return "Coerenza del cluster"
     if ambito.startswith("Cluster"):
         return "Cluster / corosync"
     if ambito.startswith("VM "):
@@ -2176,6 +2657,14 @@ def esegui(args):
     if not inv or not inv.get("nodi"):
         print("Nessun dato raccolto: connessione fallita, o la destinazione non è un nodo Proxmox VE con python3 e pvesh.", file=sys.stderr)
         return None
+    # L'istante della raccolta viaggia col dato: le regole che misurano un'età
+    # devono sapere che ora era allora, non che ora è adesso. Si timbra SOLO
+    # quando si raccoglie davvero: timbrarlo anche qui vorrebbe dire scrivere
+    # «adesso» su un JSON letto da disco, cioè esattamente l'errore che questo
+    # campo esiste per evitare (visto il 2026-09-10: sette job dichiarati in
+    # ritardo di tre ore perché la raccolta aveva tre ore).
+    if not getattr(args, "da_json", None):
+        inv.setdefault("raccolto_il", int(time.time()))
     if args.json:
         Path(args.json).write_text(json.dumps(inv, indent=1, ensure_ascii=False), encoding="utf-8")
         print(f"Dati grezzi salvati in {args.json}", file=sys.stderr)
@@ -2238,6 +2727,16 @@ def esegui(args):
     for v in vms_rilievi:
         controlla_generali(v, inv, esito)
         controlla_profilo(v, asseg.get(v.vmid, NON_CLASSIFICATA), inv, esito)
+    # Le regole che guardano il CLUSTER invece del singolo nodo. Valgono sempre,
+    # anche con --con-spente o senza: non parlano di macchine, parlano di come
+    # sono messi i nodi fra loro.
+    controlla_coerenza_rete(inv, esito)
+    controlla_coerenza_host(inv, esito)
+    controlla_reti_di_servizio(inv, esito)
+    controlla_migrazione(inv, esito)
+    controlla_replica_ha(inv, esito)
+    for nome, blocco in inv["nodi"].items():
+        controlla_rete_nodo(nome, blocco, inv, esito)
     if not args.solo_nodo:
         for nome, blocco in inv["nodi"].items():
             for ctid, d in (blocco.get("lxc") or {}).items():
