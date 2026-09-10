@@ -37,7 +37,14 @@ def strumento():
     giorno che divergono i due documenti dello stesso cliente si contraddicono.
     Il nome ha un trattino, quindi non si importa con `import`.
     """
-    f = QUI.parent / "audit-nodo.py"
+    # Due disposizioni diverse, entrambe legittime: nel repository questo file
+    # sta in `strumenti/` e il motore nella cartella sopra; una volta pubblicato
+    # nel portale stanno **affiancati** in `contenuti/script/`. Cercare in un
+    # posto solo funziona in prova e fallisce in esercizio — visto il 2026-09-10,
+    # con la raccolta arrivata e l'analisi no.
+    f = next((c for c in (QUI / "audit-nodo.py", QUI.parent / "audit-nodo.py") if c.is_file()), None)
+    if f is None:
+        raise SystemExit("non trovo audit-nodo.py: dev'essere accanto a questo file o nella cartella superiore")
     spec = importlib.util.spec_from_file_location("audit_nodo", f)
     m = importlib.util.module_from_spec(spec)
     sys.modules["audit_nodo"] = m
@@ -161,6 +168,110 @@ def metodo(m: dict) -> tuple:
     return "Import wizard ESXi", f"{gb} GB: caso ordinario, prima scelta del manuale", note
 
 
+# ══════════════════════════════ il piano a ondate ══════════════════════════════
+# Non è un ordinamento inventato: sono i vincoli del manuale applicati
+# all'inventario vero. §11.5.3 dice «mai più di 4 dischi importati
+# contemporaneamente», §11.8 dice in che ordine si spostano le cose.
+
+DISCHI_IN_PARALLELO = 4      # manuale §11.5.3, limite duro dell'API ESXi
+DISCHI_PER_ONDATA = 12       # tre turni da quattro: una sessione di lavoro
+GB_PROGETTO_A_SE = 2000      # oltre, la macchina si pianifica da sola
+
+# Indizi nel NOME e nel sistema operativo. Sono **proposte**, non rilievi: la
+# stessa regola dello strumento Proxmox — i nomi suggeriscono, non decidono.
+# Chi legge il piano può spostare una macchina di classe, e deve poterlo fare
+# sapendo perché ce l'abbiamo messa.
+INDIZI_CRITICA = re.compile(r"sql|\bdb\b|oracle|postgres|maria|mongo|exch|\bdc\b|domain", re.I)
+INDIZI_PROVA = re.compile(r"tmpl|templ|test|prova|demo|\blab\b|clone|\bold\b|dismes", re.I)
+
+
+def classe(m: dict) -> tuple:
+    """In quale gruppo va spostata: (ordine, etichetta, perché).
+
+    Tre gruppi, nell'ordine di §11.8: prima le innocue, poi le ordinarie, i
+    database e i domain controller per ultimi.
+    """
+    nome = m["nome"]
+    if INDIZI_PROVA.search(nome):
+        return (0, "prova o template", f"il nome «{nome}» dice che non è produzione")
+    if not m["acceso"]:
+        return (0, "spenta", "spenta al momento della raccolta: da confermare se va migrata")
+    if INDIZI_CRITICA.search(nome) or "SQL" in str(m["intera"].get("guest_OS") or ""):
+        return (2, "database o dominio", f"il nome «{nome}» suggerisce un servizio da spostare per ultimo")
+    return (1, "ordinaria", "nessun indizio di criticità")
+
+
+def ondate(mm: list) -> list:
+    """Le ondate, dimensionate sui DISCHI e non sulle macchine.
+
+    §11.5.3: mai più di quattro dischi importati insieme. Un'ondata da dodici
+    dischi sono tre turni da quattro — una sessione di lavoro. Le macchine molto
+    grandi escono dalle ondate e diventano un progetto a sé: metterle in fila
+    con le altre significa bloccare la serata su una sola.
+    """
+    a_se, resto = [], []
+    for m in mm:
+        (a_se if capacita_gb(m) >= GB_PROGETTO_A_SE else resto).append(m)
+    # Si ordina anche per ETICHETTA, non solo per gruppo: «spenta» e «prova o
+    # template» sono entrambe di classe 0, e alternandole ogni cambio apriva
+    # un'ondata nuova. Ventidue ondate invece di undici, tutte da due macchine.
+    resto.sort(key=lambda m: (classe(m)[0], classe(m)[1], -capacita_gb(m), m["nome"].lower()))
+
+    fuori, corrente, dischi_ora = [], [], 0
+    etichetta_ora = None
+    for m in resto:
+        cl = classe(m)[1]
+        n = max(1, len(dischi(m)))
+        # Si cambia ondata quando si riempie, o quando cambia la classe: mescolare
+        # una prova con un database in una sera sola vanifica l'ordine di §11.8.
+        if corrente and (dischi_ora + n > DISCHI_PER_ONDATA or cl != etichetta_ora):
+            fuori.append({"macchine": corrente, "dischi": dischi_ora, "classe": etichetta_ora})
+            corrente, dischi_ora = [], 0
+        corrente.append(m)
+        dischi_ora += n
+        etichetta_ora = cl
+    if corrente:
+        fuori.append({"macchine": corrente, "dischi": dischi_ora, "classe": etichetta_ora})
+    for m in a_se:
+        fuori.append({"macchine": [m], "dischi": max(1, len(dischi(m))),
+                      "classe": "progetto a sé", "sola": True})
+    return fuori
+
+
+def _turni(dischi_totali: int) -> str:
+    n = max(1, -(-dischi_totali // DISCHI_IN_PARALLELO))
+    return f"{n} turno" if n == 1 else f"{n} turni"
+
+
+def sezione_ondate_md(mm: list) -> list:
+    o = ondate(mm)
+    r = ["## Il piano a ondate", "",
+         f"**{len(o)} ondate** per {len(mm)} macchine. Il dimensionamento è sui **dischi**, non sulle "
+         f"macchine: il manuale (§11.5.3) pone il limite di **{DISCHI_IN_PARALLELO} dischi importati "
+         f"contemporaneamente**, e superarlo blocca i client dell'API ESXi — anche gli import già in corso. "
+         f"Un'ondata da {DISCHI_PER_ONDATA} dischi sono tre turni da quattro.", "",
+         "L'ordine viene da §11.8: prima le innocue, poi le ordinarie, database e domini per ultimi. "
+         "**La classe è una proposta**, dedotta dal nome e dal sistema operativo: spostare una macchina "
+         "di classe è una decisione vostra, e il perché è dichiarato per ognuna.", ""]
+    r += an._tab([(f"Ondata {i}", o_["classe"], len(o_["macchine"]), o_["dischi"],
+                   f"{sum(capacita_gb(x) for x in o_['macchine'])} GB",
+                   _turni(o_['dischi']))
+                  for i, o_ in enumerate(o, 1)],
+                 ("Ondata", "Contiene", "Macchine", "Dischi", "Da copiare", "Turni da 4"))
+    for i, o_ in enumerate(o, 1):
+        r.append(f"### Ondata {i} — {o_['classe']}")
+        r.append("")
+        if o_.get("sola"):
+            m = o_["macchine"][0]
+            r.append(f"**{m['nome']}** da sola: {capacita_gb(m)} GB. Una macchina di questa taglia in fila "
+                     f"con le altre blocca la serata; si pianifica per sé, con la sua finestra.  ")
+            r.append("")
+        r += an._tab([(m["nome"], f"{capacita_gb(m)} GB", len(dischi(m)), metodo(m)[0],
+                       "sì" if su_delta(m) else "—") for m in o_["macchine"]],
+                     ("Macchina", "Dischi totali", "N. dischi", "Metodo", "Snapshot da consolidare"))
+    return r
+
+
 def scrivi(dati: dict, esito, mm: list, percorso: Path, intest: dict) -> None:
     r = an._intestazione_md("Assessment di migrazione — " + str(intest.get("Cliente") or "sorgente"), intest)
     b, a, i = esito.conta(BLOCCANTE), esito.conta(ATTENZIONE), esito.conta(INFO)
@@ -203,6 +314,7 @@ def scrivi(dati: dict, esito, mm: list, percorso: Path, intest: dict) -> None:
             r += an._tab([("🔴" if x.livello == BLOCCANTE else "🟡" if x.livello == ATTENZIONE else "ℹ️",
                            x.messaggio, x.fonte) for x in sorted(suoi, key=lambda y: an.ORDINE_LIV[y.livello])],
                          ("", "Rilievo", "Fonte"))
+    r += sezione_ondate_md(mm)
     r += an.sezione_regole_md(esito)
     r += an._piede_md()
     percorso.write_text("\n".join(r), encoding="utf-8")

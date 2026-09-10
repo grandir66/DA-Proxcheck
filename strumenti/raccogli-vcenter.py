@@ -168,6 +168,40 @@ def raccogli(vc: VCenter, quante: int, host_minimi: int) -> dict:
     return fuori
 
 
+def invia_al_portale(dati: dict, portale: str, codice: str, cliente: str = "", codice_cliente: str = "") -> bool:
+    """Manda la raccolta grezza al portale, come fa `audit-nodo.py --invia`.
+
+    Una via sola per due strumenti: il portale archivia il grezzo e ne produce
+    l'assessment da sé, con le regole di quel giorno. Le stesse intestazioni,
+    così chi legge il codice di uno riconosce l'altro.
+    """
+    import urllib.parse
+    indirizzo = portale.rstrip("/") + "/api/scansione"
+    corpo = json.dumps(dati, ensure_ascii=False).encode()
+    print(f"Invio della raccolta a {indirizzo} ({len(corpo)/1024:.0f} kB)…", file=sys.stderr)
+    testate = {"Content-Type": "application/json", "X-Codice": codice.strip().upper()}
+    if cliente.strip():
+        testate["X-Cliente"] = urllib.parse.quote(cliente.strip())
+    if codice_cliente.strip():
+        testate["X-Codice-Cliente"] = urllib.parse.quote(codice_cliente.strip())
+    try:
+        r = requests.post(indirizzo, data=corpo, headers=testate, timeout=180, verify=True)
+    except requests.RequestException as e:
+        print(f"Invio non riuscito: {e}", file=sys.stderr)
+        return False
+    if r.status_code != 200:
+        motivo = {401: "codice non valido o revocato", 413: "raccolta troppo grande",
+                  400: "il portale non ha riconosciuto il formato"}.get(r.status_code, r.reason)
+        print(f"Invio non riuscito ({r.status_code}): {motivo}", file=sys.stderr)
+        return False
+    esito = r.json()
+    if esito.get("errore"):
+        print(f"Archiviata, ma il portale non l'ha analizzata: {esito['errore']}", file=sys.stderr)
+    if esito.get("pagina"):
+        print(f"Il risultato è consultabile su {esito['pagina']}", file=sys.stderr)
+    return True
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--host", required=True, help="indirizzo del vCenter")
@@ -178,6 +212,12 @@ def main() -> int:
     ap.add_argument("--host-minimi", type=int, default=3, dest="host_minimi",
                     help="da quanti host ESXi almeno")
     ap.add_argument("--json", required=True, help="dove scrivere la raccolta")
+    ap.add_argument("--invia", metavar="URL", help="manda la raccolta al portale dei clienti")
+    ap.add_argument("--codice-portale", metavar="PXM-…", dest="codice_portale",
+                    help="il codice di accesso al portale (con --invia)")
+    ap.add_argument("--cliente", default="", help="nome del cliente, dichiarato al portale")
+    ap.add_argument("--codice-cliente", default="", dest="codice_cliente",
+                    help="codice cliente: è la chiave con cui il portale raggruppa le acquisizioni")
     args = ap.parse_args()
 
     testo = Path(args.credenziale).expanduser().read_text(encoding="utf-8").strip()
@@ -198,6 +238,11 @@ def main() -> int:
         vc.chiudi()
 
     Path(args.json).write_text(json.dumps(dati, indent=1, ensure_ascii=False), encoding="utf-8")
+    if args.invia:
+        if not args.codice_portale:
+            print("Con --invia serve anche --codice-portale.", file=sys.stderr)
+        else:
+            invia_al_portale(dati, args.invia, args.codice_portale, args.cliente, args.codice_cliente)
     print(f"\n{len(dati.get('vm') or {})} macchine · {dati['chiamate']} chiamate · {dati['durata_s']} s"
           f"\nScritto in {args.json}", file=sys.stderr)
     return 0

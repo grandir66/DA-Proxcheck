@@ -641,3 +641,31 @@ def test_due_dischi_della_stessa_macchina_sono_due_rilievi():
     c = _ril("166 aggiornamenti disponibili.")
     d = _ril("111 aggiornamenti disponibili.")
     assert an.impronta(c) == an.impronta(d)
+
+
+def test_lo_strumento_di_migrazione_trova_il_motore_in_entrambe_le_disposizioni():
+    """Nel repository sta in `strumenti/` col motore nella cartella sopra; una
+    volta pubblicato nel portale stanno affiancati. Cercare in un posto solo
+    funziona in prova e fallisce in esercizio: successo il 2026-09-10, raccolta
+    arrivata e analisi no."""
+    testo = (Path(__file__).resolve().parents[1] / "strumenti" / "analizza-vcenter.py").read_text(encoding="utf-8")
+    assert 'QUI / "audit-nodo.py"' in testo and 'QUI.parent / "audit-nodo.py"' in testo
+
+
+def test_la_prontezza_non_e_un_secondo_elenco_di_regole():
+    """«Pronto a ricevere?» sono gli STESSI rilievi di «e' sano?», raggruppati
+    come li chiede 11.4. Scrivere regole nuove creerebbe due elenchi della
+    stessa cosa, destinati a divergere."""
+    e = an.Esito()
+    e.add(an.BLOCCANTE, "Cluster — migrazione", "Nessuna rete di migrazione dichiarata.", "manuale §1.3")
+    e.add(an.ATTENZIONE, "Coerenza — host", "Kernel diverso fra i nodi.", "manuale §19.3")
+    testo = "\n".join(an.sezione_prontezza_md(e))
+    assert "da sistemare" in testo and "Rete" in testo and "Sistema" in testo
+    # nessun rilievo inventato: la sezione riusa quelli che ci sono
+    assert len(e.rilievi) == 2
+
+
+def test_un_impianto_senza_rilievi_e_a_posto():
+    e = an.Esito()
+    testo = "\n".join(an.sezione_prontezza_md(e))
+    assert testo.count("a posto") == 4

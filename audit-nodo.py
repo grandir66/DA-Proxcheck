@@ -2699,6 +2699,7 @@ def scrivi_rilievi_md(path: Path, esito: Esito, inv: dict, intest: dict, vms: li
         r += ["## Rilievi sui container", ""]
         r += _tab([("🔴 BLOCCANTE" if x.livello == BLOCCANTE else "🟡 attenzione" if x.livello == ATTENZIONE else "ℹ️ info",
                     x.ambito, x.messaggio, x.fonte) for x in ct], ("Livello", "Ambito", "Rilievo", "Fonte"))
+    r += sezione_prontezza_md(esito)
     r += sezione_comandi_md(esito)
     r += sezione_regole_md(esito)
     r += _piede_md()
@@ -2728,6 +2729,55 @@ def _macchina(ambito: str) -> str:
     separati e chi legge ne applica metà.
     """
     return ambito.split(" — profilo ")[0].strip()
+
+
+# ══════════════════════ prontezza alla migrazione (§11.4) ══════════════════════
+# «Questo cluster è pronto a ricevere?» non è una domanda diversa da «questo
+# cluster è sano?»: sono gli STESSI rilievi, letti nell'ordine in cui §11.4 li
+# chiede. Non si scrivono regole nuove, si raggruppano quelle che ci sono —
+# altrimenti due elenchi della stessa cosa finiscono per divergere.
+PRONTEZZA = [
+    ("Rete", "§11.4.1", (
+        "reti di servizio", "migrazione", "anelli", "Coerenza — rete", "Rete —", "Rete del nodo")),
+    ("Sistema", "§11.4.2", (
+        "Coerenza — host", "orario", "Coerenza — firewall")),
+    ("Storage", "§11.4.1", (
+        "Coerenza — storage", "storage", "ZFS")),
+    ("Backup", "§11.4.3", (
+        "Cluster — notifiche",)),
+]
+
+
+def sezione_prontezza_md(esito: Esito) -> list:
+    """Il cluster visto come DESTINAZIONE di una migrazione.
+
+    §11.4 elenca che cosa completare prima della prima migrazione, e quasi ogni
+    voce corrisponde a una regola che già applichiamo. Qui si dice, per ciascuna
+    area, se è a posto — e se non lo è, che cosa manca.
+    """
+    righe, dettagli = [], []
+    for area, fonte, indizi in PRONTEZZA:
+        suoi = [x for x in esito.rilievi
+                if x.livello != INFO and any(s.lower() in x.ambito.lower() for s in indizi)]
+        b = sum(1 for x in suoi if x.livello == BLOCCANTE)
+        giudizio = "da sistemare" if b else ("da valutare" if suoi else "a posto")
+        righe.append((area, fonte, giudizio, b, len(suoi) - b))
+        if suoi:
+            dettagli.append((area, suoi))
+    if not righe:
+        return []
+    r = ["## Prontezza alla migrazione", "",
+         "Il manuale (§11.4) elenca che cosa completare **prima della prima migrazione**. "
+         "Non sono controlli diversi da quelli del resto del report: sono gli stessi rilievi, "
+         "letti rispondendo a un'altra domanda — non «questo cluster è sano» ma "
+         "«questo cluster è pronto a ricevere».", ""]
+    r += _tab(righe, ("Area", "Manuale", "Giudizio", "Bloccanti", "Da valutare"))
+    for area, suoi in dettagli:
+        peggio = [x for x in suoi if x.livello == BLOCCANTE] or suoi
+        r.append(f"**{area}** — " + "; ".join(x.messaggio.rstrip(".") for x in peggio[:3]) +
+                 ("; …" if len(peggio) > 3 else "") + ".  ")
+    r.append("")
+    return r
 
 
 def sezione_comandi_md(esito: Esito) -> list:
