@@ -48,6 +48,14 @@ Una pagina sola, offline, IT/EN, senza dipendenze oltre ai font. Undici sezioni,
 
 ## 4. Trappole già risolte (non ripercorrerle)
 
+- **Backtick nei messaggi di commit**: zsh li esegue. `git commit -m "... `cmd` ..."`
+  sostituisce il comando e il nome sparisce dal messaggio — successo il
+  2026-09-10, il commit era già pushato e non si riscrive. Nei messaggi si usano
+  le virgolette semplici o si scrive senza backtick.
+- **`pvesh get /cluster/firewall/options` può fallire** (errore di Perl, visto su
+  PX-NAS il 2026-09-10). Le regole del firewall tacciono su quell'interruttore e
+  continuano con il resto: metà del dato è meglio di nessuna regola.
+
 - **`FAILED` in SMART** (2026-09-04): la tabella ATA ha la colonna `WHEN_FAILED` → ogni disco sano sembrava guasto → il controllo è ancorato a `self-assessment test result:`.
 - **NVMe a 65 °C sano** (2026-09-04): le soglie 45/55 °C di Proxreporter sono per SATA → su NVMe la temperatura è informativa, conta `Critical Warning`.
 - **`zd*` in `lsblk`/`disks/list`** sono gli zvol delle VM, non dischi → filtrati.
