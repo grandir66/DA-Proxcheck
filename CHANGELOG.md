@@ -2,6 +2,26 @@
 
 Cosa è cambiato e **perché**, per chi non usa git. Più recenti in alto.
 
+## 2026-09-10 (6) — L'assessment di migrazione
+
+- **`strumenti/analizza-vcenter.py`**: dalla raccolta vSphere ai rilievi sulla
+  **sorgente** — quello che va sistemato *prima* di importare — e al **metodo di
+  migrazione per ogni macchina**, scelto con la tabella del manuale §11.5
+  applicata ai dati veri, con il perché dichiarato: «Attach & Move disk — 2595 GB:
+  oltre le due migliaia la copia intera è una finestra troppo lunga».
+- **Riusa il motore di `audit-nodo.py`** invece di ricopiarlo: livelli, `Esito`,
+  tabelle e testo delle regole. Due motori di report divergono, e il giorno che
+  divergono i due documenti dello stesso cliente si contraddicono.
+- **Le macchine `vCLS-*` non si migrano**: le crea e ricrea vCenter. Restano nel
+  grezzo, spariscono dai conteggi e dalle schede.
+- **L'estrattore delle fonti scandisce anche questo file.** Una regola che cita
+  un paragrafo senza testo estratto rimanda a un documento che il lettore non ha:
+  aggiungere un file di regole senza aggiungerlo all'estrattore è il modo in cui
+  quella garanzia si perde in silenzio.
+
+Provato su 98 macchine vere di un impianto da 427: **14 bloccanti, 124 da
+valutare, 54 informativi**, e tre metodi diversi su tre fasce di dimensione.
+
 ## 2026-09-10 (5) — Il collettore vCenter
 
 - **`strumenti/raccogli-vcenter.py`**: raccolta da vSphere in **sola lettura**,

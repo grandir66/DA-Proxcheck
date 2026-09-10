@@ -38,6 +38,15 @@ from pathlib import Path
 QUI = Path(__file__).resolve().parent.parent
 GENERATO = QUI / "fonti_manuale.py"
 AUDIT = QUI / "audit-nodo.py"
+# Ogni file che emette rilievi va scandito: una regola che cita un paragrafo
+# senza testo estratto rimanda a un documento che il lettore non ha. Aggiungere
+# un file di regole senza aggiungerlo qui e' il modo in cui quella garanzia si
+# perde in silenzio.
+FILE_CON_REGOLE = [AUDIT, QUI / "strumenti" / "analizza-vcenter.py"]
+
+
+def codice_delle_regole() -> str:
+    return "\n".join(f.read_text(encoding="utf-8") for f in FILE_CON_REGOLE if f.is_file())
 QUESTIONARIO = QUI / "questionario" / "questionario-migrazione.html"
 # Il questionario è una pagina autonoma: il testo delle regole deve stare DENTRO
 # l'HTML, o offline non si vede. Il blocco fra questi due marcatori è generato.
@@ -289,7 +298,7 @@ def risolvi(ancora: str, sezioni: dict, parti: dict) -> dict:
 
 def genera(radice: Path) -> str:
     sezioni, parti = leggi_manuale(radice)
-    codice = AUDIT.read_text(encoding="utf-8")
+    codice = codice_delle_regole()
     fonti, errori = {}, []
     for ancora in ancore_citate(codice):
         try:
@@ -380,7 +389,7 @@ def main():
         except ImportError:
             print("fonti_manuale.py assente: il report citerà le regole senza riportarle.", file=sys.stderr)
             return 1
-        mancanti = [a for a in ancore_citate(AUDIT.read_text(encoding="utf-8")) if a not in FONTI]
+        mancanti = [a for a in ancore_citate(codice_delle_regole()) if a not in FONTI]
         if mancanti:
             print("Citazioni senza testo (rigenerare con estrai-fonti.py):\n  - " + "\n  - ".join(mancanti), file=sys.stderr)
             return 1

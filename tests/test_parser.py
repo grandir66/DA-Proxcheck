@@ -155,7 +155,9 @@ def test_nessun_blocco_interno_nelle_regole():
 def test_ogni_citazione_ha_il_suo_testo():
     """Un rilievo che cita «manuale §8.3 › Cache mode» deve trovare quel
     paragrafo: senza, il report rimanda a un documento che il lettore non ha."""
-    codice = (Path(__file__).resolve().parents[1] / "audit-nodo.py").read_text(encoding="utf-8")
+    radice = Path(__file__).resolve().parents[1]
+    fonti_di_regole = [radice / "audit-nodo.py", radice / "strumenti" / "analizza-vcenter.py"]
+    codice = "\n".join(f.read_text(encoding="utf-8") for f in fonti_di_regole if f.is_file())
     citate = {a.strip().rstrip(",;.") for a in an._RE_ANCORA.findall(codice)}
     mancanti = sorted(a for a in citate if a not in an.REGOLE)
     assert not mancanti, f"citazioni senza testo (rigenerare con strumenti/estrai-fonti.py): {mancanti}"
@@ -513,3 +515,62 @@ def test_un_rilievo_senza_comando_non_ne_riceve_uno_finto():
     e.add(an.BLOCCANTE, "Coerenza — rete", "VLAN 20: reti IP diverse fra i nodi.", "manuale §1.3")
     assert e.agibili() == []
     assert an.sezione_comandi_md(e) == []
+
+
+# ── assessment di migrazione ────────────────────────────────────────────────
+
+def _carica_migrazione():
+    import importlib.util as iu
+    p = Path(__file__).resolve().parents[1] / "strumenti" / "analizza-vcenter.py"
+    s = iu.spec_from_file_location("analizza_vcenter", p)
+    m = iu.module_from_spec(s)
+    sys.modules["analizza_vcenter"] = m
+    s.loader.exec_module(m)
+    return m
+
+
+def test_un_disco_su_delta_e_uno_snapshot_aperto():
+    """L'API REST di vSphere 8 non espone gli snapshot (404 su /snapshot,
+    verificato su vCenter 8.0.3). Si riconoscono dal nome del backing, ed e'
+    la cosa che conta: 11.5.1 dice di consolidare prima dell'import."""
+    mig = _carica_migrazione()
+    m = {"nome": "X", "acceso": True, "tools": {},
+         "intera": {"disks": {"2000": {"backing": {"vmdk_file": "[DS] X/X-000001.vmdk"}, "capacity": 10 * 1024**3}}}}
+    assert mig.su_delta(m)
+    e = mig.an.Esito()
+    mig.controlla(m, e)
+    assert [r for r in e.rilievi if r.livello == mig.BLOCCANTE and "delta" in r.messaggio]
+
+
+def test_un_disco_normale_non_e_uno_snapshot():
+    """`X_1.vmdk` e `X.vmdk` sono dischi veri: solo il suffisso a sei cifre e'
+    un delta. Confondere i due direbbe a meta' impianto di consolidare niente."""
+    mig = _carica_migrazione()
+    for f in ("[DS] X/X.vmdk", "[DS] X/X_1.vmdk", "[DS] X/X_12.vmdk"):
+        m = {"nome": "X", "acceso": True, "tools": {},
+             "intera": {"disks": {"2000": {"backing": {"vmdk_file": f}, "capacity": 1}}}}
+        assert not mig.su_delta(m), f
+
+
+def test_le_macchine_di_servizio_non_si_migrano():
+    """vCLS-* le crea e ricrea vCenter: restano nel grezzo, spariscono dai
+    conteggi e dalle schede."""
+    mig = _carica_migrazione()
+    dati = {"vm": {"a": {"intera": {"name": "vCLS-4c4c"}, "lista": {}},
+                   "b": {"intera": {"name": "SRV-VERO"}, "lista": {}}}}
+    assert [m["nome"] for m in mig.macchine(dati)] == ["SRV-VERO"]
+
+
+def test_il_metodo_dipende_dalla_dimensione_e_lo_dichiara():
+    """Chi legge deve poter dire «no, questa la faccio diversamente» sapendo su
+    cosa ci si e' basati."""
+    mig = _carica_migrazione()
+    def vm(gb):
+        return {"nome": "X", "acceso": True, "tools": {},
+                "intera": {"disks": {"2000": {"backing": {"vmdk_file": "[DS] X/X.vmdk"},
+                                              "capacity": gb * 1024**3}}}}
+    assert mig.metodo(vm(100))[0] == "Import wizard ESXi"
+    assert "live-import" in mig.metodo(vm(800))[0]
+    assert mig.metodo(vm(2500))[0] == "Attach & Move disk"
+    for gb in (100, 800, 2500):
+        assert str(gb) in mig.metodo(vm(gb))[1]   # il perche' porta il numero

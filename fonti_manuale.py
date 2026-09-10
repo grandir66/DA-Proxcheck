@@ -54,6 +54,38 @@ FONTI = {
   "testo": "**Privilegiato o no.** Non privilegiato è il predefinito ed è la scelta giusta: l'utente `root` del container è mappato su un utente non privilegiato dell'host. Un container privilegiato è, in pratica, `root` sull'host — dalla 9.0 crearlo richiede il privilegio `Sys.Modify` proprio per questa ragione.\n\nIl prezzo del non privilegiato sono i **permessi sui mount point**: gli UID dentro e fuori non coincidono. Dalla 9.2 le opzioni `idmap` e `keepattrs` sui mount point risolvono i casi più comuni senza dover ricorrere ai container privilegiati.\n\n**Nesting** serve per systemd completo, per FUSE e per alcuni strumenti; va attivato consapevolmente, non per abitudine.\n\n**Il backup di un container** è coerente con `suspend` o `stop`; in modalità `snapshot` dipende dallo storage sottostante. Per i dati applicativi importanti dentro un container valgono le stesse considerazioni della §12.12: il dump applicativo viene prima.",
   "troncato": 0
  },
+ "§11.2": {
+  "titolo": "§11.2 Assessment: cosa raccogliere prima di toccare qualcosa",
+  "file": "manuale/11-migrazione.md",
+  "riga": 32,
+  "parte": "Parte 11",
+  "testo": "Nessuna migrazione parte senza questo inventario. Esportabile da vCenter con PowerCLI.\n\n| Dato | Perché serve |\n|---|---|\n| Nome, vCPU, RAM, dimensione e numero dischi | Dimensionamento e configurazione target |\n| **Firmware: BIOS o UEFI** | Determina SeaBIOS vs OVMF. **Se sbagliato la VM non trova il bootloader** |\n| **Controller disco attuale** (LSI Logic / PVSCSI / SATA) | Determina la strategia di switch a VirtIO |\n| Sistema operativo e versione | Disponibilità driver VirtIO |\n| **vTPM presente?** | Lo stato vTPM **non è migrabile** da VMware. Impatta BitLocker |\n| **BitLocker o crittografia full-disk?** | Serve sospendere/decrittare, o avere le chiavi di ripristino |\n| Configurazione di rete (IP, DNS, gateway, route, VLAN) | Il nome dell'adattatore cambierà |\n| MAC address | Per mantenere le reservation DHCP |\n| **Snapshot presenti** | Rallentano enormemente l'import: da consolidare prima |\n| Dischi RDM / independent / shared | **Non migrabili** con i metodi standard |\n| Disk su **vSAN** | **Non importabili**: spostare prima su altro datastore |\n| **Cifratura VM (storage policy)** | **Non importabile**: rimuovere la policy prima |\n| Licenze legate a hardware ID / dongle USB | Rischio di riattivazione o blocco |\n| Criticità, finestra di manutenzione, RTO/RPO | Pianificazione delle ondate |\n\n- Versione ESXi di ogni host e nome dei datastore (**caratteri speciali come `+` rompono l'import**)\n- Credenziali amministrative sugli host ESXi — **non solo su vCenter**, vedi §11.5.1\n- Banda disponibile tra ESXi e Proxmox\n\n---",
+  "troncato": 0
+ },
+ "§11.5": {
+  "titolo": "§11.5 Metodi di migrazione",
+  "file": "manuale/11-migrazione.md",
+  "riga": 142,
+  "parte": "Parte 11",
+  "testo": "| Metodo | Downtime | Quando usarlo |\n|---|---|---|\n| **Import wizard ESXi** | Medio (VM spenta durante la copia) | **Prima scelta** per la maggior parte delle VM |\n| **Import wizard + live-import** | Basso | VM grandi con servizi sensibili al downtime |\n| **Attach & Move disk** | Minimo | VM molto grandi con finestra strettissima. Più laborioso |\n| `qm importovf` (via `ovftool`) | Alto | Quando l'accesso diretto all'ESXi non è possibile |\n| `qm disk import` da share | Alto | Controllo fine sulla configurazione target |\n| **Restore da backup** (Veeam ecc.) | Variabile | Se esiste già un backup con integrazione Proxmox |\n| **Clonezilla** | Alto | Casi limite: sorgenti non VMware, dischi problematici |\n\n- **Puntare agli host ESXi, non a vCenter.** L'import via vCenter riduce le prestazioni in modo drammatico.\n- **La VM sorgente deve essere spenta** (anche con live-import).\n- **Consolidare o eliminare gli snapshot** sulla sorgente: la presenza di snapshot rallenta enormemente l'import.\n- Testato da ESXi 6.5 a 8.0.\n- Con certificati self-signed: aggiungere la CA al trust store o spuntare *Skip Certificate Verification*.\n- La scheda *Advanced* consente di scegliere storage diversi per ogni disco, modelli di NIC, e di **escludere dischi o CD-ROM** dall'import.\n\nLa VM viene avviata mentre l'import è ancora in corso: prima i dati necessari all'avvio, il resto in background. La sorgente resta comunque spenta, quindi **un downtime c'è**, solo più breve.",
+  "troncato": 1
+ },
+ "§11.6": {
+  "titolo": "§11.6 Preparazione della VM sorgente (PRE-migrazione)",
+  "file": "manuale/11-migrazione.md",
+  "riga": 188,
+  "parte": "Parte 11",
+  "testo": "**Questa è la sezione che determina se la migrazione riesce al primo colpo.** Va eseguita mentre la VM è ancora su VMware e funzionante.\n\n1. **Backup o snapshot della VM sorgente.** Mai migrare senza. È anche il piano di rollback.\n2. **Documentare la configurazione di rete**: IP, netmask, gateway, DNS, route statiche, VLAN, MAC address. L'adattatore cambierà e la configurazione andrà rifatta a mano.\n3. **Annotare il firmware**: BIOS legacy o UEFI. Da replicare esattamente sul target.\n4. **Rimuovere gli snapshot** sulla sorgente (consolidare).\n5. **Verificare l'accesso fuori banda**: password di root/Administrator note, console raggiungibile. **La rete quasi certamente non funzionerà al primo avvio.**\n6. **Crittografia full-disk con chiavi nel vTPM**: sospendere BitLocker o disabilitare la crittografia. Lo **stato vTPM non è migrabile da VMware**. Avere comunque le chiavi di ripristino a portata di mano.\n7. **Rimuovere i guest tools del vecchio hypervisor** — è molto più difficile farlo dopo.\n8. **DHCP reservation**: o si adatta la reservation al nuovo MAC, o si imposta manualmente il vecchio MAC sulla NIC target.\n9. **Spegnere la VM in modo pulito** (shutdown dal sistema operativo, non power off).\n\nL'ordine conta. Eseguire nella sequenza indicata.\n\n**Passo 1 — Rilevare il firmware.**\n\n```\nmsinfo32\n```\n\nLeggere *Modalità BIOS*: `UEFI` oppure `Legacy`. Annotare. Verificare anche lo stile partizione (GPT/MBR) in Gestione disco.\n\n**Passo 2 — Sospendere BitLocker** (se attivo), o annotare la chiave di ripristino:",
+  "troncato": 1
+ },
+ "§11.7": {
+  "titolo": "§11.7 Configurazione ottimale della VM target",
+  "file": "manuale/11-migrazione.md",
+  "riga": 321,
+  "parte": "Parte 11",
+  "testo": "Da applicare a ogni VM migrata. L'import wizard fa scelte ragionevoli ma non sempre ottimali.",
+  "troncato": 1
+ },
  "§12.1": {
   "titolo": "§12.1 Che cosa protegge un backup, e che cosa no",
   "file": "manuale/12-backup.md",
