@@ -62,6 +62,14 @@ FONTI = {
   "testo": "Nessuna migrazione parte senza questo inventario. Esportabile da vCenter con PowerCLI.\n\n| Dato | Perché serve |\n|---|---|\n| Nome, vCPU, RAM, dimensione e numero dischi | Dimensionamento e configurazione target |\n| **Firmware: BIOS o UEFI** | Determina SeaBIOS vs OVMF. **Se sbagliato la VM non trova il bootloader** |\n| **Controller disco attuale** (LSI Logic / PVSCSI / SATA) | Determina la strategia di switch a VirtIO |\n| Sistema operativo e versione | Disponibilità driver VirtIO |\n| **vTPM presente?** | Lo stato vTPM **non è migrabile** da VMware. Impatta BitLocker |\n| **BitLocker o crittografia full-disk?** | Serve sospendere/decrittare, o avere le chiavi di ripristino |\n| Configurazione di rete (IP, DNS, gateway, route, VLAN) | Il nome dell'adattatore cambierà |\n| MAC address | Per mantenere le reservation DHCP |\n| **Snapshot presenti** | Rallentano enormemente l'import: da consolidare prima |\n| Dischi RDM / independent / shared | **Non migrabili** con i metodi standard |\n| Disk su **vSAN** | **Non importabili**: spostare prima su altro datastore |\n| **Cifratura VM (storage policy)** | **Non importabile**: rimuovere la policy prima |\n| Licenze legate a hardware ID / dongle USB | Rischio di riattivazione o blocco |\n| Criticità, finestra di manutenzione, RTO/RPO | Pianificazione delle ondate |\n\n- Versione ESXi di ogni host e nome dei datastore (**caratteri speciali come `+` rompono l'import**)\n- Credenziali amministrative sugli host ESXi — **non solo su vCenter**, vedi §11.5.1\n- Banda disponibile tra ESXi e Proxmox\n\n---",
   "troncato": 0
  },
+ "§11.4": {
+  "titolo": "§11.4 Preparazione del cluster Proxmox",
+  "file": "manuale/11-migrazione.md",
+  "riga": 106,
+  "parte": "Parte 11",
+  "testo": "Da completare **prima** della prima migrazione.\n\n| Elemento | Raccomandazione |\n|---|---|\n| **Corosync** | **Rete fisica dedicata**, più almeno un link ridondante. Corosync gestisce fino a 8 reti e commuta da solo |\n| Storage | Rete separata da corosync. Se iSCSI/NFS: VLAN dedicata, MTU 9000 se l'intero percorso lo supporta |\n| Migrazione | Rete dedicata configurabile in Datacenter → Options |\n| Backup | Il traffico verso PBS può saturare un link: tenerlo lontano da corosync |\n| Bridge | Linux bridge VLAN-aware. OVS raramente necessario: il bridge Linux ha colmato il divario |\n\n**L'errore più comune:** far convivere corosync, storage e backup sullo stesso link. Sotto carico i nodi si auto-fenciano e sembra che il cluster si riavvii senza motivo.\n\n- Repository: **enterprise** con subscription (consigliato in produzione), altrimenti `no-subscription`. Ogni nodo del cluster deve avere lo **stesso livello** di subscription\n- Aggiornare tutti i nodi alla stessa versione prima di iniziare\n- NTP funzionante e coerente su tutti i nodi\n- `Datacenter → Options → Next free VMID range` per non collidere con altri cluster\n- Se si usa ZFS: **limitare l'ARC** in base alla RAM da lasciare alle VM (`/etc/modprobe.d/zfs.conf` → `zfs_arc_max`)\n\nConfigurare **Proxmox Backup Server prima della migrazione**, non dopo. Serve anche come rete di sicurezza durante le ondate.\n\nAggiungere lo storage **ESXi** (Datacenter → Storage → Add → ESXi) puntando **direttamente agli host ESXi**, non a vCenter (§11.5.1).",
+  "troncato": 1
+ },
  "§11.5": {
   "titolo": "§11.5 Metodi di migrazione",
   "file": "manuale/11-migrazione.md",
@@ -85,6 +93,14 @@ FONTI = {
   "parte": "Parte 11",
   "testo": "Da applicare a ogni VM migrata. L'import wizard fa scelte ragionevoli ma non sempre ottimali.",
   "troncato": 1
+ },
+ "§11.8": {
+  "titolo": "§11.8 Esecuzione: ondate",
+  "file": "manuale/11-migrazione.md",
+  "riga": 378,
+  "parte": "Parte 11",
+  "testo": "Non migrare mai tutto insieme. La suddivisione in ondate serve a imparare sul parco a basso rischio.\n\n| Ondata | Contenuto | Obiettivo |\n|---|---|---|\n| **0 — Pilota** | 1 VM Windows + 1 VM Linux di test, non di produzione | Validare l'intera procedura e **misurare i tempi reali** |\n| **1 — Basso rischio** | Sviluppo, test, VM non critiche | Affinare la procedura, formare il personale |\n| **2 — Medio** | Produzione non critica, servizi ridondati | |\n| **3 — Critico** | Domain controller, database, applicativi core | Finestra concordata, rollback pronto |\n\n**Regole trasversali:**\n\n- Dalla misura dell'ondata 0 si ricava il throughput reale (GB/ora) e si dimensionano le finestre. Non stimare a occhio.\n- I **domain controller** vanno migrati uno alla volta, verificando la replica AD tra uno e l'altro. Mai spegnerli tutti insieme.\n- I cluster applicativi (SQL Always On, cluster di failover) si migrano un nodo per volta.\n- **Non cancellare la VM sorgente.** Lasciarla spenta e intatta per il periodo di rollback concordato (tipicamente 2–4 settimane).\n- ⚠️ **Mai avviare la stessa VM contemporaneamente su VMware e Proxmox.** Con i metodi che condividono i file su share, questo corrompe il disco.\n\n---",
+  "troncato": 0
  },
  "§12.1": {
   "titolo": "§12.1 Che cosa protegge un backup, e che cosa no",
