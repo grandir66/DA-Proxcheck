@@ -1923,10 +1923,16 @@ def controlla_firewall(inv: dict, esito: Esito):
     cl = inv.get("cluster") or {}
     nodi = inv.get("nodi") or {}
     opz_cl = cl.get("fw_options")
-    if opz_cl is None:
+    per_nodo = {n: (b.get("nodo") or {}).get("fw_options") for n, b in nodi.items()}
+    if opz_cl is None and not any(isinstance(x, dict) for x in per_nodo.values()):
         return  # raccolta più vecchia dell'introduzione di queste chiamate
     A = "Cluster — firewall"
-    acceso_dc = str(opz_cl.get("enable", "")) == "1"
+    # L'interruttore del datacenter può non essere leggibile: su PX-NAS
+    # `pvesh get /cluster/firewall/options` fallisce con un errore di Perl
+    # (2026-09-10). In quel caso si tace SU QUELL'INTERRUTTORE e si continua
+    # con quello che si sa: metà del dato è meglio di nessuna regola.
+    dc_noto = isinstance(opz_cl, dict)
+    acceso_dc = dc_noto and str(opz_cl.get("enable", "")) == "1"
     regole_cl = cl.get("fw_rules") or []
 
     spenti = []
@@ -1935,17 +1941,26 @@ def controlla_firewall(inv: dict, esito: Esito):
         if isinstance(opz, dict) and str(opz.get("enable", "")) != "1":
             spenti.append(nome)
 
+    # Firewall spento dappertutto: è la sesta delle sette misure del manuale.
+    # Attenzione e non bloccante — un nodo dietro un perimetro può legittimamente
+    # non usarlo, ma la scelta va vista, non subita.
+    noti = [n for n, o in per_nodo.items() if isinstance(o, dict)]
+    if noti and len(spenti) == len(noti) and not acceso_dc:
+        dove = "su questo host" if len(noti) == 1 else f"su tutti i {len(noti)} nodi"
+        esito.add(ATTENZIONE, A, f"Firewall di Proxmox spento {dove}"
+                                 + ("" if dc_noto else " (l'interruttore del datacenter non è leggibile su questa versione)")
+                                 + ": nessun filtro sul traffico verso il management.", "manuale §18.1, §15.4")
     if acceso_dc and spenti:
         esito.add(BLOCCANTE, A,
                   f"Firewall acceso al datacenter ma SPENTO sull'host di {', '.join(sorted(spenti))}: "
                   f"le regole non filtrano niente. `pve-firewall status` dice comunque «enabled/running».",
                   "manuale §15.3")
-    if regole_cl and len(spenti) == len(nodi) and nodi:
+    if regole_cl and dc_noto and len(spenti) == len(nodi) and nodi:
         esito.add(BLOCCANTE, A,
                   f"{len(regole_cl)} regole definite a livello di cluster e nessun host che le applica: "
                   f"esistono sulla carta e non in esercizio.", "manuale §15.3, §15.5")
-    if not acceso_dc and any(str(((b.get('nodo') or {}).get('fw_options') or {}).get('enable', '')) == '1'
-                             for b in nodi.values()):
+    if dc_noto and not acceso_dc and any(str(((b.get('nodo') or {}).get('fw_options') or {}).get('enable', '')) == '1'
+                                         for b in nodi.values()):
         esito.add(BLOCCANTE, A, "Firewall acceso su un host ma spento al datacenter: l'interruttore generale vince.",
                   "manuale §15.3")
 

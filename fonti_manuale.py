@@ -142,6 +142,14 @@ FONTI = {
   "testo": "Ogni job di backup ha un'opzione `notification-mode` con due valori:\n\n| Modalità | Comportamento |\n|---|---|\n| `notification-system` | Usa il sistema di notifiche globale, con matcher e target. **È quella da usare** |\n| `legacy-sendmail` | Manda l'email direttamente all'indirizzo scritto nel job, **ignorando ogni matcher e target**. Comportamento delle versioni precedenti alla 8.1 |\n\n> La modalità legacy **potrebbe essere rimossa** in una release futura. Se sul cluster ci sono job che la usano ancora, vanno convertiti — altrimenti un giorno gli avvisi di backup smettono di arrivare senza che nessuno cambi nulla.",
   "troncato": 0
  },
+ "§18.1": {
+  "titolo": "§18.1 Le sette misure che valgono più di tutte le altre",
+  "file": "manuale/18-sicurezza.md",
+  "riga": 5,
+  "parte": "Parte 18",
+  "testo": "| # | Misura | Costo | Dove |\n|---|---|---|---|\n| 1 | **Il management non è raggiungibile da Internet né dalla rete degli utenti** | Nessuno, se progettato prima | §1.3 |\n| 2 | **Utenti nominali, niente `root` condiviso** | Basso | §13.7 |\n| 3 | **Secondo fattore su tutti gli amministratori** | Basso | §13.8 |\n| 4 | **Backup fuori dalla portata delle credenziali quotidiane** | Medio | §12.8 |\n| 5 | **Aggiornamenti applicati, con una cadenza dichiarata** | Medio | §19.1 |\n| 6 | **Firewall attivo con INPUT in DROP sul datacenter** | Medio, con rischio di lockout | §15.4 |\n| 7 | **Log inoltrati fuori dal nodo** | Basso | §17.5 |\n\nLe prime cinque non hanno controindicazioni. Le ultime due vanno provate prima in laboratorio.",
+  "troncato": 0
+ },
  "§19.1": {
   "titolo": "§19.1 Il ciclo di aggiornamento",
   "file": "manuale/19-esercizio.md",
