@@ -2,6 +2,42 @@
 
 Cosa è cambiato e **perché**, per chi non usa git. Più recenti in alto.
 
+## 2026-09-10 (7) — Confrontare due verifiche nel tempo
+
+Prerequisito del dossier per cliente: per dire che cosa è stato **chiuso** fra
+una verifica e la successiva serve riconoscere lo stesso rilievo in due
+raccolte diverse — e un rilievo, finora, era testo.
+
+- **`--rilievi-json`** scrive i rilievi anche come dato, accanto ai due
+  documenti. Il Markdown è per le persone; questo serve a confrontare.
+- **`confronta(prima, dopo)`** torna **chiusi · rimasti · nuovi**. È la sola
+  forma che risponde alla domanda vera — «il lavoro fatto è servito?» — perché
+  il conteggio non distingue un problema chiuso da uno sostituito: due
+  bloccanti a settembre e due a ottobre possono essere quattro problemi diversi.
+
+### La regola dell'identità, e le due volte che ha sbagliato
+
+**Un numero attaccato a una parola è un NOME; un numero isolato è una MISURA.**
+
+Ci sono voluti due tentativi, e in entrambi i casi l'errore si è visto solo
+contando le impronte su una raccolta vera da 212 rilievi:
+
+- azzerando *tutti* i numeri, gli **indirizzi IP** diventavano `N.N.N.N` e due
+  rilievi di latenza verso nodi diversi si fondevano — 212 rilievi, 200 impronte;
+- tenendo gli indirizzi ma non i nomi di dispositivo, **`scsi0` e `scsi1`**
+  della stessa macchina diventavano lo stesso rilievo — 204 impronte, e la
+  verifica successiva avrebbe dichiarato «chiuso» un disco mai toccato.
+
+Ora sono 212 su 212. `scsi0`, `net1`, `vlan20`, `bond50` e gli indirizzi
+identificano l'oggetto e si tengono; «7,9 ms» e «166 aggiornamenti» sono quello
+che si è misurato oggi e si azzerano.
+
+**Il limite, dichiarato**: l'impronta non è a prova di riscrittura. Cambiare il
+*testo* di una regola fa risultare chiusi i rilievi vecchi e nuovi quelli
+corrispondenti. Chi riscrive un messaggio sta toccando anche lo storico dei
+clienti — e dove serve stabilità vera si aggiunge un `codice` esplicito alla
+regola, che vince sull'impronta.
+
 ## 2026-09-10 (6) — L'assessment di migrazione
 
 - **`strumenti/analizza-vcenter.py`**: dalla raccolta vSphere ai rilievi sulla

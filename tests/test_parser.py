@@ -574,3 +574,70 @@ def test_il_metodo_dipende_dalla_dimensione_e_lo_dichiara():
     assert mig.metodo(vm(2500))[0] == "Attach & Move disk"
     for gb in (100, 800, 2500):
         assert str(gb) in mig.metodo(vm(gb))[1]   # il perche' porta il numero
+
+
+# ── confronto fra due verifiche nel tempo ───────────────────────────────────
+
+def _ril(msg, ambito="Nodo A", fonte="manuale §1.3", liv=None):
+    return an.Rilievo(liv or an.ATTENZIONE, ambito, msg, fonte)
+
+
+def test_lo_stesso_rilievo_misurato_due_volte_non_e_due_rilievi():
+    """«latenza 7,9 ms» e «latenza 8,1 ms» verso lo stesso nodo sono lo STESSO
+    rilievo misurato due volte. Senza questa normalizzazione ogni verifica
+    direbbe che il precedente e' stato chiuso e ne e' comparso uno nuovo,
+    cioe' non direbbe niente."""
+    a = _ril("Latenza 7.9 ms verso 172.18.10.2")
+    b = _ril("Latenza 8.1 ms verso 172.18.10.2")
+    assert an.impronta(a) == an.impronta(b)
+
+
+def test_rilievi_su_oggetti_diversi_restano_distinti():
+    a = _ril("Latenza 7.9 ms verso 172.18.10.2", ambito="Nodo A")
+    b = _ril("Latenza 7.9 ms verso 172.18.10.2", ambito="Nodo B")
+    assert an.impronta(a) != an.impronta(b)
+
+
+def test_il_confronto_dice_chiusi_rimasti_e_nuovi():
+    """La domanda vera non e' «quanti ne restano» ma «il lavoro fatto e'
+    servito»: due bloccanti a settembre e due a ottobre possono essere quattro
+    problemi diversi."""
+    e1 = an.Esito(); e1.rilievi = [_ril("Ballooning attivo"), _ril("discard non attivo")]
+    e2 = an.Esito(); e2.rilievi = [_ril("discard non attivo"), _ril("iothread non attivo")]
+    c = an.confronta(an.rilievi_json(e1), an.rilievi_json(e2))
+    assert [x["messaggio"] for x in c["chiusi"]] == ["Ballooning attivo"]
+    assert [x["messaggio"] for x in c["rimasti"]] == ["discard non attivo"]
+    assert [x["messaggio"] for x in c["nuovi"]] == ["iothread non attivo"]
+
+
+def test_confronto_con_una_verifica_vuota():
+    """La prima verifica di un cliente non ha un prima: tutto e' nuovo, niente
+    e' chiuso."""
+    e = an.Esito(); e.rilievi = [_ril("Ballooning attivo")]
+    c = an.confronta([], an.rilievi_json(e))
+    assert len(c["nuovi"]) == 1 and not c["chiusi"] and not c["rimasti"]
+
+
+def test_gli_indirizzi_non_sono_misure():
+    """«latenza verso 172.18.10.2» e «verso 172.18.10.3» sono due rilievi
+    diversi. Azzerando anche gli indirizzi si fondevano in uno: visto sulla
+    raccolta vera, 212 rilievi diventavano 200 impronte."""
+    a = _ril("Latenza 7.9 ms verso 172.18.10.2")
+    b = _ril("Latenza 7.9 ms verso 172.18.10.3")
+    assert an.impronta(a) != an.impronta(b)
+    # e la misura resta una misura
+    c = _ril("Latenza 8.4 ms verso 172.18.10.2")
+    assert an.impronta(a) == an.impronta(c)
+
+
+def test_due_dischi_della_stessa_macchina_sono_due_rilievi():
+    """Un numero attaccato a una parola e' un NOME, non una misura: `scsi0` e
+    `scsi1` identificano due dischi. Azzerandoli si fondevano, e la verifica
+    diceva che uno dei due era stato sistemato."""
+    a = _ril("Disco scsi0: iothread non attivo.", ambito="VM 121 (web) @A")
+    b = _ril("Disco scsi1: iothread non attivo.", ambito="VM 121 (web) @A")
+    assert an.impronta(a) != an.impronta(b)
+    # ma la misura resta misura
+    c = _ril("166 aggiornamenti disponibili.")
+    d = _ril("111 aggiornamenti disponibili.")
+    assert an.impronta(c) == an.impronta(d)

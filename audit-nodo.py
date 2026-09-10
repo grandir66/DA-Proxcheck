@@ -2176,6 +2176,72 @@ def controlla_notifiche(inv: dict, esito: Esito):
                                  "l'avviso resta lì.", "manuale §16.2")
 
 
+# ══════════════════════════ confronto fra due verifiche ══════════════════════════
+# «Due bloccanti a settembre e due a ottobre» possono essere quattro problemi
+# diversi. Per dire che cosa è stato CHIUSO serve riconoscere lo stesso rilievo
+# in due raccolte diverse, e un rilievo oggi è testo.
+
+# I numeri dentro un messaggio sono la MISURA, non l'identità: «latenza 7,9 ms»
+# e «latenza 8,1 ms» verso lo stesso nodo sono lo stesso rilievo, misurato due
+# volte. Senza questa normalizzazione ogni verifica direbbe che il precedente è
+# stato chiuso e ne è comparso uno nuovo — cioè non direbbe niente.
+# Gli INDIRIZZI si tengono, il resto dei numeri no: «latenza verso 172.18.10.2»
+# e «verso 172.18.10.3» sono due rilievi diversi, non lo stesso misurato due
+# volte. Azzerando anche gli indirizzi si fondevano in uno (visto subito, sulla
+# raccolta vera: 212 rilievi diventavano 200 impronte).
+# La regola, in una riga: **un numero attaccato a una parola è un NOME, un
+# numero isolato è una MISURA.** `scsi0`, `net1`, `vlan20`, `bond50` e gli
+# indirizzi identificano l'oggetto e si tengono; «7,9 ms» e «166 aggiornamenti»
+# sono quello che si è misurato oggi e si azzerano. Senza la seconda alternativa
+# i due dischi della stessa macchina diventavano lo stesso rilievo.
+RE_MISURA = re.compile(r"(\d+\.\d+\.\d+\.\d+)|([A-Za-z_]+\d+)|(\d+[.,]?\d*)")
+
+
+def _senza_misure(testo: str) -> str:
+    return RE_MISURA.sub(lambda m: m.group(1) or m.group(2) or "N", testo)
+
+
+def impronta(r) -> tuple:
+    """L'identità di un rilievo attraverso il tempo: (ambito, fonte, forma).
+
+    Non è a prova di riscrittura: se domani si cambia il TESTO di una regola, i
+    rilievi vecchi risultano chiusi e i nuovi comparsi. È il prezzo di non avere
+    un codice per regola, ed è dichiarato qui perché chi riscrive un messaggio
+    sappia che sta toccando anche lo storico. Un `codice` esplicito, dove c'è,
+    vince su tutto.
+    """
+    codice = getattr(r, "codice", "")
+    if codice:
+        return (r.ambito, codice)
+    return (r.ambito, r.fonte, _senza_misure(r.messaggio))
+
+
+def rilievi_json(esito: Esito) -> list:
+    """I rilievi come dato, non come documento. Il Markdown è per le persone;
+    questo serve a confrontare due verifiche."""
+    return [{"livello": r.livello, "ambito": r.ambito, "messaggio": r.messaggio,
+             "fonte": r.fonte, "comando": r.comando,
+             "impronta": "|".join(impronta(r))} for r in esito.rilievi]
+
+
+def confronta(prima: list, dopo: list) -> dict:
+    """Che cosa è cambiato fra due verifiche dello stesso impianto.
+
+    Torna i rilievi CHIUSI (c'erano e non ci sono più), RIMASTI e NUOVI. È la
+    sola forma che risponde alla domanda vera — «il lavoro fatto è servito?» —
+    perché il conteggio da solo non distingue un problema chiuso da uno
+    sostituito.
+    """
+    def per_impronta(righe):
+        return {x.get("impronta"): x for x in righe if x.get("impronta")}
+    a, b = per_impronta(prima), per_impronta(dopo)
+    return {
+        "chiusi": [a[k] for k in a if k not in b],
+        "rimasti": [b[k] for k in b if k in a],
+        "nuovi": [b[k] for k in b if k not in a],
+    }
+
+
 # ────────────────────────────── report ──────────────────────────────
 
 ORDINE_CATEGORIE = ["Coerenza del cluster", "Cluster / corosync", "Nodo", "Hardware", "Storage", "Rete",
@@ -3155,6 +3221,10 @@ def esegui(args):
     f_inv, f_rep = nomi_file_report(cartella, codice_cliente, nome_cliente, args.host or inv.get("ingresso") or "locale")
     scrivi_inventario_md(f_inv, inv, intest, vms, asseg)
     scrivi_rilievi_md(f_rep, esito, inv, intest, vms_rilievi, asseg)
+    if getattr(args, "rilievi_json", None):
+        Path(args.rilievi_json).write_text(
+            json.dumps({"data": intest["Data"], "rilievi": rilievi_json(esito)}, ensure_ascii=False, indent=1),
+            encoding="utf-8")
     print(f"\nInventario salvato in {f_inv}\nRilievi salvati in   {f_rep}")
     return {"data": intest["Data"], "b": esito.conta(BLOCCANTE), "a": esito.conta(ATTENZIONE), "i": esito.conta(INFO),
             "output": str(f_rep), "profili": str(auto)}
@@ -3214,6 +3284,8 @@ def main():
     ap.add_argument("--solo-questo-nodo", action="store_true", help="non estendere la raccolta agli altri nodi del cluster")
     ap.add_argument("--solo-nodo", action="store_true", help="salta le VM")
     ap.add_argument("--solo-accese", action="store_true", help="salta le VM spente (in RACCOLTA: non vengono proprio interrogate)")
+    ap.add_argument("--rilievi-json", metavar="FILE", dest="rilievi_json",
+                    help="scrive i rilievi anche come dato, per confrontare due verifiche nel tempo")
     ap.add_argument("--con-spente", action="store_true",
                     help="rilievi anche sulle VM spente (default: solo sulle accese; l'inventario le elenca sempre)")
     ap.add_argument("--performance", action="store_true", help="esegue anche pveperf (test fsync: scrive un file temporaneo)")
