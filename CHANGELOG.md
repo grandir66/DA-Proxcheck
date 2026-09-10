@@ -2,6 +2,16 @@
 
 Cosa è cambiato e **perché**, per chi non usa git. Più recenti in alto.
 
+## 2026-09-10 — L'invio al portale dice per chi si sta raccogliendo
+
+- `--invia` accompagna la raccolta con il **nome e il codice del cliente** già
+  dichiarati a `--cliente` e `--codice`. Prima non viaggiavano: con il codice
+  universale la verifica arrivava anonima, e i documenti che il portale genera
+  uscivano intestati «cliente» pur avendo noi il nome sotto mano. Il portale li
+  usa solo dove il codice non ha già un cliente suo.
+- Le intestazioni HTTP sono ASCII, quindi il nome si cifra in percentuale:
+  «IT&M» e i nomi con accenti arrivano interi.
+
 ## 2026-09-07 (10)
 
 ### Il questionario giudica le risposte, non solo la loro presenza — e nasce il livello «Essenziale»

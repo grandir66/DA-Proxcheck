@@ -2164,7 +2164,8 @@ def esegui(args):
         if not getattr(args, "codice_portale", None):
             print("Con --invia serve anche --codice-portale (quello che vi ha dato Domarc).", file=sys.stderr)
         else:
-            invia_al_portale(inv, args.invia, args.codice_portale)
+            invia_al_portale(inv, args.invia, args.codice_portale,
+                             cliente=args.cliente or "", codice_cliente=args.codice or "")
 
     cluster_nome = next((x.get("name") for x in (inv.get("cluster", {}).get("status") or []) if x.get("type") == "cluster"), None)
     multi = len(inv.get("nodi") or {}) > 1
@@ -2245,7 +2246,8 @@ def esegui(args):
             "output": str(f_rep), "profili": str(auto)}
 
 
-def invia_al_portale(inv: dict, portale: str, codice: str) -> bool:
+def invia_al_portale(inv: dict, portale: str, codice: str,
+                     cliente: str = "", codice_cliente: str = "") -> bool:
     """Manda la raccolta GREZZA al portale dei clienti, che la archivia e ne
     produce il report da sé.
 
@@ -2256,13 +2258,21 @@ def invia_al_portale(inv: dict, portale: str, codice: str) -> bool:
     stesso strumento.
     """
     import urllib.error
+    import urllib.parse
     import urllib.request
     indirizzo = portale.rstrip("/") + "/api/scansione"
     corpo = json.dumps(inv, ensure_ascii=False).encode()
     print(c(f"Invio della raccolta a {indirizzo} ({len(corpo)/1024:.0f} kB)…", GRIGIO), file=sys.stderr)
-    req = urllib.request.Request(indirizzo, data=corpo, method="POST",
-                                 headers={"Content-Type": "application/json",
-                                          "X-Codice": codice.strip().upper()})
+    testate = {"Content-Type": "application/json", "X-Codice": codice.strip().upper()}
+    # Per chi si sta raccogliendo. Il portale lo usa SOLO se il codice non ha
+    # già un cliente suo — con un codice di cliente vince il codice, altrimenti
+    # basterebbe dichiararsi qualcun altro per intestargli una verifica.
+    # Le intestazioni HTTP sono ASCII: un nome con accenti o «&» si cifra.
+    if cliente.strip():
+        testate["X-Cliente"] = urllib.parse.quote(cliente.strip())
+    if codice_cliente.strip():
+        testate["X-Codice-Cliente"] = urllib.parse.quote(codice_cliente.strip())
+    req = urllib.request.Request(indirizzo, data=corpo, method="POST", headers=testate)
     try:
         with urllib.request.urlopen(req, timeout=120) as r:
             esito = json.loads(r.read().decode())
