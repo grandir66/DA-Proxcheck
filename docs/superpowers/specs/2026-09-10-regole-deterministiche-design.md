@@ -314,3 +314,107 @@ fatto, questo cluster?».
 sopravvive alla consegna. I rilievi si chiudono, la configurazione resta, ed è
 quella che si rilegge fra sei mesi quando qualcosa cambia. Renderla solo come
 file da scaricare la rende invisibile.
+
+---
+
+# Parte terza — 13 · Sicurezza
+
+*Numerata 13 e non 11 perché 11 e 12 sono già prese: si aggiunge, non si
+rinumera. È la stessa regola dei capitoli del manuale, per la stessa ragione —
+i codici finiscono nei report già consegnati.*
+
+## Da dove viene
+
+La fonte più utile trovata è la **[Proxmox Hardening Guide di
+HomeSecExplorer](https://github.com/HomeSecExplorer/Proxmox-Hardening-Guide)**
+per PVE 9, costruita sul CIS Debian 13 Benchmark: è l'unica che per ogni
+controllo dà **file, parametro e valore atteso**, quindi è traducibile in regole
+deterministiche senza interpretazione. La documentazione ufficiale conferma le
+regole di rete che avevamo già scritto, quasi con le stesse parole:
+
+> «Corosync is sensitive to latency jitters… It's especially important **not to
+> use a shared network for corosync and storage**»
+> — [Separate Cluster Network](https://pve.proxmox.com/wiki/Separate_Cluster_Network)
+
+Il manuale Domarc ha già la **Parte 18 «Sicurezza»**, con le sette misure di
+§18.1. Il modulo nuovo si aggancia lì: le regole citano §18.x e §15.x, e le
+sottosezioni che mancano si **aggiungono** in coda alla parte 18.
+
+## ⚠️ La trappola da non ripetere
+
+`/nodes/<n>/services` restituisce **un elenco fisso di servizi gestiti da PVE**
+— `chrony`, `corosync`, `pveproxy`, `sshd`, `postfix`… — e **non conterrà mai**
+`fail2ban`, `auditd` o `rsyslog` configurato per l'inoltro. Dedurne l'assenza
+significherebbe scrivere a un cliente che non ha fail2ban quando magari ce l'ha
+installato e attivo.
+
+**Regola generale**: l'assenza da un elenco che non potrebbe contenerlo non è
+un'assenza. Ogni controllo qui sotto dichiara **il comando che lo decide**, e
+dove quel comando non c'è la regola non si scrive.
+
+## 13a · Decidibili con i dati che già raccogliamo
+
+| # | Regola | Campo che decide | Livello | Fonte | Domarc | IT&M | PX-NAS |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| SEC-01 | Secure Boot disattivo | `status.boot-info.secureboot` | ℹ️ | §18.1 | — (attivo) | **scatta** | **scatta** |
+| SEC-02 | Interfaccia servita con certificato autofirmato | `certificati[].issuer` | 🟡 | §2.7 | **scatta** | **scatta** | **scatta** |
+| SEC-03 | KSM attivo: deduplica memoria **fra macchine diverse** | `status.ksm.shared > 0` | 🟡 | §18.1, §8.2 | **scatta** (15,4 GB condivisi) | — | — |
+| SEC-04 | corosync senza `secauth`: il traffico di cluster non è autenticato | `corosync_conf` | 🔴 | §3.2 | — (`on`) | — (`on`) | n/a |
+| SEC-05 | Ceph senza `cephx` | `ceph_cfg auth_*_required` | 🔴 | §6.3 | n/a | — (tutti `cephx`) | n/a |
+| SEC-06 | Ceph **non cifrato in transito** (`ms_encrypt` assente) | `ceph_cfg` | 🟡 | §6.3 | n/a | **scatta** | n/a |
+| SEC-07 | FORWARD non in DROP con firewall acceso | `fw_options.policy_forward` | 🟡 | §15.2 | da leggere | da leggere | da leggere |
+| SEC-08 | Firewall acceso e **UDP 5405-5412 non ammessi** sull'anello corosync: accendendolo si spacca il cluster | `fw_rules` + rete di corosync | 🔴 | §15.4, §3.3 | da calcolare | da calcolare | n/a |
+| SEC-09 | `ksmtuned` attivo dove KSM dovrebbe restare spento | `services` | ℹ️ | §18.1 | da leggere | da leggere | da leggere |
+
+## 13b · Richiedono un comando in più (tutti in sola lettura)
+
+Sette comandi, nessuna scrittura. Ognuno serve più di una regola.
+
+| Comando | Regole che apre |
+| --- | --- |
+| `sshd -T` | SEC-10, SEC-11, SEC-12 |
+| `systemctl is-active fail2ban` + `fail2ban-client status` | SEC-13 |
+| `pvesh get /access/users` e `/access/users/<id>/token` | SEC-14, SEC-15, SEC-16 |
+| `auditctl -l` | SEC-17 |
+| `cat /etc/rsyslog.d/*.conf` | SEC-18 |
+| `cat /etc/apt/apt.conf.d/20auto-upgrades` | SEC-19 |
+| `dpkg -l intel-microcode amd64-microcode` · `cat /sys/kernel/security/lockdown` · `findmnt /var/lib/vz` | SEC-20, SEC-21, SEC-22 |
+
+| # | Regola | Livello | Fonte |
+| --- | --- | --- | --- |
+| SEC-10 | `PermitRootLogin yes`: root entra con la password da qualunque rete | 🔴 | §18.2 |
+| SEC-11 | `PasswordAuthentication yes`: SSH accetta password | 🔴 | §18.2, §18.3 |
+| SEC-12 | Forwarding SSH abilitato globalmente | 🟡 | §18.2 |
+| SEC-13 | fail2ban assente, o jail `proxmox` non attivo sulla 8006 | 🟡 | §18.3 |
+| SEC-14 | Nessun utente nominale: si amministra tutti come `root@pam` | 🟡 | §13.7, §18.1 |
+| SEC-15 | Amministratori **senza secondo fattore** | 🔴 | §13.8, §13.9, §18.1 |
+| SEC-16 | Token API **senza scadenza**, o con privilegi pieni | 🟡 | §13.12 |
+| SEC-17 | Nessuna regola auditd su `/etc/pve`: chi cambia la configurazione non lascia traccia | 🟡 | §18.5 |
+| SEC-18 | Log non inoltrati fuori dal nodo: chi entra può cancellarli | 🟡 | §17.5, §18.1 |
+| SEC-19 | Aggiornamenti di sicurezza non automatici | 🟡 | §18.4, §19.1 |
+| SEC-20 | Microcodice CPU non installato | 🟡 | §18.1 |
+| SEC-21 | Kernel lockdown non attivo con Secure Boot acceso | ℹ️ | §18.1 |
+| SEC-22 | `/var/lib/vz` non separato, o senza `nodev,nosuid` | ℹ️ | §2.2 |
+
+## Due regole che NON scrivo, e perché
+
+- **Cifratura del disco (LUKS)**: si decide all'installazione e non si cambia
+  dopo. Dirlo a chi ha già l'impianto in esercizio è un rilievo che non si può
+  agire — sta nel questionario di migrazione, non nel report.
+- **«Il management non è raggiungibile da Internet»** — la prima delle sette
+  misure. Da dentro il nodo non è verificabile: si vedono gli indirizzi, non chi
+  ci arriva. Un rilievo che afferma di sapere una cosa che non può sapere è
+  peggio di nessun rilievo.
+
+## Cosa aggiungere al manuale
+
+Le regole di 13a citano sezioni che esistono già. Di 13b ne mancano tre, da
+**aggiungere in coda alla Parte 18** senza toccare i numeri esistenti:
+
+- **§18.9 — Il secondo fattore, in pratica**: chi deve averlo, come si impone a
+  un realm, cosa fare quando qualcuno si chiude fuori.
+- **§18.10 — Token API: scopo, scadenza, rotazione**: il pezzo che serve
+  a SEC-16 e che oggi §13.12 tratta come procedura, non come regola.
+- **§18.11 — La linea di base di un nodo nuovo**: la lista che si applica a un
+  nodo appena entrato nel cluster, perché — dice la guida CIS — è il punto in
+  cui la configurazione diverge senza che nessuno se ne accorga.
