@@ -2,6 +2,23 @@
 
 Cosa è cambiato e **perché**, per chi non usa git. Più recenti in alto.
 
+## 2026-09-10 (2) — I rilievi guardano le macchine accese
+
+- **I rilievi si fanno sulle VM accese**; l'inventario continua a elencarle
+  tutte, con il loro stato. Una macchina spenta non ha un carico da confrontare
+  con la propria tipologia, e su un cluster con nove template fermi il report
+  si riempiva di scostamenti che nessuno avrebbe agito. Il filtro è il campo
+  **Stato** che dà Proxmox, non una deduzione.
+- **`--con-spente`** rimette anche le spente fra i rilievi. Da non confondere
+  con `--solo-accese`, che agisce alla raccolta: quelle VM non vengono proprio
+  interrogate e il dato grezzo non le contiene, quindi non si può cambiare idea
+  dopo.
+- L'intestazione dei due documenti dichiara **su cosa si è lavorato** («i 25
+  accesi, 14 spente escluse»): un report che tace su cosa ha escluso mente per
+  omissione.
+- Se lo stato **manca** — nodo che non ha risposto — la VM resta nei rilievi:
+  meglio un rilievo di troppo che una macchina sparita in silenzio.
+
 ## 2026-09-10 — L'invio al portale dice per chi si sta raccogliendo
 
 - `--invia` accompagna la raccolta con il **nome e il codice del cliente** già

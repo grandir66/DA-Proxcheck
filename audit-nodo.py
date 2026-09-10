@@ -17,6 +17,13 @@ USO DAL CLIENT (macOS, Linux o Windows con Python 3.7+ e il client ssh)
     python3 audit-nodo.py --host 192.168.40.1 \\
         --invia https://survey.domarc.it/proxmox --codice-portale PXM-XXXX-XXXX-XXXX
 
+I RILIEVI riguardano le VM ACCESE. Una macchina spenta non ha un carico da
+confrontare con la propria tipologia, e i template fermi riempirebbero il
+report di scostamenti che nessuno agirà; l'INVENTARIO invece le elenca tutte,
+con il loro stato. Per estendere i rilievi anche alle spente: --con-spente.
+(Da non confondere con --solo-accese, che agisce prima: quelle VM non vengono
+proprio interrogate, e la raccolta non le contiene.)
+
 Produce sempre DUE file Markdown nella cartella di --output (default: quella
 corrente), con il nome composto da codice cliente, nome cliente e indirizzo:
     C0123_Rossi-Srl_192.168.40.1_inventory.md   cosa c'è (cluster, nodi, hardware, VM)
@@ -1743,6 +1750,18 @@ def sezione_vm_md(vms: list, asseg: dict, esito: Esito, multi: bool, con_rilievi
     return r
 
 
+def e_spenta(vm) -> bool:
+    """Spenta secondo Proxmox — è il campo Stato dell'inventario, non una
+    deduzione nostra.
+
+    Se lo stato **manca** (raccolta parziale, nodo che non ha risposto) la VM
+    NON è considerata spenta: resta nei rilievi. Meglio un rilievo di troppo
+    che una macchina sparita in silenzio da un report.
+    """
+    st = (vm.status or {}).get("status") or (vm.lista or {}).get("status")
+    return bool(st) and st != "running"
+
+
 def sezione_rilievi_vm_md(vms: list, asseg: dict, esito: Esito, multi: bool) -> list:
     """Nel file dei rilievi: una scheda per VM con i soli rilievi, e il profilo assegnato."""
     per_vm = {}
@@ -2204,15 +2223,26 @@ def esegui(args):
                 and not getattr(args, "invia", None))
     if chiedere:
         asseg = assegna_profili_da_tabella(vms, noti, multi)
+    # I RILIEVI si fanno sulle macchine ACCESE. Una spenta non ha un carico da
+    # confrontare con la propria tipologia, e nove template fermi riempiono il
+    # report di rilievi che nessuno agirà. Restano nell'INVENTARIO, che è il
+    # censimento di cosa c'è: --con-spente le rimette anche fra i rilievi.
+    spente = [v for v in vms if e_spenta(v)]
+    vms_rilievi = vms if args.con_spente else [v for v in vms if not e_spenta(v)]
     for v in vms:
-        # senza terminale (o per VM nuove) vale la proposta automatica: meglio i controlli del profilo probabile che nessuno
+        # La tipologia si assegna a TUTTE, anche alle spente: si accendono, e la
+        # scelta dev'essere già lì. Senza terminale (o per VM nuove) vale la
+        # proposta automatica: meglio i controlli del profilo probabile che nessuno.
         if asseg.get(v.vmid, NON_CLASSIFICATA) == NON_CLASSIFICATA:
             asseg[v.vmid] = suggerisci_profilo(v)
+    for v in vms_rilievi:
         controlla_generali(v, inv, esito)
         controlla_profilo(v, asseg.get(v.vmid, NON_CLASSIFICATA), inv, esito)
     if not args.solo_nodo:
         for nome, blocco in inv["nodi"].items():
             for ctid, d in (blocco.get("lxc") or {}).items():
+                if not args.con_spente and ((d.get("lista") or {}).get("status") or "running") != "running":
+                    continue
                 controlla_lxc(ctid, d, inv, esito)
     if vms:
         scrittura = args.salva_profili or auto
@@ -2230,6 +2260,11 @@ def esegui(args):
         "Data": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "VM analizzate": (f"{len(vms)}" + (f" su {n_vm_cluster} nel cluster" if n_vm_cluster else "") +
                           (" (solo accese)" if args.solo_accese else "")) if not args.solo_nodo else "0 (--solo-nodo)",
+        # Chi legge deve sapere di cosa NON si parla: un report che tace su
+        # quattordici macchine escluse mente per omissione.
+        "Rilievi su": ("tutte, accese e spente" if args.con_spente else
+                       (f"le {len(vms_rilievi)} accese ({len(spente)} spente escluse)" if spente
+                        else "tutte (nessuna spenta)")) if not args.solo_nodo else "—",
         "Durata raccolta": f"{time.time() - t0:.0f} s",
     }
     if not multi:
@@ -2240,7 +2275,7 @@ def esegui(args):
     cartella.mkdir(parents=True, exist_ok=True)
     f_inv, f_rep = nomi_file_report(cartella, codice_cliente, nome_cliente, args.host or inv.get("ingresso") or "locale")
     scrivi_inventario_md(f_inv, inv, intest, vms, asseg)
-    scrivi_rilievi_md(f_rep, esito, inv, intest, vms, asseg)
+    scrivi_rilievi_md(f_rep, esito, inv, intest, vms_rilievi, asseg)
     print(f"\nInventario salvato in {f_inv}\nRilievi salvati in   {f_rep}")
     return {"data": intest["Data"], "b": esito.conta(BLOCCANTE), "a": esito.conta(ATTENZIONE), "i": esito.conta(INFO),
             "output": str(f_rep), "profili": str(auto)}
@@ -2299,7 +2334,9 @@ def main():
     ap.add_argument("--host", metavar="[utente@]host", help="nodo d'ingresso via SSH (default utente root)")
     ap.add_argument("--solo-questo-nodo", action="store_true", help="non estendere la raccolta agli altri nodi del cluster")
     ap.add_argument("--solo-nodo", action="store_true", help="salta le VM")
-    ap.add_argument("--solo-accese", action="store_true", help="salta le VM spente")
+    ap.add_argument("--solo-accese", action="store_true", help="salta le VM spente (in RACCOLTA: non vengono proprio interrogate)")
+    ap.add_argument("--con-spente", action="store_true",
+                    help="rilievi anche sulle VM spente (default: solo sulle accese; l'inventario le elenca sempre)")
     ap.add_argument("--performance", action="store_true", help="esegue anche pveperf (test fsync: scrive un file temporaneo)")
     ap.add_argument("--cliente", metavar="NOME", help="nome del cliente (chiesto all'avvio se manca e c'è un terminale)")
     ap.add_argument("--codice", metavar="CODCLI", help="codice del cliente, se esiste")

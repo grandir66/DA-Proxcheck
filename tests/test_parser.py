@@ -216,3 +216,26 @@ def test_le_domande_a_terminale_sono_opzionali():
     assert "--senza-domande" in aiuto.stdout
     sorgente = (Path(__file__).resolve().parents[1] / "audit-nodo.py").read_text(encoding="utf-8")
     assert 'not getattr(args, "invia", None)' in sorgente, "l'invio deve spegnere le domande"
+
+
+# ── rilievi solo sulle macchine accese ──────────────────────────────────────
+
+class _VMFinta:
+    def __init__(self, status=None, lista=None):
+        self.status, self.lista = status, lista
+
+
+def test_spenta_e_quello_che_dice_proxmox():
+    """Il filtro è il campo Stato, non una deduzione: acceso è `running`."""
+    assert an.e_spenta(_VMFinta(status={"status": "stopped"}))
+    assert not an.e_spenta(_VMFinta(status={"status": "running"}))
+    # lo stato può arrivare dall'elenco invece che dallo stato puntuale
+    assert an.e_spenta(_VMFinta(status={}, lista={"status": "stopped"}))
+
+
+def test_stato_sconosciuto_non_e_spenta():
+    """Se lo stato manca — nodo che non ha risposto, raccolta parziale — la VM
+    resta nei rilievi: meglio un rilievo di troppo che una macchina sparita in
+    silenzio dal report di un cliente."""
+    assert not an.e_spenta(_VMFinta(status=None, lista=None))
+    assert not an.e_spenta(_VMFinta(status={}, lista={}))
