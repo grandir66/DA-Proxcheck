@@ -723,14 +723,23 @@ class Rilievo:
     ambito: str
     messaggio: str
     fonte: str = ""
+    # Il comando che chiude QUESTO rilievo, se esiste. Non tutti ne hanno uno:
+    # «VLAN 20 ha reti diverse fra i nodi» non ha un comando, ha una decisione.
+    # Dove non c'è si lascia vuoto invece di inventarne uno approssimativo.
+    comando: str = ""
 
 
 @dataclass
 class Esito:
     rilievi: list = field(default_factory=list)
 
-    def add(self, livello, ambito, messaggio, fonte=""):
-        self.rilievi.append(Rilievo(livello, ambito, messaggio, fonte))
+    def add(self, livello, ambito, messaggio, fonte="", comando=""):
+        self.rilievi.append(Rilievo(livello, ambito, messaggio, fonte, comando))
+
+    def agibili(self) -> list:
+        """I rilievi che hanno un comando. È la differenza fra un elenco di cose
+        che non vanno e una lista di cose da fare."""
+        return [r for r in self.rilievi if r.comando]
 
     def conta(self, livello):
         return sum(1 for r in self.rilievi if r.livello == livello)
@@ -1196,6 +1205,21 @@ def ambito_vm(vm: VM, inv: dict) -> str:
     return f"VM {vm.vmid} ({vm.nome})" + (f" @{vm.nodo}" if multi else "")
 
 
+def _qm_disco(vmid: str, bus: str, cfg: dict, **aggiunte) -> str:
+    """Il comando che riscrive UNA riga di disco aggiungendoci un parametro.
+
+    `qm set` sostituisce l'intero valore, quindi va ripetuto per intero quello
+    che c'è già: mandare solo `--scsi0 iothread=1` cancellerebbe il disco dalla
+    configurazione. Si riparte dal valore grezzo e ci si aggiunge in coda.
+    """
+    grezzo = str(cfg.get(bus) or "").strip()
+    if not grezzo:
+        return ""
+    pezzi = [p for p in grezzo.split(",") if p and p.split("=")[0] not in aggiunte]
+    pezzi += [f"{k}={v}" for k, v in aggiunte.items()]
+    return f"qm set {vmid} --{bus} {','.join(pezzi)}"
+
+
 def controlla_generali(vm: VM, inv: dict, esito: Esito):
     cfg, st = vm.config, vm.status or {}
     A = ambito_vm(vm, inv)
@@ -1203,14 +1227,16 @@ def controlla_generali(vm: VM, inv: dict, esito: Esito):
     host_cpu = (((inv.get("nodi") or {}).get(vm.nodo) or {}).get("nodo") or {}).get("status", {}).get("cpuinfo") or {}
     cpu_tipo = (cfg.get("cpu") or "kvm64").split(",")[0]
     if cpu_tipo == "kvm64":
-        esito.add(ATTENZIONE, A, "CPU type kvm64 (default): set di istruzioni minimo. Valutare almeno x86-64-v2-AES.", f"{G} §8.1 › Tipo di CPU")
+        esito.add(ATTENZIONE, A, "CPU type kvm64 (default): set di istruzioni minimo. Valutare almeno x86-64-v2-AES.", f"{G} §8.1 › Tipo di CPU",
+                  comando=f"qm set {vm.vmid} --cpu x86-64-v2-AES")
     if cfg.get("sockets", "1") not in ("", "1") and cfg.get("numa", "0") != "1":
         esito.add(ATTENZIONE, A, f"{cfg['sockets']} socket senza NUMA: la regola è 1 socket, N core.", f"{G} §8.1 › Socket e core")
     if cfg.get("cpulimit") not in (None, "", "0"):
         esito.add(INFO, A, f"cpulimit={cfg['cpulimit']}: tetto assoluto di CPU.", f"{G} §8.1 › Priorità e limiti")
     if stato_ballooning(cfg) == "assente":
         esito.add(ATTENZIONE, A, "balloon: 0 — driver assente E reporting RAM perso (sempre 100% in GUI). "
-                  "Per RAM fissa con statistiche: Minimum memory = Memory.", f"{G} §8.2 › Ballooning — il malinteso più diffuso")
+                  "Per RAM fissa con statistiche: Minimum memory = Memory.", f"{G} §8.2 › Ballooning — il malinteso più diffuso",
+                  comando=f"qm set {vm.vmid} --balloon {cfg.get('memory', '')}".rstrip())
     if cfg.get("hugepages") not in (None, ""):
         esito.add(INFO, A, f"hugepages={cfg['hugepages']}.", f"{G} §8.2 › Shares, hugepages, KSM")
     ha_scsi = False
@@ -1223,13 +1249,28 @@ def controlla_generali(vm: VM, inv: dict, esito: Esito):
             esito.add(BLOCCANTE if cache == "unsafe" else ATTENZIONE, A, f"Disco {bus}: cache={cache} — un crash dell'host può corrompere i dati recenti senza UPS/BBU.", f"{G} §8.3 › Cache mode")
         if aio == "native" and (cache != "none" or ioth in ("0", "")):
             esito.add(BLOCCANTE, A, f"Disco {bus}: aio=native senza cache=none+iothread=1 — l'I/O può bloccarsi.", f"{G} §8.3 › AIO — la scelta che dipende dallo storage")
-        if disc not in ("on", "1") and bus.startswith(("scsi", "virtio")):
-            esito.add(ATTENZIONE, A, f"Disco {bus}: discard non attivo — lo spazio liberato nel guest non torna allo storage thin.", f"{G} §8.3 › Altri parametri disco")
-        if bus.startswith("scsi") and ioth in ("0", ""):
-            esito.add(ATTENZIONE, A, f"Disco {bus}: iothread non attivo.", f"{G} §8.3 › IO thread")
+        # I due parametri che mancano più spesso si scrivono in UN comando solo.
+        # `qm set` riscrive l'intera riga del disco: due comandi separati, lanciati
+        # in sequenza, si cancellano a vicenda — il secondo riporterebbe la riga
+        # senza quello che ha appena messo il primo.
+        manca_disc = disc not in ("on", "1") and bus.startswith(("scsi", "virtio"))
+        manca_ioth = bus.startswith("scsi") and ioth in ("0", "")
+        aggiunte = {}
+        if manca_disc:
+            aggiunte["discard"] = "on"
+        if manca_ioth:
+            aggiunte["iothread"] = "1"
+        insieme = _qm_disco(vm.vmid, bus, cfg, **aggiunte) if aggiunte else ""
+        if manca_disc:
+            esito.add(ATTENZIONE, A, f"Disco {bus}: discard non attivo — lo spazio liberato nel guest non torna allo storage thin.", f"{G} §8.3 › Altri parametri disco",
+                      comando=insieme)
+        if manca_ioth:
+            esito.add(ATTENZIONE, A, f"Disco {bus}: iothread non attivo.", f"{G} §8.3 › IO thread",
+                      comando=insieme)
     scsihw = cfg.get("scsihw", "")
     if ha_scsi and scsihw and scsihw != "virtio-scsi-single":
-        esito.add(ATTENZIONE, A, f"scsihw={scsihw}: il riferimento è virtio-scsi-single (presupposto per gli IO thread).", f"{G} §8.3 › IO thread")
+        esito.add(ATTENZIONE, A, f"scsihw={scsihw}: il riferimento è virtio-scsi-single (presupposto per gli IO thread).", f"{G} §8.3 › IO thread",
+                  comando=f"qm set {vm.vmid} --scsihw virtio-scsi-single")
     vcpu = vcpu_di(cfg)
     for r in parse_reti(cfg):
         mq = r.get("queues")
@@ -1239,7 +1280,8 @@ def controlla_generali(vm: VM, inv: dict, esito: Esito):
             esito.add(ATTENZIONE, A, f"{r['iface']}: modello '{r['modello']}', non VirtIO — solo per sistemi legacy.", f"{G} §8.4")
     agent = cfg.get("agent", "")
     if not agent or agent.startswith("0"):
-        esito.add(ATTENZIONE, A, "QEMU Guest Agent non attivo: niente spegnimento pulito, freeze del filesystem nei backup, IP in GUI.", f"{G} §8.5")
+        esito.add(ATTENZIONE, A, "QEMU Guest Agent non attivo: niente spegnimento pulito, freeze del filesystem nei backup, IP in GUI.", f"{G} §8.5",
+                  comando=f"qm set {vm.vmid} --agent enabled=1  # poi installare il pacchetto NEL guest")
     elif vm.running and not st.get("agent"):
         esito.add(ATTENZIONE, A, "Agent abilitato ma NON risponde nel guest: i backup non fanno il freeze del filesystem.", f"{G} §8.5")
     ostype = cfg.get("ostype", "")
@@ -1250,7 +1292,8 @@ def controlla_generali(vm: VM, inv: dict, esito: Esito):
     if ostype in ("win11", "win10") and cfg.get("bios", "seabios") != "ovmf":
         esito.add(INFO, A, "Windows recente con SeaBIOS: OVMF (UEFI) è il riferimento.", f"{G} §8.5")
     if cfg.get("protection", "0") != "1" and cfg.get("onboot", "0") == "1":
-        esito.add(INFO, A, "protection non attiva su una VM ad avvio automatico.", f"{G} §8.6")
+        esito.add(INFO, A, "protection non attiva su una VM ad avvio automatico.", f"{G} §8.6",
+                  comando=f"qm set {vm.vmid} --protection 1")
     for s in vm.snapshot:
         eta = (time.time() - s.get("snaptime", time.time())) / 86400
         if eta > 30:
@@ -1312,20 +1355,26 @@ def controlla_profilo(vm: VM, pid: str, inv: dict, esito: Esito):
         esito.add(ATTENZIONE, A, f"{vcpu} vCPU: molto oltre l'indicazione tipica (~{p['vcpu_max']}).", F)
     cpu_tipo = (cfg.get("cpu") or "kvm64").split(",")[0]
     if cpu_tipo in p.get("cpu_type_evita", set()):
-        esito.add(BLOCCANTE, A, f"CPU type '{cpu_tipo}' sconsigliata per questo profilo.", F)
+        esito.add(BLOCCANTE, A, f"CPU type '{cpu_tipo}' sconsigliata per questo profilo.", F,
+                  comando=f"qm set {vm.vmid} --cpu {p.get('cpu_type_richiede') or 'x86-64-v3'}")
     if p.get("cpu_type_richiede") and cpu_tipo != p["cpu_type_richiede"]:
-        esito.add(ATTENZIONE, A, f"Raccomandato CPU type '{p['cpu_type_richiede']}'; rilevato '{cpu_tipo}'.", F)
+        esito.add(ATTENZIONE, A, f"Raccomandato CPU type '{p['cpu_type_richiede']}'; rilevato '{cpu_tipo}'.", F,
+                  comando=f"qm set {vm.vmid} --cpu {p['cpu_type_richiede']}")
     sb = stato_ballooning(cfg)
     if p.get("balloon") == "disabilitato" and sb != "assente":
-        esito.add(BLOCCANTE, A, "Ballooning da disattivare (balloon: 0) per questo carico.", F)
+        esito.add(BLOCCANTE, A, "Ballooning da disattivare (balloon: 0) per questo carico.", F,
+                  comando=f"qm set {vm.vmid} --balloon 0")
     if p.get("balloon") == "min_eq_max" and sb != "presente_fermo":
         esito.add(ATTENZIONE, A, "RAM fissa (Minimum memory = Memory) mantenendo le statistiche.", F)
     if p.get("numa") is True and cfg.get("numa", "0") != "1":
-        esito.add(ATTENZIONE, A, "NUMA non attivo: raccomandato per questo profilo.", F)
+        esito.add(ATTENZIONE, A, "NUMA non attivo: raccomandato per questo profilo.", F,
+                  comando=f"qm set {vm.vmid} --numa 1")
     if p.get("protection") and cfg.get("protection", "0") != "1":
-        esito.add(ATTENZIONE, A, "protection non attiva: raccomandata per la criticità del servizio.", F)
+        esito.add(ATTENZIONE, A, "protection non attiva: raccomandata per la criticità del servizio.", F,
+                  comando=f"qm set {vm.vmid} --protection 1")
     if p.get("onboot_no") and cfg.get("onboot") == "1":
-        esito.add(ATTENZIONE, A, "onboot attivo su una VM di test.", F)
+        esito.add(ATTENZIONE, A, "onboot attivo su una VM di test.", F,
+                  comando=f"qm set {vm.vmid} --onboot 0")
     if p.get("dischi_min") and len(dischi_dati(cfg)) < p["dischi_min"]:
         esito.add(ATTENZIONE, A, "Un solo disco: il profilo prevede sistema e dati separati.", F)
     if p.get("cache") == "none":
@@ -2584,9 +2633,96 @@ def scrivi_rilievi_md(path: Path, esito: Esito, inv: dict, intest: dict, vms: li
         r += ["## Rilievi sui container", ""]
         r += _tab([("🔴 BLOCCANTE" if x.livello == BLOCCANTE else "🟡 attenzione" if x.livello == ATTENZIONE else "ℹ️ info",
                     x.ambito, x.messaggio, x.fonte) for x in ct], ("Livello", "Ambito", "Rilievo", "Fonte"))
+    r += sezione_comandi_md(esito)
     r += sezione_regole_md(esito)
     r += _piede_md()
     path.write_text("\n".join(r), encoding="utf-8")
+
+
+RE_QM = re.compile(r"^qm set (\d+) --(\S+)")
+
+
+def _bersaglio(comando: str):
+    """Che cosa tocca questo comando: (macchina, parametro).
+
+    Serve a non emettere due comandi che si disfano a vicenda — `--cpu host` e
+    `--cpu x86-64-v2-AES` sulla stessa VM, o due righe dello stesso disco.
+    Visto il 2026-09-10 appena i comandi sono nati: la regola di profilo e
+    quella generale prescrivevano due CPU diverse per la stessa macchina.
+    """
+    m = RE_QM.match(comando.strip())
+    return (m.group(1), m.group(2)) if m else (None, comando.strip())
+
+
+def _macchina(ambito: str) -> str:
+    """«VM 100 (nome) @PX-03 — profilo Rete: …» → «VM 100 (nome) @PX-03».
+
+    I rilievi di profilo e quelli generali hanno ambiti diversi per la STESSA
+    macchina: senza questo, i comandi di una VM finiscono in due blocchi
+    separati e chi legge ne applica metà.
+    """
+    return ambito.split(" — profilo ")[0].strip()
+
+
+def sezione_comandi_md(esito: Esito) -> list:
+    """I comandi che chiudono i rilievi agibili, raggruppati per macchina.
+
+    È la differenza fra un elenco di cose che non vanno e una lista di cose da
+    fare. Non tutti i rilievi ci finiscono, ed è voluto: «VLAN 20 ha reti diverse
+    fra i nodi» non ha un comando, ha una decisione. Quelli che ne hanno uno lo
+    mostrano; per gli altri non se ne inventa uno approssimativo.
+    """
+    agibili = esito.agibili()
+    if not agibili:
+        return []
+    per = {}
+    for x in agibili:
+        per.setdefault(_macchina(x.ambito), []).append(x)
+
+    r = ["## Cosa fare — i comandi", "",
+         "Sono riportati qui sotto, raggruppati per macchina.", "",
+         "> ⚠️ **Nessuno di questi comandi è stato eseguito.** Lo strumento legge e basta. "
+         "Vanno letti prima di lanciarli: alcuni richiedono la macchina spenta, e il commento "
+         "in coda dice perché ciascuno serve.", ""]
+    quanti = 0
+    corpo = []
+    def _ordine(voce):
+        # Prima le macchine che hanno un bloccante, poi per VMID crescente.
+        # Niente walrus: lo strumento gira anche su Python 3.7.
+        nome, righe = voce
+        m = re.match(r"^VM (\d+)", nome)
+        return (min(ORDINE_LIV[x.livello] for x in righe), int(m.group(1)) if m else 0, nome)
+
+    for nome, righe in sorted(per.items(), key=_ordine):
+        # Un solo comando per parametro: vince quello del rilievo più grave, che
+        # è anche il più specifico (la regola di profilo batte quella generale).
+        # A parità di gravità vince la regola di PROFILO: sa che cosa fa la
+        # macchina, e la generica no. Su un firewall il manuale vuole `--cpu
+        # host`, non `x86-64-v2-AES` — e senza questo criterio vinceva la
+        # generica solo perché viene valutata prima.
+        scelti, visti = [], set()
+        for x in sorted(righe, key=lambda y: (ORDINE_LIV[y.livello],
+                                              0 if " — profilo " in y.ambito else 1)):
+            b = _bersaglio(x.comando)
+            if b in visti:
+                continue
+            visti.add(b)
+            scelti.append(x)
+        if not scelti:
+            continue
+        corpo.append(f"### {nome}")
+        corpo.append("")
+        corpo.append("```bash")
+        for x in scelti:
+            quanti += 1
+            segno = "🔴" if x.livello == BLOCCANTE else "🟡" if x.livello == ATTENZIONE else "ℹ️"
+            base, _, gia = x.comando.partition("  #")
+            nota = (gia.strip() + " · " if gia.strip() else "") + x.messaggio.split(".")[0]
+            corpo.append(f"{base.strip():<52} # {segno} {nota}")
+        corpo.append("```")
+        corpo.append("")
+    r[2] = f"**{quanti} comandi** chiudono {len(agibili)} dei {len(esito.rilievi)} rilievi, raggruppati per macchina."
+    return r + corpo
 
 
 def sezione_regole_md(esito: Esito) -> list:

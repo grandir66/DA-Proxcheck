@@ -458,3 +458,58 @@ def test_backup_su_storage_locale_in_un_cluster_e_bloccante():
     e = an.Esito()
     an.controlla_notifiche(inv, e)
     assert [r for r in e.rilievi if r.livello == an.BLOCCANTE and "locale a un nodo" in r.messaggio]
+
+
+# ── i comandi proposti ──────────────────────────────────────────────────────
+# Il rischio di questa parte non e' sbagliare un comando: e' emetterne due che
+# si disfano a vicenda. `qm set` riscrive l'intero valore, quindi il secondo
+# cancella quello che ha appena messo il primo.
+
+def test_due_comandi_sullo_stesso_parametro_diventano_uno():
+    """Visto il 2026-09-10 appena i comandi sono nati: la regola di profilo
+    voleva `--cpu host`, quella generale `--cpu x86-64-v2-AES`, sulla stessa
+    macchina. Lanciati in fila, il secondo disfa il primo."""
+    e = an.Esito()
+    e.add(an.ATTENZIONE, "VM 100 (fw) @A — profilo Rete", "Raccomandato CPU type 'host'.", "manuale §9.5",
+          comando="qm set 100 --cpu host")
+    e.add(an.ATTENZIONE, "VM 100 (fw) @A", "CPU type kvm64.", "manuale §8.1",
+          comando="qm set 100 --cpu x86-64-v2-AES")
+    testo = "\n".join(an.sezione_comandi_md(e))
+    assert testo.count("qm set 100 --cpu") == 1
+    # e vince quella che sa cosa fa la macchina
+    assert "--cpu host" in testo and "x86-64-v2-AES" not in testo
+
+
+def test_i_comandi_di_una_macchina_stanno_in_un_blocco_solo():
+    """I rilievi di profilo e quelli generali hanno ambiti diversi per la stessa
+    VM: in due blocchi separati chi legge ne applica meta'."""
+    e = an.Esito()
+    e.add(an.BLOCCANTE, "VM 100 (fw) @A — profilo Rete", "Ballooning.", "manuale §9.5", comando="qm set 100 --balloon 0")
+    e.add(an.ATTENZIONE, "VM 100 (fw) @A", "Protection.", "manuale §8.6", comando="qm set 100 --protection 1")
+    testo = "\n".join(an.sezione_comandi_md(e))
+    assert testo.count("### VM 100") == 1
+
+
+def test_un_disco_riceve_un_comando_solo_con_tutti_i_parametri():
+    """`qm set --scsi0` riscrive la riga intera: discard e iothread vanno
+    aggiunti insieme, o il secondo comando cancella il primo."""
+    cfg = {"scsi0": "local:100/vm-100-disk-0.qcow2,size=8G"}
+    c = an._qm_disco("100", "scsi0", cfg, discard="on", iothread="1")
+    assert c == "qm set 100 --scsi0 local:100/vm-100-disk-0.qcow2,size=8G,discard=on,iothread=1"
+    # il valore che c'era resta: non si manda solo il parametro nuovo
+    assert "vm-100-disk-0.qcow2" in c
+
+
+def test_un_parametro_gia_presente_non_si_duplica():
+    cfg = {"scsi0": "local:100/vm.qcow2,discard=ignore,size=8G"}
+    c = an._qm_disco("100", "scsi0", cfg, discard="on")
+    assert c.count("discard=") == 1 and "discard=on" in c
+
+
+def test_un_rilievo_senza_comando_non_ne_riceve_uno_finto():
+    """«VLAN 20 ha reti diverse fra i nodi» non ha un comando, ha una
+    decisione. Non si inventa."""
+    e = an.Esito()
+    e.add(an.BLOCCANTE, "Coerenza — rete", "VLAN 20: reti IP diverse fra i nodi.", "manuale §1.3")
+    assert e.agibili() == []
+    assert an.sezione_comandi_md(e) == []

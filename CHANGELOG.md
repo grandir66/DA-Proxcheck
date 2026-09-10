@@ -2,6 +2,35 @@
 
 Cosa è cambiato e **perché**, per chi non usa git. Più recenti in alto.
 
+## 2026-09-10 (4) — I rilievi che si chiudono con un comando
+
+- **Sezione «Cosa fare — i comandi»** in coda al report: ogni rilievo agibile
+  porta il comando esatto che lo chiude, raggruppato per macchina. Su un cluster
+  vero sono **72 comandi che chiudono 101 rilievi su 212**: il report smette di
+  essere un elenco di cose che non vanno e diventa una lista di cose da fare.
+- **Non tutti i rilievi ce l'hanno, ed è voluto.** «VLAN 20 ha reti diverse fra
+  i nodi» non ha un comando: ha una decisione. Dove il comando non esiste non se
+  ne inventa uno approssimativo.
+- **Nessun comando viene eseguito.** Lo strumento resta in sola lettura — è la
+  proprietà che lo rende accettabile sull'impianto di un cliente, e non si spende
+  per comodità.
+
+### Il rischio vero, e le tre guardie che lo tengono
+
+Il pericolo non è sbagliare un comando: è emetterne **due che si disfano a
+vicenda**, perché `qm set` riscrive l'intero valore invece di modificarlo.
+
+- **Un disco, un comando.** `discard` e `iothread` mancanti sullo stesso disco
+  producono una riga sola con entrambi: separati, il secondo cancellava il primo.
+- **Un parametro, un comando.** Se due regole toccano lo stesso parametro della
+  stessa macchina ne sopravvive uno.
+- **A parità di gravità vince la regola di profilo**, che sa che cosa fa la
+  macchina: su un firewall il manuale vuole `--cpu host`, non
+  `x86-64-v2-AES` — e senza questo criterio vinceva la generica solo perché
+  viene valutata prima.
+
+Tutte e tre hanno una prova che le tiene ferme.
+
 ## 2026-09-10 (3) — Le regole che guardano il cluster, non la singola macchina
 
 Trentacinque regole nuove in dieci famiglie, dal catalogo in
