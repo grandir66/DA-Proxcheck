@@ -352,3 +352,109 @@ def test_categoria_coerenza_e_prima_nel_report():
     e per primi."""
     assert an.categoria_di("Coerenza — rete") == "Coerenza del cluster"
     assert an.ORDINE_CATEGORIE[0] == "Coerenza del cluster"
+
+
+# ── firewall: i due interruttori ────────────────────────────────────────────
+
+def _cluster(fw_options=None, fw_rules=None, **extra):
+    return {"ingresso": "A", "cluster": {"fw_options": fw_options, "fw_rules": fw_rules or [], **extra},
+            "nodi": {}}
+
+
+def test_datacenter_acceso_e_host_spento_e_bloccante():
+    """Il difetto trovato su OpenCRM il 2026-09-10, e il piu' frequente in
+    assoluto: l'interruttore del datacenter e' acceso, quello degli host no, e
+    `pve-firewall status` risponde comunque «enabled/running». Non si vede
+    guardando un lato solo."""
+    inv = _cluster({"enable": 1}, [{"action": "ACCEPT", "dport": "22"}])
+    inv["nodi"] = {"A": {"nodo": {"fw_options": {"enable": 0}}, "vms": {}, "lxc": {}},
+                   "B": {"nodo": {"fw_options": {"enable": 0}}, "vms": {}, "lxc": {}}}
+    e = an.Esito()
+    an.controlla_firewall(inv, e)
+    b = [r for r in e.rilievi if r.livello == an.BLOCCANTE]
+    assert any("SPENTO sull'host" in r.messaggio for r in b)
+    assert any("nessun host che le applica" in r.messaggio for r in b)
+
+
+def test_firewall_coerente_e_acceso_ovunque_non_e_un_rilievo():
+    inv = _cluster({"enable": 1}, [{"action": "ACCEPT", "dport": "8006"}])
+    inv["nodi"] = {"A": {"nodo": {"fw_options": {"enable": 1, "policy_in": "DROP"}}, "vms": {}, "lxc": {}}}
+    e = an.Esito()
+    an.controlla_firewall(inv, e)
+    assert not [r for r in e.rilievi if r.livello == an.BLOCCANTE]
+
+
+def test_accendere_il_firewall_senza_lasciarsi_una_porta_e_bloccante():
+    """Anti-lockout: politica DROP e nessuna regola che ammetta 8006 o 22
+    significa chiudersi fuori dal proprio nodo."""
+    inv = _cluster({"enable": 1}, [{"action": "ACCEPT", "dport": "443"}])
+    inv["nodi"] = {"A": {"nodo": {"fw_options": {"enable": 1, "policy_in": "DROP"}}, "vms": {}, "lxc": {}}}
+    e = an.Esito()
+    an.controlla_firewall(inv, e)
+    assert [r for r in e.rilievi if r.livello == an.BLOCCANTE and "chiude fuori" in r.messaggio]
+
+
+def test_raccolta_vecchia_senza_firewall_non_genera_niente():
+    """Le raccolte fatte prima che queste chiamate esistessero non devono
+    diventare cluster «senza firewall»: l'assenza del dato non e' un difetto."""
+    inv = {"ingresso": "A", "cluster": {}, "nodi": {"A": {"nodo": {}, "vms": {}, "lxc": {}}}}
+    e = an.Esito()
+    an.controlla_firewall(inv, e)
+    an.controlla_ceph_dettaglio(inv, e)
+    an.controlla_notifiche(inv, e)
+    assert e.rilievi == []
+
+
+# ── Ceph ────────────────────────────────────────────────────────────────────
+
+def test_pool_con_una_copia_sola_e_perdita_di_dati():
+    inv = {"ingresso": "A",
+           "nodi": {"A": {"nodo": {"ceph_pool": [{"pool_name": "vm", "size": 2, "min_size": 1}]}, "vms": {}, "lxc": {}}},
+           "cluster": {"ceph": {}}}
+    e = an.Esito()
+    an.controlla_ceph_dettaglio(inv, e)
+    messaggi = " ".join(r.messaggio for r in e.rilievi if r.livello == an.BLOCCANTE)
+    assert "size 2" in messaggi and "min_size 1" in messaggi
+
+
+def test_flag_noout_dimenticato_e_bloccante():
+    """Si mette durante una manutenzione e si toglie dopo. Lasciato acceso,
+    Ceph non ripara piu' da solo e nessuno se ne accorge finche' non serve."""
+    inv = {"ingresso": "A",
+           "nodi": {"A": {"nodo": {"ceph_pool": []}, "vms": {}, "lxc": {}}},
+           "cluster": {"ceph": {"osdmap": {"flags": "sortbitwise,noout"}}}}
+    e = an.Esito()
+    an.controlla_ceph_dettaglio(inv, e)
+    assert [r for r in e.rilievi if r.livello == an.BLOCCANTE and "noout" in r.messaggio]
+
+
+def test_due_monitor_non_fanno_quorum():
+    inv = {"ingresso": "A",
+           "nodi": {"A": {"nodo": {"ceph_pool": []}, "vms": {}, "lxc": {}}},
+           "cluster": {"ceph": {"monmap": {"mons": [{"public_addr": "10.0.0.1:6789/0"},
+                                                    {"public_addr": "10.0.0.2:6789/0"}]}}}}
+    e = an.Esito()
+    an.controlla_ceph_dettaglio(inv, e)
+    assert [r for r in e.rilievi if r.livello == an.BLOCCANTE and "monitor" in r.messaggio]
+
+
+# ── notifiche ───────────────────────────────────────────────────────────────
+
+def test_senza_matcher_un_backup_fallito_non_lo_sa_nessuno():
+    inv = {"ingresso": "A", "nodi": {},
+           "cluster": {"notif_endpoints": [{"name": "smtp"}], "notif_matchers": [], "backup": []}}
+    e = an.Esito()
+    an.controlla_notifiche(inv, e)
+    assert [r for r in e.rilievi if r.livello == an.BLOCCANTE and "matcher" in r.messaggio]
+
+
+def test_backup_su_storage_locale_in_un_cluster_e_bloccante():
+    """Se si perde il nodo si perdono i backup con lui."""
+    inv = {"ingresso": "A",
+           "nodi": {"A": {"nodo": {}, "vms": {}, "lxc": {}}, "B": {"nodo": {}, "vms": {}, "lxc": {}}},
+           "cluster": {"notif_endpoints": [], "notif_matchers": [{"name": "x"}],
+                       "storage_def": [{"storage": "local", "shared": 0}],
+                       "backup": [{"id": "j1", "storage": "local"}]}}
+    e = an.Esito()
+    an.controlla_notifiche(inv, e)
+    assert [r for r in e.rilievi if r.livello == an.BLOCCANTE and "locale a un nodo" in r.messaggio]

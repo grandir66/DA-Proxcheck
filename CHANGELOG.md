@@ -2,6 +2,49 @@
 
 Cosa è cambiato e **perché**, per chi non usa git. Più recenti in alto.
 
+## 2026-09-10 (3) — Le regole che guardano il cluster, non la singola macchina
+
+Trentacinque regole nuove in dieci famiglie, dal catalogo in
+`docs/superpowers/specs/2026-09-10-regole-deterministiche-design.md`. Il criterio
+è uno solo: **una regola è deterministica solo se esiste un campo raccolto che la
+decide**, e ogni regola nomina il proprio campo.
+
+- **Categoria nuova «Coerenza del cluster»**, in testa al report. Ci finiscono i
+  rilievi che nascono dal *confronto* fra nodi — una VLAN con reti diverse, un
+  MTU divergente, kernel o repository disallineati — perché non appartengono a
+  nessun nodo: sotto «Nodo PX-03» chi legge non li collega agli altri due. Ogni
+  rilievo mostra **i valori a confronto**, non solo l'anomalia.
+- **Reti di servizio**: dice quando corosync e lo storage passano sullo stesso
+  rame, e quando un guest è attestato sulla VLAN del cluster.
+- **Rete di migrazione**: se non è dichiarata, la migrazione a caldo viaggia
+  sulla rete di corosync — ed è il rilievo più grave del lotto, perché non c'è
+  niente di rotto da guardare finché non si migra una macchina grossa.
+- **Replica e HA**: guest replicati che nessuno accende, nessuna regola HA,
+  job in errore o in ritardo.
+- **Firewall a due interruttori** (§15.3): acceso al datacenter e spento sugli
+  host, le regole non filtrano niente e `pve-firewall status` dice comunque
+  «enabled/running». Più il controllo anti-lockout prima di suggerire di
+  accendere.
+- **Ceph**: pool con meno di tre copie o `min_size 1`, monitor in numero pari,
+  flag `noout` lasciato acceso dopo una manutenzione, OSD sbilanciati.
+- **Storage e notifiche**: dischi su storage locale in un cluster, backup che
+  scrivono su un nodo solo, nessun matcher che instradi gli avvisi.
+
+Cinque chiamate in più in raccolta (firewall, definizioni storage, pool e OSD
+Ceph, notifiche), tutte in sola lettura. Le regole **tacciono** sulle raccolte
+fatte prima che quelle chiamate esistessero: l'assenza del dato non è un difetto
+del cliente.
+
+### Due difetti trovati scrivendo, che valgono oltre questo lotto
+
+- **Un'età si misura dall'istante della RACCOLTA, non da adesso.** Rianalizzando
+  un JSON di tre ore prima, sette job di replica in orario risultavano in ritardo
+  di tre ore. Ora l'istante viaggia col dato (`raccolto_il`), e senza di esso la
+  regola tace invece di mentire.
+- **Quel timbro va messo dove si raccoglie**, non nel flusso comune: messo lì,
+  scriveva «adesso» anche su un JSON letto da disco — cioè esattamente l'errore
+  che il campo esiste per evitare.
+
 ## 2026-09-10 (2) — I rilievi guardano le macchine accese
 
 - **I rilievi si fanno sulle VM accese**; l'inventario continua a elencarle
