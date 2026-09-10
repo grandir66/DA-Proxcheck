@@ -2,6 +2,35 @@
 
 Cosa è cambiato e **perché**, per chi non usa git. Più recenti in alto.
 
+## 2026-09-10 (5) — Il collettore vCenter
+
+- **`strumenti/raccogli-vcenter.py`**: raccolta da vSphere in **sola lettura**,
+  API REST `/api/`, nessuna dipendenza oltre `requests`. Si lancia dalla
+  macchina che ha la credenziale — il file della password non si sposta — e
+  scrive un JSON che si porta via.
+- **Il campione è per host, non per inventario.** `--campione 30 --host-minimi 3`
+  prende le macchine a rotazione fra gli host: le prime N dell'inventario
+  stanno quasi sempre sullo stesso host, e le differenze fra host (versione di
+  ESXi, datastore, reti) sono metà di quello che serve per una migrazione.
+- **Lento di proposito.** Chiamate sequenziali con una pausa: l'API di vSphere
+  ha un limite basso di connessioni e superarlo blocca anche i client già in
+  corso (§11.5.3).
+
+### Tre cose imparate sul campo, che nessuna documentazione diceva
+
+Collaudato su vCenter 8.0.3 con 427 macchine su 13 host.
+
+- **Una chiamata basta.** `/api/vcenter/vm/<id>` torna la macchina **intera** —
+  dischi con capacità e backing, schede con rete e MAC, boot, CPU, memoria.
+  Chiedere i pezzi separatamente costava nove chiamate invece di una, e le
+  liste dei dischi tornavano per giunta i soli identificativi. Da 287 chiamate
+  in 72 s a **117 in 25 s** per lo stesso campione.
+- **Gli snapshot non esistono in questa API**: `/api/vcenter/vm/<id>/snapshot`
+  risponde 404. Si riconoscono dal nome del file di backing — un disco su
+  `NOME-000001.vmdk` gira su un delta — che è poi la cosa che conta per l'import.
+- **Le VM spente rispondono 503** su `guest/identity`: non è un errore, è lo
+  stato. Si chiede solo alle accese.
+
 ## 2026-09-10 (4) — I rilievi che si chiudono con un comando
 
 - **Sezione «Cosa fare — i comandi»** in coda al report: ogni rilievo agibile
