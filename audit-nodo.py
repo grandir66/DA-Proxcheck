@@ -212,6 +212,18 @@ nodo["certificati"] = api("/nodes/%s/certificates/info" % N)
 for ce in (nodo["certificati"] or []):
     ce.pop("pem", None)
 nodo["replication"] = api("/nodes/%s/replication" % N)
+# Il firewall dell'HOST: e' il secondo dei due interruttori (manuale 15.3).
+# Quello del datacenter sta a livello cluster; acceso uno e spento l'altro,
+# le regole non si applicano e `pve-firewall status` dice comunque
+# "enabled/running". Va letto dai due lati, o non si vede.
+nodo["fw_options"] = api("/nodes/%s/firewall/options" % N)
+nodo["fw_rules"] = api("/nodes/%s/firewall/rules" % N)
+# Ceph: solo se questo nodo lo ha. Un cluster senza Ceph deve restare
+# analizzabile, quindi si prova e si tira dritto.
+if os.path.exists("/etc/pve/ceph.conf"):
+    nodo["ceph_pool"] = api("/nodes/%s/ceph/pool" % N)
+    nodo["ceph_osd"] = api("/nodes/%s/ceph/osd" % N)
+    nodo["ceph_cfg"] = run("cat /etc/pve/ceph.conf")
 nodo["rrd"] = api("/nodes/%s/rrddata" % N, "--timeframe hour")
 nodo["timedatectl"] = run("timedatectl")
 nodo["ip_addr"] = run("ip -o -4 addr")
@@ -287,6 +299,7 @@ for i, v in enumerate(vms, 1):
     d["config"] = api("/nodes/%s/qemu/%s/config" % (N, vmid))
     d["status"] = api("/nodes/%s/qemu/%s/status/current" % (N, vmid))
     d["snapshot"] = [s for s in (api("/nodes/%s/qemu/%s/snapshot" % (N, vmid)) or []) if s.get("name") != "current"]
+    d["fw_options"] = api("/nodes/%s/qemu/%s/firewall/options" % (N, vmid))
     d["pending"] = [p for p in (api("/nodes/%s/qemu/%s/pending" % (N, vmid)) or []) if "pending" in p or "delete" in p]
     d["rrd"] = api("/nodes/%s/qemu/%s/rrddata" % (N, vmid), "--timeframe hour")
     d["agent"] = {}
@@ -359,6 +372,17 @@ cl["not_backed_up"] = api("/cluster/backup-info/not-backed-up")
 cl["replication"] = api("/cluster/replication")
 cl["options"] = api("/cluster/options")
 cl["sdn_zones"] = api("/cluster/sdn/zones")
+# Il primo dei due interruttori del firewall, e le regole che valgono per tutti.
+cl["fw_options"] = api("/cluster/firewall/options")
+cl["fw_rules"] = api("/cluster/firewall/rules")
+cl["fw_groups"] = api("/cluster/firewall/groups")
+# Le DEFINIZIONI degli storage: la vista per nodo dice cosa e' attivo, questa
+# dice com'e' dichiarato (nodes=, shared, prune).
+cl["storage_def"] = api("/storage")
+# Dove finiscono gli avvisi. Un backup fallito che non avvisa nessuno e' un
+# backup che non c'e'.
+cl["notif_endpoints"] = api("/cluster/notifications/endpoints")
+cl["notif_matchers"] = api("/cluster/notifications/matchers")
 cl["ceph"] = api("/cluster/ceph/status", "", 15)
 
 d = raccogli_nodo([sys.executable, "-"], N)
@@ -1887,6 +1911,207 @@ def controlla_replica_ha(inv: dict, esito: Esito):
             esito.add(ATTENZIONE, A, f"LRM di {s.get('node')} in stato inatteso: {s.get('status')}.", "manuale §7.4")
 
 
+def controlla_firewall(inv: dict, esito: Esito):
+    """FW-01..06 — i due interruttori, e le regole che non si applicano.
+
+    Il firewall di Proxmox ha DUE interruttori (manuale §15.3): uno al
+    datacenter e uno per host. Acceso il primo e spento il secondo, le regole
+    definite non filtrano niente — e `pve-firewall status` continua a
+    rispondere «enabled/running», quindi a occhio sembra tutto acceso. È il
+    difetto che si trova più spesso, e non si vede da un lato solo.
+    """
+    cl = inv.get("cluster") or {}
+    nodi = inv.get("nodi") or {}
+    opz_cl = cl.get("fw_options")
+    if opz_cl is None:
+        return  # raccolta più vecchia dell'introduzione di queste chiamate
+    A = "Cluster — firewall"
+    acceso_dc = str(opz_cl.get("enable", "")) == "1"
+    regole_cl = cl.get("fw_rules") or []
+
+    spenti = []
+    for nome, b in nodi.items():
+        opz = (b.get("nodo") or {}).get("fw_options")
+        if isinstance(opz, dict) and str(opz.get("enable", "")) != "1":
+            spenti.append(nome)
+
+    if acceso_dc and spenti:
+        esito.add(BLOCCANTE, A,
+                  f"Firewall acceso al datacenter ma SPENTO sull'host di {', '.join(sorted(spenti))}: "
+                  f"le regole non filtrano niente. `pve-firewall status` dice comunque «enabled/running».",
+                  "manuale §15.3")
+    if regole_cl and len(spenti) == len(nodi) and nodi:
+        esito.add(BLOCCANTE, A,
+                  f"{len(regole_cl)} regole definite a livello di cluster e nessun host che le applica: "
+                  f"esistono sulla carta e non in esercizio.", "manuale §15.3, §15.5")
+    if not acceso_dc and any(str(((b.get('nodo') or {}).get('fw_options') or {}).get('enable', '')) == '1'
+                             for b in nodi.values()):
+        esito.add(BLOCCANTE, A, "Firewall acceso su un host ma spento al datacenter: l'interruttore generale vince.",
+                  "manuale §15.3")
+
+    # FW-04: lo stesso interruttore deve stare nella stessa posizione ovunque.
+    per = _valori_per_nodo(inv, lambda n, b: ("acceso" if str(((b.get("nodo") or {}).get("fw_options") or {}).get("enable", "")) == "1"
+                                              else "spento") if isinstance((b.get("nodo") or {}).get("fw_options"), dict) else None)
+    if len(per) > 1:
+        esito.add(BLOCCANTE, "Coerenza — firewall", f"Firewall dell'host in stati diversi fra i nodi — {_elenca(per)}.",
+                  "manuale §15.3")
+
+    for nome, b in nodi.items():
+        n = b.get("nodo") or {}
+        stato = (n.get("pve_firewall") or "")
+        if "pending" in stato:
+            esito.add(ATTENZIONE, f"Rete — nodo {nome}" if len(nodi) > 1 else "Rete del nodo",
+                      "Il firewall ha modifiche in attesa di essere applicate (`pending changes`).", "manuale §15.4")
+        opz = n.get("fw_options")
+        if not isinstance(opz, dict) or str(opz.get("enable", "")) != "1":
+            continue
+        if str(opz.get("policy_in", "DROP")).upper() not in ("DROP", "REJECT"):
+            esito.add(ATTENZIONE, A, f"Nodo {nome}: politica in ingresso «{opz.get('policy_in')}» con il firewall acceso.",
+                      "manuale §15.2")
+        # FW-06: prima di chiudere, controllare che resti aperta la porta da cui si entra.
+        porte = set()
+        for r in list(regole_cl) + list(n.get("fw_rules") or []):
+            if str(r.get("action", "")).upper() == "ACCEPT":
+                porte |= {p.strip() for p in str(r.get("dport") or "").replace(":", ",").split(",") if p.strip()}
+        if not ({"8006", "22"} & porte) and str(opz.get("policy_in", "DROP")).upper() == "DROP":
+            esito.add(BLOCCANTE, A, f"Nodo {nome}: firewall acceso, politica DROP e nessuna regola che ammetta "
+                                    f"8006 o 22. Accendendolo ci si chiude fuori.", "manuale §15.4")
+
+
+def controlla_ceph_dettaglio(inv: dict, esito: Esito):
+    """CEPH-01..05, 07 — i pool, i monitor, le reti e i flag dimenticati."""
+    ing = nodo_ingresso(inv)
+    pool = ing.get("ceph_pool")
+    if pool is None:
+        return
+    A = "Cluster — Ceph"
+    ceph = (inv.get("cluster") or {}).get("ceph") or {}
+
+    for p in (pool or []):
+        nome = p.get("pool_name") or p.get("pool")
+        size, minimo = p.get("size"), p.get("min_size")
+        if size is not None and int(size) < 3:
+            esito.add(BLOCCANTE, A, f"Pool «{nome}»: size {size}. Sotto tre copie un guasto durante un ripristino "
+                                    f"perde i dati.", "manuale §6.5")
+        if minimo is not None and int(minimo) < 2:
+            esito.add(BLOCCANTE, A, f"Pool «{nome}»: min_size {minimo}. Con min_size 1 si continua a scrivere su "
+                                    f"una copia sola: è perdita di dati che aspetta.", "manuale §6.5")
+        aut = p.get("autoscale_status") or {}
+        if aut.get("pg_num_final") and p.get("pg_num") and int(aut["pg_num_final"]) != int(p["pg_num"]):
+            esito.add(INFO, A, f"Pool «{nome}»: {p['pg_num']} PG contro i {aut['pg_num_final']} suggeriti "
+                               f"dall'autoscaler.", "manuale §6.5")
+
+    mons = ((ceph.get("monmap") or {}).get("mons") or [])
+    if mons:
+        if len(mons) < 3 or len(mons) % 2 == 0:
+            esito.add(BLOCCANTE, A, f"{len(mons)} monitor Ceph: ne servono almeno tre, in numero dispari, "
+                                    f"o il quorum di Ceph non regge un guasto.", "manuale §6.4")
+    flag = str((ceph.get("osdmap") or {}).get("osdmap", {}).get("flags") or (ceph.get("osdmap") or {}).get("flags") or "")
+    for brutto in ("noout", "norebalance", "norecover", "nobackfill"):
+        if brutto in flag:
+            esito.add(BLOCCANTE, A, f"Flag «{brutto}» attivo: di norma si mette durante una manutenzione e si toglie "
+                                    f"dopo. Lasciato acceso, Ceph non ripara più da solo.", "manuale §6.6")
+
+    cfg = ing.get("ceph_cfg") or ""
+    pub = re.search(r"public_network\s*=\s*(\S+)", cfg)
+    clu = re.search(r"cluster_network\s*=\s*(\S+)", cfg)
+    if pub and clu and pub.group(1) == clu.group(1):
+        esito.add(ATTENZIONE, A, f"public_network e cluster_network coincidono ({pub.group(1)}): la replica fra OSD "
+                                 f"compete con il traffico dei client.", "manuale §6.2")
+
+    # CEPH-04: OSD per nodo. Uno squilibrio sposta il carico e lo spazio utile.
+    per_nodo = {}
+    for nome, b in (inv.get("nodi") or {}).items():
+        albero = (b.get("nodo") or {}).get("ceph_osd")
+        if isinstance(albero, dict):
+            per_nodo[nome] = _conta_osd(albero.get("root"), nome)
+    valori = [v for v in per_nodo.values() if v]
+    if len(valori) > 1 and max(valori) > min(valori) * 1.5:
+        dettaglio = " · ".join(f"{n}: {v}" for n, v in sorted(per_nodo.items()))
+        esito.add(ATTENZIONE, A, f"OSD sbilanciati fra i nodi — {dettaglio}.", "manuale §6.4")
+
+
+def _conta_osd(albero, nodo: str) -> int:
+    """Quanti OSD stanno sotto questo host nell'albero CRUSH."""
+    if not isinstance(albero, dict):
+        return 0
+    if albero.get("type") == "host" and albero.get("name") == nodo:
+        return sum(1 for c in (albero.get("children") or []) if isinstance(c, dict) and c.get("type") == "osd")
+    return sum(_conta_osd(c, nodo) for c in (albero.get("children") or []))
+
+
+def controlla_storage_dettaglio(inv: dict, esito: Esito):
+    """STOR-04/05/06/08 — le caratteristiche, non solo la presenza."""
+    cl = inv.get("cluster") or {}
+    nodi = inv.get("nodi") or {}
+    A = "Coerenza — storage"
+
+    for d in (cl.get("storage_def") or []):
+        nome = d.get("storage")
+        ristretti = str(d.get("nodes") or "")
+        if ristretti and nodi:
+            esclusi = sorted(set(nodi) - {x.strip() for x in ristretti.split(",")})
+            if esclusi:
+                esito.add(ATTENZIONE, A, f"Lo storage «{nome}» è dichiarato solo per {ristretti}: "
+                                         f"su {', '.join(esclusi)} non esiste.", "manuale §4.1")
+        if d.get("type") == "dir" and any(x in str(d.get("content") or "") for x in ("images", "rootdir")) and len(nodi) > 1:
+            esito.add(ATTENZIONE, "Storage", f"Lo storage locale «{nome}» accetta dischi di macchine: quelle macchine "
+                                             f"non migrano e non vanno in HA.", "manuale §4.1")
+
+    # STOR-05: dischi su storage locale in un cluster.
+    if len(nodi) > 1:
+        locali = {d.get("storage") for d in (cl.get("storage_def") or []) if not d.get("shared")}
+        multi = True
+        for nome, b in nodi.items():
+            for vmid, v in sorted((b.get("vms") or {}).items(), key=lambda x: int(x[0]) if x[0].isdigit() else 0):
+                cfg = normalizza_config(v.get("config"))
+                usati = set()
+                for k, val in cfg.items():
+                    if re.match(r"(scsi|virtio|sata|ide)\d+$", k):
+                        s = str(val).split(":")[0]
+                        if s in locali:
+                            usati.add(s)
+                if usati:
+                    AV = f"VM {vmid} ({cfg.get('name', '')})" + (f" @{nome}" if multi else "")
+                    esito.add(ATTENZIONE, AV, f"Dischi su storage locale ({', '.join(sorted(usati))}): "
+                                              f"la macchina non migra a caldo e non può andare in HA.",
+                              "manuale §4.1, §7.2")
+
+    # STOR-08: la cache ZFS sui nodi di pari taglia.
+    per = _valori_per_nodo(inv, lambda n, b: (b.get("nodo") or {}).get("zfs_arc_max") or None)
+    ram = _valori_per_nodo(inv, lambda n, b: round((((b.get("nodo") or {}).get("status") or {}).get("memory") or {}).get("total", 0) / 1e9))
+    if len(per) > 1 and len(ram) == 1:
+        esito.add(ATTENZIONE, A, f"Nodi con la stessa RAM ma zfs_arc_max diverso — {_elenca(per)}.", "manuale §4.2")
+
+
+def controlla_notifiche(inv: dict, esito: Esito):
+    """BKP-03/04/05/06 — chi viene avvisato quando qualcosa non va."""
+    cl = inv.get("cluster") or {}
+    endpoint = cl.get("notif_endpoints")
+    if endpoint is None:
+        return
+    A = "Cluster — notifiche"
+    matcher = cl.get("notif_matchers") or []
+
+    for j in (cl.get("backup") or []):
+        if str(j.get("notification-mode") or "") == "legacy-sendmail":
+            esito.add(ATTENZIONE, A, f"Il job di backup {j.get('id')} usa il canale vecchio (legacy-sendmail): "
+                                     f"non passa dai target e dai matcher configurati.", "manuale §16.9")
+        deposito = str(j.get("storage") or "")
+        locali = {d.get("storage") for d in (cl.get("storage_def") or []) if not d.get("shared")}
+        if deposito and deposito in locali and len(inv.get("nodi") or {}) > 1:
+            esito.add(BLOCCANTE, A, f"Il job di backup {j.get('id')} scrive su «{deposito}», che è locale a un nodo: "
+                                    f"se si perde quel nodo si perdono i backup con lui.", "manuale §12.1")
+
+    if not matcher:
+        esito.add(BLOCCANTE, A, "Nessun matcher di notifica: gli avvisi non vengono instradati da nessuna parte, "
+                                "e un backup fallito non lo sa nessuno.", "manuale §16.6")
+    nomi = {str(e.get("name")) for e in (endpoint or [])}
+    if nomi and nomi <= {"mail-to-root", "sendmail"}:
+        esito.add(ATTENZIONE, A, "L'unico recapito configurato è la posta di root sul nodo: se non esce dal server, "
+                                 "l'avviso resta lì.", "manuale §16.2")
+
+
 # ────────────────────────────── report ──────────────────────────────
 
 ORDINE_CATEGORIE = ["Coerenza del cluster", "Cluster / corosync", "Nodo", "Hardware", "Storage", "Rete",
@@ -2735,6 +2960,10 @@ def esegui(args):
     controlla_reti_di_servizio(inv, esito)
     controlla_migrazione(inv, esito)
     controlla_replica_ha(inv, esito)
+    controlla_firewall(inv, esito)
+    controlla_ceph_dettaglio(inv, esito)
+    controlla_storage_dettaglio(inv, esito)
+    controlla_notifiche(inv, esito)
     for nome, blocco in inv["nodi"].items():
         controlla_rete_nodo(nome, blocco, inv, esito)
     if not args.solo_nodo:

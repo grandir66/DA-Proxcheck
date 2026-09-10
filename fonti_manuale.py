@@ -86,12 +86,60 @@ FONTI = {
   "testo": "Obiettivo: gestire dal datacenter le VLAN già esistenti sugli switch.\n\n**Prerequisito.** Su ogni nodo deve esistere un bridge **VLAN-aware** collegato alla rete fisica, per esempio `vmbr1` con *VLAN aware* spuntato.\n\n**Passo 1 — Creare la zona.**\n`Datacenter → SDN → Zones → Add → VLAN`:\n\n| Campo | Valore |\n|---|---|\n| ID | `prod` (max 8 caratteri) |\n| Bridge | `vmbr1` |\n| Nodes | I nodi su cui deve esistere |\n| MTU | Vuoto per ereditare dal bridge |\n\n**Passo 2 — Creare la VNet.**\n`VNets → Create`:\n\n| Campo | Valore |\n|---|---|\n| Name | `srv20` (max 8 caratteri) |\n| Alias | `Server produzione` |\n| Zone | `prod` |\n| Tag | `20` — il numero della VLAN |\n| VLAN Aware | Solo se le VM devono a loro volta taggare |\n\n**Passo 3 — Aggiungere la subnet** (facoltativo, serve per IPAM e DHCP).\nSelezionare la VNet → `Subnets → Create`: `172.16.20.0/24`, gateway `172.16.20.1`.\n\n**Passo 4 — Applicare.**\n`Datacenter → SDN → Apply`. **Finché non si preme Apply non cambia nulla**: le modifiche restano in stato *pending*.\n\n**Passo 5 — Usarla.** Nella scheda di rete di una VM, scegliere il bridge `srv20`. Il tag VLAN è già gestito dalla VNet.",
   "troncato": 0
  },
+ "§15.2": {
+  "titolo": "§15.2 Zone e direzioni",
+  "file": "manuale/15-firewall.md",
+  "riga": 11,
+  "parte": "Parte 15",
+  "testo": "**Tre zone**, cioè tre livelli a cui si scrivono regole:\n\n| Zona | Riguarda | Dove si configura |\n|---|---|---|\n| **Host** | Traffico da/verso un nodo, o instradato dal nodo | `Datacenter → Firewall` **e** `Nodo → Firewall`. Le regole del nodo **hanno la precedenza** |\n| **VM** | Traffico da/verso una VM o container | `VM → Firewall` |\n| **VNet** | Traffico che attraversa una VNet SDN | `Datacenter → SDN → VNet → Firewall` |\n\n**Tre direzioni:**\n\n| Direzione | Significato |\n|---|---|\n| **In** | Traffico che entra nella zona |\n| **Out** | Traffico che esce dalla zona |\n| **Forward** | Traffico che attraversa la zona: routing o NAT sull'host, oppure tutto ciò che transita per una VNet |\n\n> ⚠️ **Le regole Forward e quelle a livello VNet funzionano solo con il firewall basato su nftables** (`proxmox-firewall`). Con il firewall standard `pve-firewall` vengono **ignorate silenziosamente**, senza alcun errore. È la trappola più insidiosa di questa parte.",
+  "troncato": 0
+ },
  "§15.3": {
   "titolo": "§15.3 Il doppio interruttore",
   "file": "manuale/15-firewall.md",
   "riga": 31,
   "parte": "Parte 15",
   "testo": "Perché il firewall protegga davvero una VM servono **due abilitazioni distinte**:\n\n1. Il firewall **generale**, a livello datacenter o nodo\n2. Il flag **Firewall sulla singola scheda di rete** della VM\n\nManca uno dei due e non filtra nulla. È la causa numero uno delle segnalazioni \"il firewall non funziona\".",
+  "troncato": 0
+ },
+ "§15.4": {
+  "titolo": "§15.4 Passo passo — attivare il firewall senza chiudersi fuori",
+  "file": "manuale/15-firewall.md",
+  "riga": 40,
+  "parte": "Parte 15",
+  "testo": "Il firewall è **disattivato per default**. Attivarlo senza preparazione è il modo più rapido per perdere l'accesso al cluster.\n\n**Passo 0 — Aprire una sessione SSH verso un nodo e lasciarla aperta.** Se qualcosa va storto è l'unica via di rientro.\n\n**Passo 1 — Definire l'IPSet `management`.**\n`Datacenter → Firewall → IPSet → Create`, nome **`management`**. Aggiungere le reti da cui si amministra il cluster: la LAN dell'ufficio, la VPN, la subnet dei nodi.\n\nQuesto IPSet ha un significato speciale: con la policy in ingresso su DROP, restano comunque consentiti verso **gli host** i servizi di gestione **provenienti dagli indirizzi elencati qui**.\n\n**Passo 2 — Controllare le regole di default.** Con policy in ingresso o in uscita su DROP/REJECT restano sempre permessi:\n\n- il traffico sull'interfaccia di loopback\n- le connessioni già stabilite\n- il protocollo IGMP\n- dagli host di gestione: TCP 8006 (interfaccia web), 5900-5999 (console VNC), 3128 (proxy SPICE), 22 (SSH), 60000-60050 (migrazione)\n\n**Passo 3 — Attivare il firewall a livello datacenter.**\n`Datacenter → Firewall → Options → Firewall: Yes`.\nLasciare per ora `Input Policy: DROP` e `Output Policy: ACCEPT`.\n\n**Passo 4 — Verificare l'accesso** dall'interfaccia web e dalla sessione SSH già aperta, poi da una **nuova** sessione.\n\n**Passo 5 — Aggiungere le regole per gli altri servizi** che devono raggiungere i nodi: backup, monitoraggio, NTP, storage.\n\n**Passo 6 — Solo dopo**, abilitare il firewall sulle singole VM.",
+  "troncato": 0
+ },
+ "§15.5": {
+  "titolo": "§15.5 Le voci del menu, livello per livello",
+  "file": "manuale/15-firewall.md",
+  "riga": 68,
+  "parte": "Parte 15",
+  "testo": "| Voce | Contenuto |\n|---|---|\n| **Firewall** | Regole valide per **tutti** i nodi del cluster |\n| **Options** | Abilitazione generale, policy di input/output/forward, log |\n| **Security Group** | Gruppi di regole riutilizzabili |\n| **Alias** | Nomi simbolici per indirizzi e reti |\n| **IPSet** | Insiemi di indirizzi, incluso lo speciale `management` |\n\n| Voce | Contenuto |\n|---|---|\n| **Firewall** | Regole specifiche di quel nodo — **prevalgono** su quelle del datacenter |\n| **Options** | Policy del nodo, log, NDP, `nftables`, protezione SMURF, filtro TCP flags |\n| **Log** | Traffico registrato |\n\n| Voce | Contenuto |\n|---|---|\n| **Firewall** | Regole della VM |\n| **Options** | Abilitazione, policy, DHCP, NDP, Router Advertisement, IP Filter, MAC filter |\n| **Alias** e **IPSet** | Definizioni locali alla VM |\n| **Log** | Traffico registrato |",
+  "troncato": 0
+ },
+ "§16.2": {
+  "titolo": "§16.2 I tipi di target",
+  "file": "manuale/16-notifiche.md",
+  "riga": 21,
+  "parte": "Parte 16",
+  "testo": "| Target | Come recapita | Quando sceglierlo |\n|---|---|---|\n| **Sendmail** | Usa il binario `sendmail` del sistema, fornito da Postfix | Quando c'è già un MTA configurato sui nodi. **Ha una coda e ritenta** in caso di errore |\n| **SMTP** | Parla direttamente con un relay SMTP, senza passare dall'MTA locale | Il più semplice da configurare. ⚠️ **Nessuna coda e nessun ritentativo**: se la consegna fallisce, la notifica è persa |\n| **Gotify** | Server di notifiche self-hosted | Notifiche push senza email |\n| **Webhook** | Richiesta HTTP verso un URL configurabile | Integrazione con ntfy, Discord, Teams, Slack, o un sistema di ticketing |\n\n> **La differenza che conta tra Sendmail e SMTP** è la coda. Con SMTP, se il relay è irraggiungibile nel momento esatto in cui il backup fallisce, **nessuno viene avvisato del fallimento**. Su un sistema di allerta è un difetto serio. Sendmail via Postfix accoda e ritenta.",
+  "troncato": 0
+ },
+ "§16.6": {
+  "titolo": "§16.6 I matcher",
+  "file": "manuale/16-notifiche.md",
+  "riga": 108,
+  "parte": "Parte 16",
+  "testo": "| Regola | Cosa confronta | Esempi |\n|---|---|---|\n| `match-severity` | La gravità | `error` · `warning,error` |\n| `match-field` | I metadati | `exact:type=vzdump` · `exact:type=replication,fencing` · `regex:hostname=^pve\\d+$` |\n| `match-calendar` | L'orario di invio | `mon..fri 9:00-17:00` · `8-12` · `sun,tue..wed,fri 9-17` |\n\nOpzioni del matcher:\n\n| Opzione | Effetto |\n|---|---|\n| `mode: all` (default) | Devono corrispondere **tutte** le regole |\n| `mode: any` | Basta che ne corrisponda **una** |\n| `invert-match` | Inverte il risultato dell'intero matcher |\n| `target` | Il destinatario. Ripetibile per notificare più target |\n\nDue comportamenti da tenere a mente: **un matcher senza regole corrisponde sempre**, e **ogni target riceve al massimo una volta** la stessa notifica, anche se compare in più matcher.",
+  "troncato": 0
+ },
+ "§16.9": {
+  "titolo": "§16.9 Le notifiche dei backup",
+  "file": "manuale/16-notifiche.md",
+  "riga": 188,
+  "parte": "Parte 16",
+  "testo": "Ogni job di backup ha un'opzione `notification-mode` con due valori:\n\n| Modalità | Comportamento |\n|---|---|\n| `notification-system` | Usa il sistema di notifiche globale, con matcher e target. **È quella da usare** |\n| `legacy-sendmail` | Manda l'email direttamente all'indirizzo scritto nel job, **ignorando ogni matcher e target**. Comportamento delle versioni precedenti alla 8.1 |\n\n> La modalità legacy **potrebbe essere rimossa** in una release futura. Se sul cluster ci sono job che la usano ancora, vanno convertiti — altrimenti un giorno gli avvisi di backup smettono di arrivare senza che nessuno cambi nulla.",
   "troncato": 0
  },
  "§19.1": {
@@ -220,6 +268,30 @@ FONTI = {
   "riga": 147,
   "parte": "Parte 4",
   "testo": "Il thin provisioning permette di assegnare ai guest più spazio di quello che esiste. Funziona finché nessuno lo usa davvero.\n\n**La catena che porta al riempimento**, in ordine:\n\n1. i dischi dei guest sono thin, e crescono man mano che vengono scritti;\n2. **i dati cancellati dentro il guest non liberano spazio** sullo storage, a meno che il TRIM/UNMAP arrivi fino in fondo;\n3. gli snapshot trattengono i blocchi vecchi e nessuno li rimuove;\n4. i backup locali si accumulano sullo stesso volume.\n\n**Perché la catena UNMAP funzioni servono tre cose insieme:**\n\n| Anello | Cosa serve |\n|---|---|\n| Guest | `discard`/TRIM attivo — su Linux `fstrim.timer`, su Windows è il comportamento predefinito |\n| Disco virtuale | Opzione **Discard** attiva e bus **SCSI** con controller VirtIO SCSI |\n| Storage | Deve supportare la riallocazione: SSD, LVM-thin, ZFS, Ceph, SAN con SCSI UNMAP |\n\nSe manca un anello, lo spazio non torna mai. Su LVM condiviso è il calcolo della §1.4.1.\n\n**Wipe Removed Volumes** (`saferemove`), dalla 9.1, usa `blkdiscard` e quindi SCSI UNMAP: su una SAN che lo supporta, cancellare un disco restituisce davvero lo spazio all'array.",
+  "troncato": 0
+ },
+ "§6.2": {
+  "titolo": "§6.2 I minimi veri",
+  "file": "manuale/06-ceph.md",
+  "riga": 21,
+  "parte": "Parte 6",
+  "testo": "| Risorsa | Minimo | Consigliato | Nota |\n|---|---|---|---|\n| Nodi | 3 | **5** | Server il più possibile identici |\n| Monitor (MON) | 3 | 3 | Oltre i 3 non servono su cluster piccoli e medi |\n| Manager (MGR) | 1 | 2+ | Il secondo dà ridondanza alla gestione |\n| OSD totali | — | **12**, distribuiti in modo uniforme | Meno OSD = ricostruzioni più lente e più rischiose |\n| **CPU** | 1 core per servizio Ceph | 4-6 thread per OSD **NVMe** | Un nodo con 1 MON + 1 MGR + 6 OSD ne prenota circa 8 |\n| **RAM** | 4 GiB per OSD | **8 GiB per OSD** | Il margine serve durante il riequilibrio, non a regime |\n| Rete cluster | 10 Gb dedicati | **25 Gb** con NVMe | Separata dalla rete pubblica Ceph |\n| Rete pubblica Ceph | 10 Gb | 10 Gb+ | Il traffico verso i client |\n| Corosync | 1 Gb | 1 Gb **separato** | Mai insieme a Ceph |\n\n**Sui dischi le regole sono due e non hanno eccezioni:** niente RAID hardware — servono HBA, perché Ceph gestisce da sé la ridondanza e un controller in mezzo gli nasconde la realtà — e dimensioni e numero di OSD **bilanciati tra i nodi**, perché la distribuzione dei dati segue la capacità.\n\n**Su cluster piccoli usare SSD**: la ricostruzione dopo un guasto è la finestra di rischio, e sui dischi rotanti dura ore.",
+  "troncato": 0
+ },
+ "§6.4": {
+  "titolo": "§6.4 Monitor, manager, OSD",
+  "file": "manuale/06-ceph.md",
+  "riga": 51,
+  "parte": "Parte 6",
+  "testo": "```bash\n# su tre nodi diversi\npveceph mon create\npveceph mgr create\n\n# per ogni disco dedicato a Ceph\npveceph osd create /dev/sdX\n\n# con DB e WAL su un dispositivo veloce separato\npveceph osd create /dev/sdX -db_dev /dev/nvme0n1\n```\n\n**I MON vanno su tre nodi diversi**, altrimenti non c'è quorum di monitor. È un quorum indipendente da quello di corosync, e va tenuto distinto in testa: si può perdere il quorum Ceph mantenendo quello Proxmox, e viceversa.\n\n**Cifratura degli OSD**: la casella *Encryption* alla creazione. Va decisa ora, non si aggiunge dopo.\n\n```bash\nceph -s                 # lo stato di riferimento: deve essere HEALTH_OK\nceph osd tree           # come sono distribuiti gli OSD\nceph df                 # spazio reale e per pool\n```",
+  "troncato": 0
+ },
+ "§6.5": {
+  "titolo": "§6.5 Pool e placement group",
+  "file": "manuale/06-ceph.md",
+  "riga": 75,
+  "parte": "Parte 6",
+  "testo": "```bash\npveceph pool create <nome> --add_storages\n```\n\n**I valori predefiniti sono quelli giusti: 128 PG, `size 3`, `min_size 2`.**\n\n| Parametro | Significato |\n|---|---|\n| `size 3` | Ogni oggetto esiste in 3 copie |\n| `min_size 2` | Con meno di 2 copie disponibili, il pool smette di accettare I/O |\n\n> ⚠️ **Non impostare mai `min_size 1`.** Permette la scrittura quando esiste una sola copia: basta che quel disco muoia prima della replica e il dato non esiste più da nessuna parte. È il modo documentato di perdere dati con Ceph.\n\n**Il PG autoscaler** regola da solo il numero di placement group. Va lasciato attivo, e gli si dà un aiuto dichiarando la dimensione attesa del pool (*Target Size* o *Target Ratio*) quando è nota: evita un riequilibrio completo quando il pool cresce.\n\n**Erasure coding** (`--erasure-coding k=2,m=1`) recupera capacità a scapito di prestazioni e complessità. Su cluster piccoli non conviene. Il flag `allow_ec_optimizations` **è irreversibile**: per tornare indietro si ricrea il pool.\n\n**CephFS** serve quando si vuole uno storage condiviso a file — ISO, template, snippet — senza aggiungere un NAS:\n\n```bash\npveceph fs create --pg_num 32 --add-storage\n```",
   "troncato": 0
  },
  "§6.6": {
