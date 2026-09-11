@@ -18,7 +18,7 @@ MANUALE = {
  "versione": "1.0",
  "verificato": "2026-09-01",
  "repo": "DA-Proxmox-Docs",
- "estratto_il": "2026-09-10"
+ "estratto_il": "2026-09-11"
 }
 
 FONTI = {
@@ -53,6 +53,14 @@ FONTI = {
   "parte": "Parte 10",
   "testo": "**Privilegiato o no.** Non privilegiato è il predefinito ed è la scelta giusta: l'utente `root` del container è mappato su un utente non privilegiato dell'host. Un container privilegiato è, in pratica, `root` sull'host — dalla 9.0 crearlo richiede il privilegio `Sys.Modify` proprio per questa ragione.\n\nIl prezzo del non privilegiato sono i **permessi sui mount point**: gli UID dentro e fuori non coincidono. Dalla 9.2 le opzioni `idmap` e `keepattrs` sui mount point risolvono i casi più comuni senza dover ricorrere ai container privilegiati.\n\n**Nesting** serve per systemd completo, per FUSE e per alcuni strumenti; va attivato consapevolmente, non per abitudine.\n\n**Il backup di un container** è coerente con `suspend` o `stop`; in modalità `snapshot` dipende dallo storage sottostante. Per i dati applicativi importanti dentro un container valgono le stesse considerazioni della §12.12: il dump applicativo viene prima.",
   "troncato": 0
+ },
+ "§11.13": {
+  "titolo": "§11.13 Trappole note",
+  "file": "manuale/11-migrazione.md",
+  "riga": 542,
+  "parte": "Parte 11",
+  "testo": "| Trappola | Sintomo | Prevenzione |\n|---|---|---|\n| **Driver VirtIO non boot-critical** | `INACCESSIBLE_BOOT_DEVICE` (0x7B) | §11.6.2 + §11.9.2 |\n| **Firmware non corrispondente** | La VM non trova il bootloader | Rilevare con `msinfo32`, replicare esattamente |\n| **UEFI senza percorso standard** | UEFI non trova nulla pur essendo corretto | Entrare nel BIOS OVMF e aggiungere la voce di boot custom. Serve l'**EFI Disk** per renderla persistente |\n| **`/dev/sdX` in fstab** | Linux in emergency shell | §11.6.3 passo 1 |\n| **VirtIO fuori dall'initramfs** | Kernel panic all'avvio | §11.6.3 passo 2. **Ripetere dopo ogni update del kernel** |\n| **NIC fantasma su Windows** | \"IP già assegnato a un altro adattatore\" | Rimuovere l'IP statico prima; ripulire con `devmgr_show_nonpresent_devices` |\n| **vTPM / BitLocker** | Richiesta chiave di ripristino all'avvio | Sospendere BitLocker prima. Lo stato vTPM **non è migrabile** |\n| **Snapshot sulla sorgente** | Import lentissimo | Consolidare prima |\n| **Dischi su vSAN** | Import fallisce | Spostare i dischi su altro datastore |\n| **Dischi cifrati (storage policy)** | Import fallisce | Rimuovere la policy di cifratura |\n| **Datastore con `+` nel nome** | Import fallisce | Rinominare il datastore |\n| **Import via vCenter** | Lentezza estrema | Puntare direttamente agli host ESXi |\n| **Troppi import paralleli** | API ESXi bloccata, IO sospeso, rischio OOM | Max 4 dischi contemporanei |\n| ⚠️ **Storage ESXi lasciato configurato** | **`pvestatd` si blocca, errori su TUTTI gli storage incluso `local`** | **Rimuovere lo storage ESXi a migrazione conclusa** |\n| **Corosync su link condiviso** | Il cluster sembra riavviarsi da solo (self-fencing) | Rete dedicata a corosync |\n| **CPU type `host`** | Migrazione live impossibile tra CPU diverse | `x86-64-v2-AES`/`v3` in cluster eterogenei |\n| **Machine version < 10** | La VM non parte su storage volume-chain | Impostare machine ≥ 10 |\n| **RDM / dischi shared / MSCS** | Non migrabili con i metodi standard | Identificare in assessment, pianificare a parte |\n| **Licenze legate all'hardware** | Applicativi che si disattivano | Censire in assessment, coinvolgere il fornitore |",
+  "troncato": 1
  },
  "§11.2": {
   "titolo": "§11.2 Assessment: cosa raccogliere prima di toccare qualcosa",
