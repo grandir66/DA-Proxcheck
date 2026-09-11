@@ -168,6 +168,71 @@ def metodo(m: dict) -> tuple:
     return "Import wizard ESXi", f"{gb} GB: caso ordinario, prima scelta del manuale", note
 
 
+# ════════════════════ il questionario, precompilato dai dati ════════════════════
+# Ogni domanda a cui l'infrastruttura risponde smette di essere una domanda — e
+# una risposta LETTA non può essere sbagliata per distrazione.
+#
+# Il confine è netto e non si sposta: **si compila solo ciò che si è visto**.
+# Quello che vive dentro il guest (BitLocker, fstab, i servizi applicativi) o
+# nella testa delle persone (i cluster applicativi, le licenze legate
+# all'hardware, chi autorizza un fermo) resta una domanda, e si chiede.
+#
+# Ogni valore precompilato porta la propria origine: chi legge deve poter
+# distinguere «lo abbiamo letto» da «ce l'hanno detto».
+
+def _elenco(nomi: list, vuoto: str) -> str:
+    return ", ".join(sorted(nomi)) if nomi else vuoto
+
+
+def precompila(dati: dict) -> dict:
+    """Le risposte che la raccolta vSphere sa dare, con la loro origine."""
+    mm = macchine(dati)
+    campi, origine = {}, {}
+
+    def metti(chiave, valore, come):
+        if valore not in (None, ""):
+            campi[chiave] = valore
+            origine[chiave] = come
+
+    # Le chiavi e i valori seguono il MODELLO del questionario, non il buon
+    # senso: un campo composto si scrive `id.sotto` (`esxi_host_numero.numero`),
+    # un select Si'/No vuole proprio «Sì» e «No», e una risposta negativa deve
+    # essere ESATTAMENTE «Nessuna» — il questionario riconosce il «no» con
+    # /^(no|nessun[ao]?|niente)$/. «Nessuna: tutti i dischi sono VMDK» sarebbe
+    # stata letta come un elenco di RDM, cioe' un blocco. Visto il 2026-09-11
+    # sullo schermo, non nei test: i test provavano il file, non il modello.
+    host = dati.get("host") or []
+    metti("esxi_host_numero.numero", str(len(host)), f"{len(host)} host letti da vCenter")
+
+    tot_gb = sum(capacita_gb(m) for m in mm)
+    metti("vm_numero_tb.vm", str(len(mm)), "conteggio delle macchine (escluse le vCLS)")
+    metti("vm_numero_tb.tb", f"{tot_gb / 1024:.1f}", "somma dei dischi dalla raccolta")
+
+    con_delta = [m["nome"] for m in mm if su_delta(m)]
+    metti("sp_snapshot", _elenco(con_delta, "Nessuna"),
+          "riconosciuti dal nome del file di backing (…-000001.vmdk)")
+
+    con_rdm = [m["nome"] for m in mm
+               for d in dischi(m) if "RDM" in str((d.get("backing") or {}).get("type") or "")]
+    metti("sp_rdm", _elenco(sorted(set(con_rdm)), "Nessuna"), "tipo di backing di ogni disco")
+
+    # I datastore col nome «difficile» bloccano l'import (§11.13).
+    brutti = [d.get("name", "") for d in (dati.get("datastore") or [])
+              if re.search(r"[+&%#'\"]|\s{2,}", str(d.get("name") or ""))]
+    metti("caratteri_speciali_vm", _elenco(brutti, "Nessuno"),
+          f"{len(dati.get('datastore') or [])} datastore letti da vCenter")
+
+    vsan = [d.get("name", "") for d in (dati.get("datastore") or [])
+            if str(d.get("type") or "").upper() == "VSAN"]
+    metti("feat_vsan", "Sì" if vsan else "No", "tipo dei datastore")
+    if vsan:
+        metti("vsan_vm", _elenco(vsan, ""), "datastore vSAN: le VM che ci stanno sopra vanno spostate prima")
+
+    return {"campi": campi, "origine": origine,
+            "raccolto_il": dati.get("raccolto_il"),
+            "sorgente": dati.get("host_vcenter", "")}
+
+
 # ══════════════════════════════ il piano a ondate ══════════════════════════════
 # Non è un ordinamento inventato: sono i vincoli del manuale applicati
 # all'inventario vero. §11.5.3 dice «mai più di 4 dischi importati
@@ -326,6 +391,8 @@ def main() -> int:
     ap.add_argument("--cliente", default="", help="nome del cliente")
     ap.add_argument("--codice", default="", help="codice cliente")
     ap.add_argument("--output", default=".", help="cartella di uscita")
+    ap.add_argument("--precompila", metavar="FILE",
+                    help="scrive le risposte al questionario che i dati sanno dare")
     args = ap.parse_args()
 
     dati = json.loads(Path(args.json).read_text(encoding="utf-8"))
@@ -351,6 +418,10 @@ def main() -> int:
     scrivi(dati, esito, mm, f, intest)
     print(f"{esito.conta(BLOCCANTE)} bloccanti · {esito.conta(ATTENZIONE)} da valutare · "
           f"{esito.conta(INFO)} informativi su {len(mm)} macchine", file=sys.stderr)
+    if args.precompila:
+        pre = precompila(dati)
+        Path(args.precompila).write_text(json.dumps(pre, ensure_ascii=False, indent=1), encoding="utf-8")
+        print(f"{len(pre['campi'])} risposte precompilate in {args.precompila}", file=sys.stderr)
     print(f"Assessment scritto in {f}")
     return 0
 

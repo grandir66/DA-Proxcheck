@@ -679,3 +679,23 @@ def test_la_prontezza_si_chiede_con_prontezza():
     testo = aiuto.read_text(encoding="utf-8")
     assert '"--prontezza"' in testo
     assert 'if getattr(ARGOMENTI, "prontezza", False):' in testo
+
+
+def test_la_precompilazione_parla_la_lingua_del_questionario():
+    """Le risposte negative devono essere ESATTAMENTE «Nessuna»: il questionario
+    riconosce il no con /^(no|nessun[ao]?|niente)$/, e «Nessuna: tutti i dischi
+    sono VMDK» sarebbe stata letta come un ELENCO di RDM, cioe' un blocco. I
+    campi composti si scrivono id.sotto, e il select vuole «Sì»/«No»."""
+    mig = _carica_migrazione()
+    dati = {"host": [{"host": "h1"}, {"host": "h2"}], "datastore": [{"name": "DS1", "type": "VMFS"}],
+            "vm": {"a": {"intera": {"name": "SRV", "disks": {"2000": {"backing": {"vmdk_file": "[DS1] SRV/SRV.vmdk",
+                   "type": "VMDK_FILE"}, "capacity": 100 * 1024**3}}}, "lista": {"name": "SRV"}}}}
+    c = mig.precompila(dati)["campi"]
+    assert c["esxi_host_numero.numero"] == "2"
+    assert c["vm_numero_tb.vm"] == "1" and c["vm_numero_tb.tb"] == "0.1"
+    assert c["sp_rdm"] == "Nessuna" and c["sp_snapshot"] == "Nessuna" and c["caratteri_speciali_vm"] == "Nessuno"
+    assert c["feat_vsan"] == "No"
+    import re
+    negativo = re.compile(r"^\s*(no|nessun[ao]?|niente|none|n/a|-{1,2}|0)\s*$", re.I)
+    for k in ("sp_rdm", "sp_snapshot", "caratteri_speciali_vm"):
+        assert negativo.match(c[k]), f"{k} non verrebbe letto come «no»"
