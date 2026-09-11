@@ -2699,7 +2699,8 @@ def scrivi_rilievi_md(path: Path, esito: Esito, inv: dict, intest: dict, vms: li
         r += ["## Rilievi sui container", ""]
         r += _tab([("🔴 BLOCCANTE" if x.livello == BLOCCANTE else "🟡 attenzione" if x.livello == ATTENZIONE else "ℹ️ info",
                     x.ambito, x.messaggio, x.fonte) for x in ct], ("Livello", "Ambito", "Rilievo", "Fonte"))
-    r += sezione_prontezza_md(esito)
+    if getattr(ARGOMENTI, "prontezza", False):
+        r += sezione_prontezza_md(esito)
     r += sezione_comandi_md(esito)
     r += sezione_regole_md(esito)
     r += _piede_md()
@@ -2746,6 +2747,9 @@ PRONTEZZA = [
     ("Backup", "§11.4.3", (
         "Cluster — notifiche",)),
 ]
+
+
+ARGOMENTI = None   # gli argomenti della riga di comando, per chi scrive il report
 
 
 def sezione_prontezza_md(esito: Esito) -> list:
@@ -3270,6 +3274,8 @@ def esegui(args):
     cartella.mkdir(parents=True, exist_ok=True)
     f_inv, f_rep = nomi_file_report(cartella, codice_cliente, nome_cliente, args.host or inv.get("ingresso") or "locale")
     scrivi_inventario_md(f_inv, inv, intest, vms, asseg)
+    global ARGOMENTI
+    ARGOMENTI = args
     scrivi_rilievi_md(f_rep, esito, inv, intest, vms_rilievi, asseg)
     if getattr(args, "rilievi_json", None):
         Path(args.rilievi_json).write_text(
@@ -3336,6 +3342,9 @@ def main():
     ap.add_argument("--solo-accese", action="store_true", help="salta le VM spente (in RACCOLTA: non vengono proprio interrogate)")
     ap.add_argument("--rilievi-json", metavar="FILE", dest="rilievi_json",
                     help="scrive i rilievi anche come dato, per confrontare due verifiche nel tempo")
+    ap.add_argument("--prontezza", action="store_true",
+                    help="aggiunge la lettura «pronto a ricevere una migrazione?» (manuale 11.4); "
+                         "ha senso solo se c'e' una sorgente da cui migrare")
     ap.add_argument("--con-spente", action="store_true",
                     help="rilievi anche sulle VM spente (default: solo sulle accese; l'inventario le elenca sempre)")
     ap.add_argument("--performance", action="store_true", help="esegue anche pveperf (test fsync: scrive un file temporaneo)")

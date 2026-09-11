@@ -669,3 +669,13 @@ def test_un_impianto_senza_rilievi_e_a_posto():
     e = an.Esito()
     testo = "\n".join(an.sezione_prontezza_md(e))
     assert testo.count("a posto") == 4
+
+
+def test_la_prontezza_si_chiede_con_prontezza():
+    """Proxmox e' indipendente da vSphere: la lettura «pronto a ricevere» (11.4)
+    compare solo se qualcuno la chiede, perche' un cluster gia' migrato — o
+    mai stato altro — non deve leggersi pronto a ricevere niente."""
+    aiuto = Path(__file__).resolve().parents[1] / "audit-nodo.py"
+    testo = aiuto.read_text(encoding="utf-8")
+    assert '"--prontezza"' in testo
+    assert 'if getattr(ARGOMENTI, "prontezza", False):' in testo
