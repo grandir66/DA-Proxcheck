@@ -4,7 +4,7 @@ tono: ok
 famiglia: 07-strumenti
 ordine: 10
 stato: cantiere
-prossimo: provare il client su Windows e sul terzo cluster (via VPN); il questionario essenziale su un cliente vero
+prossimo: collaudare l'assessment su un secondo vCenter e portare le regole 13b (sicurezza) con i sette comandi in piu'
 ---
 Audit di sola lettura di un nodo o di un cluster Proxmox VE dal PC del tecnico, con una sola connessione SSH: confronta cluster, nodi, hardware, storage, rete e VM con le best practice del manuale Domarc, e produce inventario e report per il cliente col testo delle regole citate in fondo — il report basta a sé stesso. Nello stesso repo il **questionario di migrazione**: pagina sola, offline, IT/EN, tre livelli, e un **Esito** che giudica le risposte invece della loro presenza.
 

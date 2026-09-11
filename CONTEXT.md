@@ -46,6 +46,20 @@ Una pagina sola, offline, IT/EN, senza dipendenze oltre ai font. Undici sezioni,
 - **Il test gira in node** (`tests/test_questionario.mjs` + `tests/carica-questionario.mjs`): carica lo script della pagina in un DOM finto e prova modello dati, livelli, traduzioni e l'accensione di ogni regola. `scripts/controlla.sh` lo salta se node non c'è.
 - La pagina è **pubblicata su GitHub Pages** (link nel README): un cambiamento qui è visibile al cliente al `push`.
 
+## Fotografia 2026-09-11 — da verifica a sistema di migrazione
+
+Tre strumenti, un motore: `audit-nodo.py` (destinazione Proxmox, 57 regole in
+undici famiglie, comandi che chiudono i rilievi, prontezza §11.4),
+`strumenti/raccogli-vcenter.py` (sorgente vSphere, REST `/api/`, solo GET,
+campione a rotazione fra gli host, collaudato su 427 macchine) e
+`strumenti/analizza-vcenter.py` (assessment: rilievi sulla sorgente, metodo di
+§11.5 per macchina, ondate dimensionate sui dischi di §11.5.3, precompilazione
+del questionario). Il secondo importa il motore del primo invece di ricopiarlo.
+Entrambi mandano al portale con `--invia`; `--rilievi-json` scrive i rilievi
+come dato e `confronta()` dice chiusi/rimasti/nuovi fra due verifiche.
+Il catalogo delle regole e la specifica del sistema completo stanno in
+`docs/superpowers/specs/2026-09-10-*`.
+
 ## 4. Trappole già risolte (non ripercorrerle)
 
 - **Backtick nei messaggi di commit**: zsh li esegue. `git commit -m "... `cmd` ..."`
