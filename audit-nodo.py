@@ -1906,17 +1906,77 @@ def istante_raccolta(inv: dict):
                             int(m.group(4)), int(m.group(5)), int(m.group(6)), 0, 0, 0))
 
 
+_GIORNI = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+
+def _valori_calendario(spec: str, tetto: int, nomi=None) -> set:
+    """Espande un campo di un calendar-event PVE (`*`, `*/N`, `A..B`, `A..B/N`,
+    lista con virgole) nell'insieme dei valori 0..tetto-1. `nomi` traduce i
+    giorni. Torna un insieme vuoto se non capisce: chi chiama ripiega."""
+    def n(tok: str):
+        tok = tok.strip().lower()
+        if nomi and tok in nomi:
+            return nomi.index(tok)
+        return int(tok) if tok.isdigit() else None
+    out = set()
+    for parte in spec.split(","):
+        parte = parte.strip()
+        if not parte:
+            continue
+        passo = 1
+        if "/" in parte:
+            parte, p = parte.split("/", 1)
+            if not p.isdigit() or int(p) < 1:
+                return set()
+            passo = int(p)
+        if parte == "*":
+            out.update(range(0, tetto, passo))
+            continue
+        if ".." in parte:
+            a, b = parte.split("..", 1)
+            a, b = n(a), n(b)
+        else:
+            a = b = n(parte)
+        if a is None or b is None or a > b or b >= tetto:
+            return set()
+        out.update(range(a, b + 1, passo))
+    return out
+
+
 def cadenza_replica(job: dict) -> int:
-    """Ogni quanto dovrebbe girare, in secondi. Senza schedule vale il valore
-    predefinito di PVE, che è un quarto d'ora."""
-    s = str(job.get("schedule") or "").strip()
-    m = re.fullmatch(r"\*/(\d+)", s)
-    if m:
-        return max(60, int(m.group(1)) * 60)
-    if re.fullmatch(r"\*/\d+:\d+", s) or re.fullmatch(r"\d+:\d+", s):
-        m2 = re.search(r"(\d+):", s)
-        return max(3600, int(m2.group(1)) * 3600) if m2 else 3600
-    return 15 * 60
+    """Ogni quanto dovrebbe girare, in secondi: il **gap più lungo** fra due
+    occorrenze consecutive dello schedule (formato calendar-event di PVE).
+
+    Uno schedule a orari non è un intervallo: `02:00` è «una volta al giorno»
+    (24 h), non «ogni due ore»; `2,22:30` è alle 02:30 e alle 22:30, e il gap
+    più lungo è 20 h; `mon..fri 21:00` da venerdì a lunedì fa 72 h. Il
+    2026-09-14 su DTS la lettura «ore × 3600» aveva dichiarato bloccanti tre
+    job in perfetto orario. Senza schedule, o se non si capisce, vale il
+    default di PVE: un quarto d'ora.
+    """
+    s = str(job.get("schedule") or "").strip().lower()
+    default = 15 * 60
+    if not s:
+        return default
+    pezzi = s.split()
+    giorni = set(range(7))
+    if len(pezzi) == 2:
+        giorni = _valori_calendario(pezzi[0], 7, _GIORNI)
+        s = pezzi[1]
+    elif len(pezzi) != 1:
+        return default
+    if ":" in s:
+        h, m = s.split(":", 1)
+        ore, minuti = _valori_calendario(h, 24), _valori_calendario(m, 60)
+    else:
+        ore, minuti = set(range(24)), _valori_calendario(s, 60)
+    if not giorni or not ore or not minuti:
+        return default
+    occorrenze = sorted(g * 1440 + h * 60 + m for g in giorni for h in ore for m in minuti)
+    settimana = 7 * 1440
+    gaps = [b - a for a, b in zip(occorrenze, occorrenze[1:])]
+    gaps.append(settimana - occorrenze[-1] + occorrenze[0])
+    return max(60, max(gaps) * 60)
 
 
 def controlla_replica_ha(inv: dict, esito: Esito):
@@ -1954,10 +2014,24 @@ def controlla_replica_ha(inv: dict, esito: Esito):
                 motivo = r.get("error") or f"{r.get('fail_count')} tentativi falliti"
                 esito.add(BLOCCANTE, A, f"Job di replica {r.get('id')} in errore su {nome}: {motivo}.",
                           "manuale §4.5")
+                continue  # in errore: il ritardo è una conseguenza, non un secondo rilievo
             ultimo = r.get("last_sync") or 0
+            prossimo = r.get("next_sync") or 0
             atteso = cadenze.get(str(r.get("id")), 15 * 60)
+            margine = max(atteso, 3600)
             # Senza l'istante della raccolta la regola tace: meglio muta che bugiarda.
-            if quando and ultimo and quando - ultimo > max(3 * atteso, 3600):
+            if not quando:
+                continue
+            # Il nodo dice QUANDO tocca (`next_sync`): un job è in ritardo se quel
+            # momento è passato da più di un ciclo, non se l'ultima sync è «vecchia»
+            # rispetto a una cadenza dedotta — che per `02:00` è un giorno intero.
+            if prossimo:
+                if quando - prossimo > margine:
+                    ore = (quando - prossimo) / 3600
+                    esito.add(BLOCCANTE, A, f"Job di replica {r.get('id')}: era attesa {ore:.0f} ore prima della "
+                                            f"verifica e non è partita (schedule «{r.get('schedule') or '*/15'}»).",
+                              "manuale §4.5")
+            elif ultimo and quando - ultimo > max(3 * atteso, 3600):
                 ore = (quando - ultimo) / 3600
                 esito.add(BLOCCANTE, A, f"Job di replica {r.get('id')}: al momento della verifica l'ultima "
                                         f"sincronizzazione risaliva a {ore:.0f} ore prima, contro una cadenza "

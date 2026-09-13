@@ -2,6 +2,29 @@
 
 Cosa è cambiato e **perché**, per chi non usa git. Più recenti in alto.
 
+## 2026-09-14 (2) — Uno schedule a orari non è un intervallo
+
+Su DTS tre job di replica in perfetto orario risultavano **bloccanti**:
+105-0 e 112-0 (schedule `02:00`, ultima sync alle 02:00, prossima alle 02:00
+di domani) «22 ore prima contro una cadenza di 120 minuti», 109-0
+(`2,22:30`) «2 ore contro 15 minuti». La cadenza veniva dedotta leggendo
+`02:00` come «ogni 2 ore» e `2,22:30` come illeggibile → default 15 minuti.
+
+### Correzioni
+
+- **`cadenza_replica` legge il formato calendar-event di PVE** (giorni,
+  liste, intervalli, `*/N`): la cadenza è il gap più lungo fra due
+  occorrenze consecutive — `02:00` → 24 h, `2,22:30` → 20 h,
+  `mon..fri 21:00` → 72 h, `*/2:00` → 2 h. Illeggibile → default PVE.
+- **Il ritardo si misura su `next_sync`**, che il nodo dichiara: un job è
+  in ritardo se quel momento è passato da più di un ciclo (minimo un'ora),
+  non se l'ultima sync è «vecchia» rispetto a una cadenza dedotta. La
+  lettura da `last_sync` resta solo dove `next_sync` manca.
+- Un job già **in errore** (`fail_count` > 0) non produce anche il rilievo di
+  ritardo: è una conseguenza, non un secondo difetto.
+- Due prove in `tests/test_parser.py` coi formati veri di DTS, viste fallire
+  prima della correzione.
+
 ## 2026-09-14 — Le operazioni I/O fallite si leggono, non si gridano
 
 Su DTS il report diceva «Disco scsi0: 2 operazioni I/O fallite dall'avvio»

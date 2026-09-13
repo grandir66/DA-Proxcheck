@@ -93,6 +93,10 @@ Il catalogo delle regole e la specifica del sistema completo stanno in
   PX-NAS il 2026-09-10). Le regole del firewall tacciono su quell'interruttore e
   continuano con il resto: metà del dato è meglio di nessuna regola.
 
+- **Schedule di replica a orari** (2026-09-14, DTS): `02:00` non è «ogni 2 ore» e
+  `2,22:30` non è illeggibile — sono calendar-event PVE. La cadenza è il gap più
+  lungo fra due occorrenze, e il ritardo si giudica su `next_sync` dichiarato dal
+  nodo, non su `last_sync` contro una cadenza dedotta. Tre falsi bloccanti.
 - **`FAILED` in SMART** (2026-09-04): la tabella ATA ha la colonna `WHEN_FAILED` → ogni disco sano sembrava guasto → il controllo è ancorato a `self-assessment test result:`.
 - **NVMe a 65 °C sano** (2026-09-04): le soglie 45/55 °C di Proxreporter sono per SATA → su NVMe la temperatura è informativa, conta `Critical Warning`.
 - **`zd*` in `lsblk`/`disks/list`** sono gli zvol delle VM, non dischi → filtrati.

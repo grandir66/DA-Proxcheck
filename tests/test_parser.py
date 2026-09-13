@@ -731,3 +731,46 @@ def test_la_regola_delle_io_fallite_rimanda_al_manuale():
     riga = next(r for r in src.splitlines() if "operazioni I/O fallite dall'avvio" in r)
     blocco = src[src.index(riga):src.index(riga) + 700]
     assert 'manuale §20.4' in blocco
+
+
+def test_cadenza_replica_legge_gli_orari_come_orari_non_come_intervalli():
+    """DTS, 2026-09-14: `02:00` (una volta al giorno) letto come «ogni 2 ore»
+    e `2,22:30` (alle 02:30 e alle 22:30) caduto sul default di 15 minuti →
+    tre job in orario segnalati bloccanti. La cadenza di uno schedule a orari
+    è il gap più lungo fra due occorrenze consecutive."""
+    c = lambda s: an.cadenza_replica({"schedule": s})  # noqa: E731
+    assert c("*/10") == 10 * 60
+    assert c("*/30") == 30 * 60
+    assert c("*/2:00") == 2 * 3600
+    assert c("02:00") == 24 * 3600
+    assert c("21:00") == 24 * 3600
+    assert c("2,22:30") == 20 * 3600          # da 02:30 a 22:30
+    assert c("mon..fri 21:00") == 72 * 3600   # da venerdì a lunedì
+    assert c("sat 3:00") == 7 * 24 * 3600
+    assert c("") == 15 * 60                   # senza schedule vale il default PVE
+    assert c("boh") == 15 * 60                # illeggibile: stesso ripiego, non un crash
+
+
+def test_replica_in_orario_con_next_sync_nel_futuro_non_e_in_ritardo():
+    """I job veri di DTS: ultima sync alle 02:00 di ieri, prossima alle 02:00
+    di domani, raccolta alle 00:00 — in orario. Il nodo dice QUANDO tocca:
+    si usa quello, non una cadenza dedotta."""
+    quando = 1789338179
+    jobs = [{"id": "105-0", "schedule": "02:00", "last_sync": 1789257601, "next_sync": 1789344000, "fail_count": 0},
+            {"id": "109-0", "schedule": "2,22:30", "last_sync": 1789331403, "next_sync": 1789345800, "fail_count": 0},
+            {"id": "101-0", "schedule": "*/10", "last_sync": 1789337407, "next_sync": 1789338000, "fail_count": 0}]
+    inv = {"raccolto_il": quando,
+           "cluster": {"replication": [{"id": j["id"], "schedule": j["schedule"]} for j in jobs], "ha_resources": []},
+           "nodi": {"A": {"nodo": {"replication": jobs}, "vms": {}, "lxc": {}}}}
+    e = an.Esito()
+    an.controlla_replica_ha(inv, e)
+    assert not [r for r in e.rilievi if "sincronizzazione" in r.messaggio or "attesa" in r.messaggio]
+    # scaduto da più del margine → bloccante; fallito → errore, non doppio rilievo
+    jobs[0]["next_sync"] = quando - 30 * 3600
+    jobs[2]["fail_count"] = 2
+    jobs[2]["next_sync"] = quando - 2 * 3600
+    e2 = an.Esito()
+    an.controlla_replica_ha(inv, e2)
+    tardi = [r for r in e2.rilievi if r.livello == an.BLOCCANTE and "105-0" in r.messaggio]
+    assert len(tardi) == 1 and "attesa" in tardi[0].messaggio
+    assert len([r for r in e2.rilievi if "101-0" in r.messaggio]) == 1
