@@ -1193,7 +1193,8 @@ def latenze_blockstat(status: dict) -> dict:
         if not isinstance(b, dict):
             continue
         wr, fl, rd = b.get("wr_operations") or 0, b.get("flush_operations") or 0, b.get("rd_operations") or 0
-        out[disco] = {"wr_ms": (b.get("wr_total_time_ns", 0) / wr / 1e6) if wr else None,
+        out[disco] = {"ops": wr + fl + rd,
+                      "wr_ms": (b.get("wr_total_time_ns", 0) / wr / 1e6) if wr else None,
                       "rd_ms": (b.get("rd_total_time_ns", 0) / rd / 1e6) if rd else None,
                       "flush_ms": (b.get("flush_total_time_ns", 0) / fl / 1e6) if fl else None,
                       "failed": b.get("failed_rd_operations", 0) + b.get("failed_wr_operations", 0) + b.get("failed_flush_operations", 0)}
@@ -1311,7 +1312,20 @@ def controlla_generali(vm: VM, inv: dict, esito: Esito):
                 esito.add(ATTENZIONE, A, f"Pressione {n} (PSI) media {v:.0f}%.", "rrddata")
         for disco, l in latenze_blockstat(st).items():
             if l["failed"]:
-                esito.add(BLOCCANTE, A, f"Disco {disco}: {l['failed']} operazioni I/O fallite dall'avvio.", "blockstat")
+                # Il numero da solo non dice la causa (§20.4): poche unità su
+                # milioni di operazioni in mesi di uptime sono un episodio, e
+                # dirle «bloccanti» manda a cercare un guasto che non c'è
+                # (DTS, 2026-09-14: 14 scritture rifiutate in 79 giorni su
+                # 500 milioni, storage sano). Bloccante quando sono tante o
+                # una frazione misurabile del totale.
+                grave = l["failed"] >= 50 or (l["ops"] and l["failed"] / l["ops"] >= 1e-5)
+                esito.add(BLOCCANTE if grave else ATTENZIONE, A,
+                          f"Disco {disco}: {l['failed']} operazioni I/O fallite dall'avvio"
+                          f" (su {l['ops']:,} in {st.get('uptime', 0) // 86400} giorni). "
+                          + ("Contatore alto o in crescita: prima lo storage del nodo, poi l'ospite."
+                             if grave else
+                             "Episodio: se lo storage del nodo è sano, la causa è nell'ospite o in un istante; rileggere fra qualche settimana."),
+                          "manuale §20.4")
             if l["flush_ms"] is not None and l["flush_ms"] > 20:
                 esito.add(ATTENZIONE, A, f"Disco {disco}: latenza media dei flush {l['flush_ms']:.1f} ms (indicativo: <5 ms su SSD).", "blockstat")
         ag = vm.agent or {}

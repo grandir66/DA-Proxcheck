@@ -18,7 +18,7 @@ MANUALE = {
  "versione": "1.0",
  "verificato": "2026-09-01",
  "repo": "DA-Proxmox-Docs",
- "estratto_il": "2026-09-11"
+ "estratto_il": "2026-09-14"
 }
 
 FONTI = {
@@ -260,6 +260,14 @@ FONTI = {
   "riga": 21,
   "parte": "Parte 20",
   "testo": "| Sintomo | Causa più probabile | Verifica |\n|---|---|---|\n| Nodi che si riavviano \"da soli\" | **Self-fencing**: corosync sopra soglia di latenza | `journalctl -u corosync`, e verificare che corosync abbia rete propria |\n| `/etc/pve` in sola lettura, VM accese ma immodificabili | Quorum perso | `pvecm status` |\n| Un nodo grigio nella GUI ma raggiungibile in SSH | Corosync isolato, management ancora attivo | `corosync-cfgtool -s` |\n| **Errori su tutti gli storage, anche i locali** | Un mount fuse bloccato — tipicamente uno storage di import ESXi rimasto configurato | `pvesm status`, rimuovere lo storage di import |\n| Tutte le VM lente insieme | Storage saturo di IOPS, o riequilibrio Ceph in corso | `iostat -x`, `ceph -s` |\n| Una VM lenta, le altre no | Overcommit di vCPU, ballooning, o disco su storage sbagliato | `qm status <id> --verbose`, steal time nel guest |\n| VM che non parte dopo un riavvio | Storage non montato, o disco su un nodo diverso | `pvesm status`, `qm config <id>` |\n| Backup che rallenta tutta la produzione | Manca il fleecing, o il backup passa sulla rete di corosync | §12.6, §1.3 |\n| Backup che fallisce sempre alla stessa VM | Guest agent che non risponde al freeze | `qm agent <id> ping` |\n| Datastore PBS pieno nonostante il prune | **Garbage collection mai eseguita** | §12.7.2 |\n| VM che non migra | Storage non condiviso, o dispositivo in passthrough | `qm config <id>`, flag `shared` |\n| Rete della VM muta dopo una modifica al firewall | Il doppio interruttore, o regole Forward con `pve-firewall` | §15.3, §15.8 |\n| Il nodo non riparte dopo la sostituzione di un disco di boot | `proxmox-boot-tool` non eseguito sul disco nuovo | §19.5 |\n| Spazio che non torna mai dopo aver cancellato dati | Catena UNMAP interrotta | §4.6 |",
+  "troncato": 1
+ },
+ "§20.4": {
+  "titolo": "§20.4 Le operazioni I/O fallite di una VM",
+  "file": "manuale/20-guasti.md",
+  "riga": 109,
+  "parte": "Parte 20",
+  "testo": "Per ogni disco di una VM accesa, QEMU tiene i contatori delle richieste che\nil sistema operativo ospite ha mandato al disco virtuale e che **non è\nriuscito a completare** sullo storage sottostante, restituendo un errore\nall'ospite: `failed_rd_operations`, `failed_wr_operations`,\n`failed_flush_operations` in `qm status` (API\n`/nodes/<nodo>/qemu/<vmid>/status/current`, campo `blockstat`). Sono\ncontatori **dall'avvio della VM**: si azzerano a ogni riavvio e a ogni\nmigrazione, quindi vanno letti insieme all'uptime.\n\nIl numero da solo non dice la causa. Si legge in due passi:\n\n1. **Quanti, su quante.** Poche unità su milioni di operazioni in mesi di\n   uptime sono un episodio; centinaia, o una frazione misurabile del totale,\n   sono un guasto in corso. Il contatore che **cresce** fra due letture a\n   distanza di giorni vale più del suo valore assoluto.\n2. **Lo storage ne ha traccia?** Sul nodo: `zpool status -x` e `zpool\n   events` (ZFS), `journalctl -k -b | grep -iE 'I/O error|blk_update'`,\n   `smartctl -H` sui dischi fisici, e per NFS/iSCSI/Ceph il registro del\n   montaggio o `ceph -s`. Se lo storage è sano e il kernel non ha errori,\n   l'errore è nato **dentro l'ospite** (Windows: registro di sistema,\n   eventi 153 e 129 del disco; Linux: `dmesg`, «I/O error, dev sda») o in un\n   istante preciso — uno storage pieno per un momento, un `qm resize`, un\n   disco NFS scomparso e tornato.",
   "troncato": 1
  },
  "§3": {
@@ -630,7 +638,7 @@ FONTI = {
   "riga": 0,
   "parte": "",
   "origine": "Proxmox VE, /nodes/<nodo>/qemu/<vmid>/status/current, campo blockstat",
-  "testo": "QEMU conta, per ogni disco virtuale, operazioni e tempo totale dall'avvio della VM. Dividendo il tempo per il numero di operazioni si ottiene la latenza media di lettura, scrittura e flush. È una media dall'accensione, non una misura istantanea: dice se lo storage è lento in generale, non se lo è stato cinque minuti fa.\n\nIl flush è il segnale più parlante: sotto i 5 ms su SSD, oltre i 20 ms indica uno storage saturo o senza cache protetta. Le operazioni fallite (`failed_*_operations`) non sono mai normali.",
+  "testo": "QEMU conta, per ogni disco virtuale, operazioni e tempo totale dall'avvio della VM. Dividendo il tempo per il numero di operazioni si ottiene la latenza media di lettura, scrittura e flush. È una media dall'accensione, non una misura istantanea: dice se lo storage è lento in generale, non se lo è stato cinque minuti fa.\n\nIl flush è il segnale più parlante: sotto i 5 ms su SSD, oltre i 20 ms indica uno storage saturo o senza cache protetta. Le operazioni fallite (`failed_*_operations`) sono richieste dell'ospite che QEMU non ha completato sullo storage: come si leggono, e cosa controllare, sta in §20.4 del manuale.",
   "troncato": 0
  },
  "rrddata": {

@@ -699,3 +699,35 @@ def test_la_precompilazione_parla_la_lingua_del_questionario():
     negativo = re.compile(r"^\s*(no|nessun[ao]?|niente|none|n/a|-{1,2}|0)\s*$", re.I)
     for k in ("sp_rdm", "sp_snapshot", "caratteri_speciali_vm"):
         assert negativo.match(c[k]), f"{k} non verrebbe letto come «no»"
+
+
+# ── operazioni I/O fallite: il numero da solo non dice la causa (§20.4) ──────
+# DTS, 2026-09-14: 14 scritture rifiutate in 79 giorni su 500 milioni di
+# operazioni, con zpool sano, kernel senza errori e SMART a posto — dette
+# «bloccanti» mandavano a cercare un guasto di storage che non c'era.
+
+def test_poche_io_fallite_su_milioni_sono_un_episodio_non_un_blocco():
+    st = {"blockstat": {"scsi0": {"rd_operations": 58_104_236, "wr_operations": 303_372_122,
+                                  "flush_operations": 106_579_209, "failed_wr_operations": 7}}}
+    l = an.latenze_blockstat(st)["scsi0"]
+    assert l["failed"] == 7 and l["ops"] == 468_055_567
+    grave = l["failed"] >= 50 or (l["ops"] and l["failed"] / l["ops"] >= 1e-5)
+    assert not grave
+
+
+def test_molte_io_fallite_restano_bloccanti():
+    st = {"blockstat": {"scsi0": {"rd_operations": 1000, "wr_operations": 1000, "failed_wr_operations": 3}}}
+    l = an.latenze_blockstat(st)["scsi0"]
+    assert l["failed"] / l["ops"] >= 1e-5            # 3 su 2.000: frazione misurabile
+    st = {"blockstat": {"scsi0": {"rd_operations": 10**9, "failed_rd_operations": 60}}}
+    assert an.latenze_blockstat(st)["scsi0"]["failed"] >= 50
+
+
+def test_la_regola_delle_io_fallite_rimanda_al_manuale():
+    """Prima citava «blockstat», il nome della fonte: chi leggeva il report non
+    trovava nessun rimando che dicesse cosa significa e cosa controllare."""
+    import inspect
+    src = inspect.getsource(an.controlla_vm) if hasattr(an, "controlla_vm") else Path(an.__file__).read_text(encoding="utf-8")
+    riga = next(r for r in src.splitlines() if "operazioni I/O fallite dall'avvio" in r)
+    blocco = src[src.index(riga):src.index(riga) + 700]
+    assert 'manuale §20.4' in blocco

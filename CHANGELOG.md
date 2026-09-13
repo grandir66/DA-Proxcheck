@@ -2,6 +2,25 @@
 
 Cosa è cambiato e **perché**, per chi non usa git. Più recenti in alto.
 
+## 2026-09-14 — Le operazioni I/O fallite si leggono, non si gridano
+
+Su DTS il report diceva «Disco scsi0: 2 operazioni I/O fallite dall'avvio»
+come **bloccante**, con fonte «blockstat» e nessun rimando: chi leggeva non
+sapeva cosa fosse né cosa controllare. Erano 14 scritture rifiutate in 79
+giorni su 500 milioni di operazioni, con ZFS sano, kernel senza errori e
+SMART a posto.
+
+### Modifiche
+
+- **Severità proporzionata**: bloccante solo con ≥ 50 operazioni fallite o
+  una frazione misurabile del totale (≥ 1 su 100.000); altrimenti da
+  valutare. Il testo dice quante su quante e in quanti giorni, e cosa
+  guardare in ciascun caso.
+- **Rimando al manuale**: nuovo **§20.4 «Le operazioni I/O fallite di una
+  VM»** (cosa conta QEMU, i due passi di lettura, la tabella dei quadri), e
+  la regola lo cita al posto del nome della fonte. Il capitolo dei comandi
+  di diagnosi è diventato §20.5.
+
 ## 2026-09-10 (7) — Confrontare due verifiche nel tempo
 
 Prerequisito del dossier per cliente: per dire che cosa è stato **chiuso** fra

@@ -99,7 +99,8 @@ FONTI_ESTERNE = {
                  "storage è lento in generale, non se lo è stato cinque minuti fa.\n\n"
                  "Il flush è il segnale più parlante: sotto i 5 ms su SSD, oltre i 20 ms indica uno "
                  "storage saturo o senza cache protetta. Le operazioni fallite (`failed_*_operations`) "
-                 "non sono mai normali.",
+                 "sono richieste dell'ospite che QEMU non ha completato sullo storage: come si "
+                 "leggono, e cosa controllare, sta in §20.4 del manuale.",
     },
     "rrddata": {
         "titolo": "Andamento dell'ultima ora (RRD)",
