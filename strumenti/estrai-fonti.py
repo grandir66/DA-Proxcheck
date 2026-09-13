@@ -7,7 +7,7 @@ esteso: chi lo legge non deve avere il manuale sottomano.
     python3 strumenti/estrai-fonti.py --verifica          # il generato è ancora allineato?
     python3 strumenti/estrai-fonti.py --controlla         # ogni citazione dell'audit risolve?
 
-Il manuale si cerca in `~/Progetti/manuali/proxmox` (repo DA-Proxmox-Docs),
+Il manuale si cerca in `../manuale` (stesso repo DA-Proxmox, dal 2026-09-14),
 oppure dove dice `--manuale` / la variabile `DA_PROXMOX_DOCS`.
 
 DUE REGOLE CHE NON SI TOCCANO
@@ -52,7 +52,7 @@ QUESTIONARIO = QUI / "questionario" / "questionario-migrazione.html"
 # l'HTML, o offline non si vede. Il blocco fra questi due marcatori è generato.
 MARCA_INIZIO = "/* ══ FONTI DAL MANUALE: BLOCCO GENERATO — non modificare a mano ══"
 MARCA_FINE = "/* ══ fine del blocco generato ══ */"
-MANUALE_DEFAULT = Path(os.environ.get("DA_PROXMOX_DOCS", Path.home() / "Progetti" / "manuali" / "proxmox"))
+MANUALE_DEFAULT = Path(os.environ.get("DA_PROXMOX_DOCS", Path(__file__).resolve().parent.parent.parent / "manuale"))
 
 MAX_CARATTERI = 1600          # oltre, si taglia a fine paragrafo: è una citazione, non un capitolo
 # un'ancora è `§8.3` o `§8.3 › Cache mode`: il titolo della sottosezione può

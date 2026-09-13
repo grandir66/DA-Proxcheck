@@ -1,5 +1,7 @@
 # DA-Proxcheck
 
+> **Dal 2026-09-14 questa è la cartella `strumenti/` del repo privato DA-Proxmox** (con `manuale/` e `portale/`). Il repo pubblico DA-Proxcheck ne è lo **specchio**: si legge e si clona da lì, ma si modifica in DA-Proxmox — un commit fatto direttamente sullo specchio viene rifiutato dalla prossima pubblicazione. Contesto d'insieme: `../CONTEXT.md`.
+
 Due strumenti per chi progetta e verifica infrastrutture **Proxmox VE**, nati dal manuale operativo di Domarc e pubblicati per essere usati così come sono:
 
 | Strumento | Cosa fa | Come si usa |

@@ -22,7 +22,7 @@ if $PY -m ruff --version >/dev/null 2>&1; then
 fi
 echo "→ fonti: ogni citazione ha il suo testo"
 $PY strumenti/estrai-fonti.py --controlla || esito=1
-MANUALE="${DA_PROXMOX_DOCS:-$HOME/Progetti/manuali/proxmox}"
+MANUALE="${DA_PROXMOX_DOCS:-../manuale}"   # dal 2026-09-14 sta in questo repo
 if [ -d "$MANUALE/manuale" ]; then
   echo "→ fonti: allineamento al manuale"
   $PY strumenti/estrai-fonti.py --verifica --manuale "$MANUALE" || esito=1
@@ -38,12 +38,6 @@ else
 fi
 echo "→ pytest"
 $PY -m pytest -q tests || esito=1
-# La scheda del censimento la valida il progetto, non la radice: la mappa dei
-# progetti aggrega alberi indipendenti e non deve arrossire per uno di loro.
-if [ -f docs/scheda-mappa.md ] && [ -f "$HOME/Progetti/genera_mappa.py" ]; then
-  echo "→ scheda del censimento"
-  python3 "$HOME/Progetti/genera_mappa.py" --controlla-file docs/scheda-mappa.md || esito=1
-fi
 
 [ $esito -eq 0 ] && echo "✔ tutto verde" || echo "✘ qualcosa non va"
 exit $esito

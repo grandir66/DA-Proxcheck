@@ -1,5 +1,7 @@
 # CONTEXT.md — DA-Proxcheck
 
+> **Dal 2026-09-14 questa è la cartella `strumenti/` del repo privato DA-Proxmox** (con `manuale/` e `portale/`). Il repo pubblico DA-Proxcheck ne è lo **specchio**: si legge e si clona da lì, ma si modifica in DA-Proxmox — un commit fatto direttamente sullo specchio viene rifiutato dalla prossima pubblicazione. Contesto d'insieme: `../CONTEXT.md`.
+
 Passaggio di consegne: **leggilo per primo**, poi `CLAUDE.md` per le regole
 tecniche vincolanti. Si aggiorna quando cambia architettura, moduli o stato —
 **non per ogni fix**.
