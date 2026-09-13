@@ -60,6 +60,29 @@ come dato e `confronta()` dice chiusi/rimasti/nuovi fra due verifiche.
 Il catalogo delle regole e la specifica del sistema completo stanno in
 `docs/superpowers/specs/2026-09-10-*`.
 
+## Fotografia 2026-09-14 — audit DTS, I/O fallite, cadenza delle repliche
+
+- **DTS**: nodi veri `172.16.1.141 UP`, `.142 DOWN`, `.144 PX-04` (il `.143`
+  non esiste), via NetBird con chiave; raccolta in `~/report/DTS/`
+  (`raccolta.json`, `rilievi.json` per il prossimo `confronta`), inviata al
+  portale come cliente 71734 (scansione 10). Dettagli in `ACCESSI.md`.
+- **Regola I/O fallite** (`latenze_blockstat` + regola VM): bloccante solo con
+  ≥ 50 operazioni fallite o ≥ 1/100.000 del totale, altrimenti da valutare;
+  il testo dice quante su quante e in quanti giorni, e cita **manuale §20.4**
+  (sezione nuova; i comandi di diagnosi sono §20.5). Su DTS: 14 scritture
+  rifiutate in 79 giorni su 500 milioni con ZFS, kernel e SMART puliti —
+  episodio, da rileggere al prossimo audit.
+- **Difetto aperto, in lavorazione in UN'ALTRA sessione** (chip «Correggere
+  cadenza_replica per gli schedule a orario»): `cadenza_replica()` legge
+  `02:00` come «ogni 2 ore» e `2,22:30` come default 15 min → falsi
+  bloccanti «replica in ritardo» (DTS: job 105-0, 109-0, 112-0, tutti sani).
+  **Non toccare `audit-nodo.py` da un'altra sessione finché quel lavoro non
+  è chiuso**: albero condiviso (lezione 2026-09-09).
+- Dopo ogni modifica alle regole o al manuale: `python3
+  strumenti/estrai-fonti.py --manuale ~/Progetti/manuali/proxmox` rigenera
+  `fonti_manuale.py` e il questionario; poi pubblicare sul portale con
+  `DA-Proxweb/scripts/pubblica-contenuti.sh --su root@192.168.20.40`.
+
 ## 4. Trappole già risolte (non ripercorrerle)
 
 - **Backtick nei messaggi di commit**: zsh li esegue. `git commit -m "... `cmd` ..."`
