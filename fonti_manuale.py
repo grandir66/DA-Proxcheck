@@ -513,7 +513,7 @@ FONTI = {
  "§A.8": {
   "titolo": "§A.8 LVM, multipath e SAN",
   "file": "manuale/90-appendici.md",
-  "riga": 246,
+  "riga": 247,
   "parte": "",
   "testo": "```bash\n# ── inventario\npvs -o pv_name,vg_name,pv_size,pv_free,pv_uuid\nvgs -o vg_name,pv_count,lv_count,vg_size,vg_free\nlvs -o lv_name,vg_name,lv_size,data_percent,metadata_percent\nlvs -a                                   # mostra anche i volumi interni del thin pool\npvdisplay ; vgdisplay ; lvdisplay <vg>/<lv>\n\n# ── multipath\nmultipath -ll                            # percorsi e loro stato\nmultipath -r                             # ricarica le mappe\nmultipathd show config | head -40        # i parametri realmente in uso\nmultipathd show paths\n/lib/udev/scsi_id -g -u -d /dev/sdX      # WWID di un disco\n```\n\n**Estendere una LUN condivisa.** L'ordine è vincolante e saltare il terzo passo è l'errore più comune (§5.9):\n\n```bash\n# 1. estendere la LUN sull'array\n# 2. su OGNI nodo: rileggere la geometria\niscsiadm -m node -R                      # iSCSI\necho 1 > /sys/block/sdX/device/rescan    # SAS/FC\n# 3. su OGNI nodo: aggiornare la mappa multipath   ← IL PASSO CHE SI SALTA\nmultipathd resize map <WWID>\n# 4. su UN SOLO nodo: estendere il physical volume\npvresize /dev/mapper/<WWID>\nvgs                                      # il VG deve essere cresciuto\n```\n\n```bash\n# ── thin pool: sorvegliare i metadati, non solo i dati\nlvs -o lv_name,data_percent,metadata_percent <vg>\nlvextend --poolmetadatasize +1G <vg>/<thinpool>\nlvextend -l +100%FREE <vg>/<thinpool>\n\n# ── autoactivation su storage condiviso (§5.7.4)\nlvchange --setautoactivation n <vg>/<lv>\nvgchange --setautoactivation n <vg>\n```",
   "troncato": 1
