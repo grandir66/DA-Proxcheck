@@ -18,7 +18,7 @@ MANUALE = {
  "versione": "1.0",
  "verificato": "2026-09-01",
  "repo": "DA-Proxmox-Docs",
- "estratto_il": "2026-09-14"
+ "estratto_il": "2026-09-15"
 }
 
 FONTI = {
@@ -57,7 +57,7 @@ FONTI = {
  "§11.13": {
   "titolo": "§11.13 Trappole note",
   "file": "manuale/11-migrazione.md",
-  "riga": 542,
+  "riga": 592,
   "parte": "Parte 11",
   "testo": "| Trappola | Sintomo | Prevenzione |\n|---|---|---|\n| **Driver VirtIO non boot-critical** | `INACCESSIBLE_BOOT_DEVICE` (0x7B) | §11.6.2 + §11.9.2 |\n| **Firmware non corrispondente** | La VM non trova il bootloader | Rilevare con `msinfo32`, replicare esattamente |\n| **UEFI senza percorso standard** | UEFI non trova nulla pur essendo corretto | Entrare nel BIOS OVMF e aggiungere la voce di boot custom. Serve l'**EFI Disk** per renderla persistente |\n| **`/dev/sdX` in fstab** | Linux in emergency shell | §11.6.3 passo 1 |\n| **VirtIO fuori dall'initramfs** | Kernel panic all'avvio | §11.6.3 passo 2. **Ripetere dopo ogni update del kernel** |\n| **NIC fantasma su Windows** | \"IP già assegnato a un altro adattatore\" | Rimuovere l'IP statico prima; ripulire con `devmgr_show_nonpresent_devices` |\n| **vTPM / BitLocker** | Richiesta chiave di ripristino all'avvio | Sospendere BitLocker prima. Lo stato vTPM **non è migrabile** |\n| **Snapshot sulla sorgente** | Import lentissimo | Consolidare prima |\n| **Dischi su vSAN** | Import fallisce | Spostare i dischi su altro datastore |\n| **Dischi cifrati (storage policy)** | Import fallisce | Rimuovere la policy di cifratura |\n| **Datastore con `+` nel nome** | Import fallisce | Rinominare il datastore |\n| **Import via vCenter** | Lentezza estrema | Puntare direttamente agli host ESXi |\n| **Troppi import paralleli** | API ESXi bloccata, IO sospeso, rischio OOM | Max 4 dischi contemporanei |\n| ⚠️ **Storage ESXi lasciato configurato** | **`pvestatd` si blocca, errori su TUTTI gli storage incluso `local`** | **Rimuovere lo storage ESXi a migrazione conclusa** |\n| **Corosync su link condiviso** | Il cluster sembra riavviarsi da solo (self-fencing) | Rete dedicata a corosync |\n| **CPU type `host`** | Migrazione live impossibile tra CPU diverse | `x86-64-v2-AES`/`v3` in cluster eterogenei |\n| **Machine version < 10** | La VM non parte su storage volume-chain | Impostare machine ≥ 10 |\n| **RDM / dischi shared / MSCS** | Non migrabili con i metodi standard | Identificare in assessment, pianificare a parte |\n| **Licenze legate all'hardware** | Applicativi che si disattivano | Censire in assessment, coinvolgere il fornitore |",
   "troncato": 1
@@ -65,7 +65,7 @@ FONTI = {
  "§11.17": {
   "titolo": "§11.17 I driver VirtIO per Windows: quale versione, per quale sistema",
   "file": "manuale/11-migrazione.md",
-  "riga": 676,
+  "riga": 726,
   "parte": "Parte 11",
   "testo": "I driver `virtio-win` sono un pacchetto solo, ma **non tutte le versioni vanno bene per tutti i Windows**, e non è vero che la più recente sia la migliore: le versioni nuove tolgono il supporto ai sistemi vecchi, e alcune hanno introdotto difetti su quelli nuovi. La scelta si fa per sistema operativo e per carico, si scrive nel verbale, e **una versione già collaudata su una VM non si sostituisce solo perché ne esiste una più nuova**.\n\n**Verificato il 2026-09-14** sulle fonti in fondo. Il riferimento pubblicato da Proxmox: *«Currently, there are no known issues for version virtio-win 0.1.271»*; la 0.1.302 (31 agosto 2026) è *«in test: non la possiamo ancora consigliare per la produzione»*.",
   "troncato": 1
@@ -105,7 +105,7 @@ FONTI = {
  "§11.7": {
   "titolo": "§11.7 Configurazione ottimale della VM target",
   "file": "manuale/11-migrazione.md",
-  "riga": 321,
+  "riga": 331,
   "parte": "Parte 11",
   "testo": "Da applicare a ogni VM migrata. L'import wizard fa scelte ragionevoli ma non sempre ottimali.",
   "troncato": 1
@@ -113,7 +113,7 @@ FONTI = {
  "§11.8": {
   "titolo": "§11.8 Esecuzione: ondate",
   "file": "manuale/11-migrazione.md",
-  "riga": 378,
+  "riga": 388,
   "parte": "Parte 11",
   "testo": "Non migrare mai tutto insieme. La suddivisione in ondate serve a imparare sul parco a basso rischio.\n\n| Ondata | Contenuto | Obiettivo |\n|---|---|---|\n| **0 — Pilota** | 1 VM Windows + 1 VM Linux di test, non di produzione | Validare l'intera procedura e **misurare i tempi reali** |\n| **1 — Basso rischio** | Sviluppo, test, VM non critiche | Affinare la procedura, formare il personale |\n| **2 — Medio** | Produzione non critica, servizi ridondati | |\n| **3 — Critico** | Domain controller, database, applicativi core | Finestra concordata, rollback pronto |\n\n**Regole trasversali:**\n\n- Dalla misura dell'ondata 0 si ricava il throughput reale (GB/ora) e si dimensionano le finestre. Non stimare a occhio.\n- I **domain controller** vanno migrati uno alla volta, verificando la replica AD tra uno e l'altro. Mai spegnerli tutti insieme.\n- I cluster applicativi (SQL Always On, cluster di failover) si migrano un nodo per volta.\n- **Non cancellare la VM sorgente.** Lasciarla spenta e intatta per il periodo di rollback concordato (tipicamente 2–4 settimane).\n- ⚠️ **Mai avviare la stessa VM contemporaneamente su VMware e Proxmox.** Con i metodi che condividono i file su share, questo corrompe il disco.\n\n---",
   "troncato": 0

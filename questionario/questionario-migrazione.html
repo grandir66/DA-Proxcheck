@@ -1604,7 +1604,7 @@ const MANUALE = {
  "versione": "1.0",
  "verificato": "2026-09-01",
  "repo": "DA-Proxmox-Docs",
- "estratto_il": "2026-09-14"
+ "estratto_il": "2026-09-15"
 };
 const FONTI = {
  "§1.3": {
@@ -1634,7 +1634,7 @@ const FONTI = {
  "§11.11": {
   "titolo": "§11.11 Collaudo",
   "file": "manuale/11-migrazione.md",
-  "riga": 508,
+  "riga": 558,
   "parte": "Parte 11",
   "testo": "Da eseguire sull'ondata 0 e verbalizzare.\n\n| # | Test | Criterio |\n|---|---|---|\n| 1 | Avvio della VM migrata | Boot pulito, nessun errore in Gestione dispositivi / `dmesg` |\n| 2 | Rete: IP, DNS, gateway, route | Raggiungibilità nei due sensi |\n| 3 | Servizi applicativi | Funzionanti, testati dal referente applicativo |\n| 4 | Guest agent | IP e RAM corretti nella GUI Proxmox |\n| 5 | Spegnimento pulito da GUI | Il guest esegue lo shutdown, non viene killato |\n| 6 | Snapshot + rollback | Funzionanti (se lo storage li supporta) |\n| 7 | Migrazione live tra nodi | Riuscita, senza perdita di ping |\n| 8 | Backup PBS + **restore di prova** | Il restore è l'unico test che conta |\n| 9 | Benchmark I/O e rete vs baseline VMware | Da misurare **prima** su VMware per avere il confronto |\n| 10 | Failover HA (se previsto) | La VM riparte su altro nodo |\n| 11 | Reboot del nodo | Le VM ripartono secondo la configurazione |\n\n> **Il test 9 va preparato prima di iniziare.** Senza una baseline misurata su VMware, ogni discussione successiva sulle prestazioni è senza dati.\n\n---",
   "troncato": 0
@@ -1642,7 +1642,7 @@ const FONTI = {
  "§11.12": {
   "titolo": "§11.12 Rollback",
   "file": "manuale/11-migrazione.md",
-  "riga": 530,
+  "riga": 580,
   "parte": "Parte 11",
   "testo": "| Livello | Azione | Tempo |\n|---|---|---|\n| VM singola | Riaccendere la sorgente su VMware (mai cancellata) | Minuti |\n| VM con dati già modificati | Restore dal backup pre-migrazione | Ore |\n| Ondata | Sospendere la migrazione, riaccendere le sorgenti | Ore |\n\n**Condizioni:** la VM sorgente resta spenta ma **intatta** per il periodo concordato. Documentare per ogni VM chi decide il rollback e entro quando.\n\n---",
   "troncato": 0
@@ -1650,7 +1650,7 @@ const FONTI = {
  "§11.13": {
   "titolo": "§11.13 Trappole note",
   "file": "manuale/11-migrazione.md",
-  "riga": 542,
+  "riga": 592,
   "parte": "Parte 11",
   "testo": "| Trappola | Sintomo | Prevenzione |\n|---|---|---|\n| **Driver VirtIO non boot-critical** | `INACCESSIBLE_BOOT_DEVICE` (0x7B) | §11.6.2 + §11.9.2 |\n| **Firmware non corrispondente** | La VM non trova il bootloader | Rilevare con `msinfo32`, replicare esattamente |\n| **UEFI senza percorso standard** | UEFI non trova nulla pur essendo corretto | Entrare nel BIOS OVMF e aggiungere la voce di boot custom. Serve l'**EFI Disk** per renderla persistente |\n| **`/dev/sdX` in fstab** | Linux in emergency shell | §11.6.3 passo 1 |\n| **VirtIO fuori dall'initramfs** | Kernel panic all'avvio | §11.6.3 passo 2. **Ripetere dopo ogni update del kernel** |\n| **NIC fantasma su Windows** | \"IP già assegnato a un altro adattatore\" | Rimuovere l'IP statico prima; ripulire con `devmgr_show_nonpresent_devices` |\n| **vTPM / BitLocker** | Richiesta chiave di ripristino all'avvio | Sospendere BitLocker prima. Lo stato vTPM **non è migrabile** |\n| **Snapshot sulla sorgente** | Import lentissimo | Consolidare prima |\n| **Dischi su vSAN** | Import fallisce | Spostare i dischi su altro datastore |\n| **Dischi cifrati (storage policy)** | Import fallisce | Rimuovere la policy di cifratura |\n| **Datastore con `+` nel nome** | Import fallisce | Rinominare il datastore |\n| **Import via vCenter** | Lentezza estrema | Puntare direttamente agli host ESXi |\n| **Troppi import paralleli** | API ESXi bloccata, IO sospeso, rischio OOM | Max 4 dischi contemporanei |\n| ⚠️ **Storage ESXi lasciato configurato** | **`pvestatd` si blocca, errori su TUTTI gli storage incluso `local`** | **Rimuovere lo storage ESXi a migrazione conclusa** |\n| **Corosync su link condiviso** | Il cluster sembra riavviarsi da solo (self-fencing) | Rete dedicata a corosync |\n| **CPU type `host`** | Migrazione live impossibile tra CPU diverse | `x86-64-v2-AES`/`v3` in cluster eterogenei |\n| **Machine version < 10** | La VM non parte su storage volume-chain | Impostare machine ≥ 10 |\n| **RDM / dischi shared / MSCS** | Non migrabili con i metodi standard | Identificare in assessment, pianificare a parte |\n| **Licenze legate all'hardware** | Applicativi che si disattivano | Censire in assessment, coinvolgere il fornitore |",
   "troncato": 1
