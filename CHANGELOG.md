@@ -2,6 +2,14 @@
 
 Cosa è cambiato e **perché**, per chi non usa git. Più recenti in alto.
 
+## 2026-09-14 (3) — I profili sanno dei driver VirtIO
+
+Ogni tipologia di carico porta una riga «extra» sui driver VirtIO per
+Windows (manuale §11.17): la versione di riferimento, cosa collaudare per
+quel profilo, e per i legacy l'ultima versione che contiene il sistema.
+Compare nelle descrizioni delle tipologie del portale e nel PDF. Nessuna
+regola nuova: è testo di guida, non un rilievo.
+
 ## 2026-09-14 (2) — Uno schedule a orari non è un intervallo
 
 Su DTS tre job di replica in perfetto orario risultavano **bloccanti**:
