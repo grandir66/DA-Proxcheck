@@ -57,15 +57,15 @@ FONTI = {
  "§11.13": {
   "titolo": "§11.13 Trappole note",
   "file": "manuale/11-migrazione.md",
-  "riga": 592,
+  "riga": 610,
   "parte": "Parte 11",
-  "testo": "| Trappola | Sintomo | Prevenzione |\n|---|---|---|\n| **Driver VirtIO non boot-critical** | `INACCESSIBLE_BOOT_DEVICE` (0x7B) | §11.6.2 + §11.9.2 |\n| **Firmware non corrispondente** | La VM non trova il bootloader | Rilevare con `msinfo32`, replicare esattamente |\n| **UEFI senza percorso standard** | UEFI non trova nulla pur essendo corretto | Entrare nel BIOS OVMF e aggiungere la voce di boot custom. Serve l'**EFI Disk** per renderla persistente |\n| **`/dev/sdX` in fstab** | Linux in emergency shell | §11.6.3 passo 1 |\n| **VirtIO fuori dall'initramfs** | Kernel panic all'avvio | §11.6.3 passo 2. **Ripetere dopo ogni update del kernel** |\n| **NIC fantasma su Windows** | \"IP già assegnato a un altro adattatore\" | Rimuovere l'IP statico prima; ripulire con `devmgr_show_nonpresent_devices` |\n| **vTPM / BitLocker** | Richiesta chiave di ripristino all'avvio | Sospendere BitLocker prima. Lo stato vTPM **non è migrabile** |\n| **Snapshot sulla sorgente** | Import lentissimo | Consolidare prima |\n| **Dischi su vSAN** | Import fallisce | Spostare i dischi su altro datastore |\n| **Dischi cifrati (storage policy)** | Import fallisce | Rimuovere la policy di cifratura |\n| **Datastore con `+` nel nome** | Import fallisce | Rinominare il datastore |\n| **Import via vCenter** | Lentezza estrema | Puntare direttamente agli host ESXi |\n| **Troppi import paralleli** | API ESXi bloccata, IO sospeso, rischio OOM | Max 4 dischi contemporanei |\n| ⚠️ **Storage ESXi lasciato configurato** | **`pvestatd` si blocca, errori su TUTTI gli storage incluso `local`** | **Rimuovere lo storage ESXi a migrazione conclusa** |\n| **Corosync su link condiviso** | Il cluster sembra riavviarsi da solo (self-fencing) | Rete dedicata a corosync |\n| **CPU type `host`** | Migrazione live impossibile tra CPU diverse | `x86-64-v2-AES`/`v3` in cluster eterogenei |\n| **Machine version < 10** | La VM non parte su storage volume-chain | Impostare machine ≥ 10 |\n| **RDM / dischi shared / MSCS** | Non migrabili con i metodi standard | Identificare in assessment, pianificare a parte |\n| **Licenze legate all'hardware** | Applicativi che si disattivano | Censire in assessment, coinvolgere il fornitore |",
+  "testo": "| Trappola | Sintomo | Prevenzione |\n|---|---|---|\n| **Driver VirtIO non boot-critical** | `INACCESSIBLE_BOOT_DEVICE` (0x7B) | §11.6.2 + §11.9.2 |\n| **Firmware non corrispondente** | La VM non trova il bootloader | Rilevare con `msinfo32`, replicare esattamente |\n| **UEFI senza percorso standard** | UEFI non trova nulla pur essendo corretto | Entrare nel BIOS OVMF e aggiungere la voce di boot custom. Serve l'**EFI Disk** per renderla persistente |\n| **`/dev/sdX` in fstab** | Linux in emergency shell | §11.6.3 passo 1 |\n| **VirtIO fuori dall'initramfs** | Kernel panic all'avvio | §11.6.3 passo 2. **Ripetere dopo ogni update del kernel** |\n| **NIC fantasma su Windows** | \"IP già assegnato a un altro adattatore\" | Rimuovere l'IP statico prima; ripulire con `devmgr_show_nonpresent_devices` |\n| **vTPM / BitLocker** | Richiesta chiave di ripristino all'avvio | Sospendere BitLocker prima. Lo stato vTPM **non è migrabile** |\n| **Snapshot sulla sorgente** | Import lentissimo | Consolidare prima |\n| **Dischi su vSAN** | Import fallisce | Spostare i dischi su altro datastore |\n| **Dischi cifrati (storage policy)** | Import fallisce | Rimuovere la policy di cifratura |\n| **Datastore con `+` nel nome** | Import fallisce | Rinominare il datastore |\n| **Import via vCenter** | Lentezza estrema | Puntare direttamente agli host ESXi |\n| **Troppi import paralleli** | API ESXi bloccata, IO sospeso, rischio OOM | Max 4 dischi contemporanei |\n| ⚠️ **Storage ESXi lasciato configurato** | **`pvestatd` si blocca, errori su TUTTI gli storage incluso `local`** | **Rimuovere lo storage ESXi a migrazione conclusa** |\n| **Corosync su link condiviso** | Il cluster sembra riavviarsi da solo (self-fencing) | Rete dedicata a corosync |\n| **CPU type `host`** | Migrazione live impossibile tra CPU diverse | `x86-64-v2-AES`/`v3` in cluster eterogenei |\n| **Machine version < 10** | La VM non parte su storage volume-chain | Impostare machine ≥ 10 |\n| **RDM / dischi shared / MSCS** | Non migrabili con i metodi standard | Identificare in assessment, pianificare a parte |\n| **Licenze legate all'hardware** | Applicativi che si disattivano | Censire in assessment, coinvolgere il fornitore |\n| **Raw su storage a blocchi, VM UEFI** | `GPT PMBR size mismatch`; con OVMF la VM può non partire, mentre in qcow2 parte | Il volume raw è arrotondato all'extent e la GPT di riserva non è più in fondo: §11.16.5 |\n| **Instant Recovery di Veeam** | Senza driver VirtIO la VM non parte (`INACCESSIBLE_BOOT_DEVICE`) o resta senza rete | L'Instant Recovery non inietta i driver: guest preparato come in §11.6 (§11.5.4) |\n| **«failed to prepare disks for restore»** (Veeam) | Il restore si ferma all'1-2% | Machine version più recente di quella che l'altra parte gestisce: §11.5.4, §3.2 |\n| **QEMU diverso fra i nodi** | `Installed QEMU version … is too old to run machine type …` | Stesso repository su tutti i nodi (§3.2) |\n| **vCPU oltre le CPU logiche** del nodo | `MAX <n> vcpus allowed per VM on this node`, anche dopo un failover | Dimensionare sul nodo più piccolo (§8.1) |\n| **Partizioni dal settore 63** (sistemi nati su 2003/XP) | Scritture lente su storage con stripe o blocchi grandi | Verificare l'offset prima (`Get-Partition`, offset multiplo di 1 MiB); il disco dei dati si rifà (procedura 13 §2) |",
   "troncato": 1
  },
  "§11.17": {
   "titolo": "§11.17 I driver VirtIO per Windows: quale versione, per quale sistema",
   "file": "manuale/11-migrazione.md",
-  "riga": 726,
+  "riga": 762,
   "parte": "Parte 11",
   "testo": "I driver `virtio-win` sono un pacchetto solo, ma **non tutte le versioni vanno bene per tutti i Windows**, e non è vero che la più recente sia la migliore: le versioni nuove tolgono il supporto ai sistemi vecchi, e alcune hanno introdotto difetti su quelli nuovi. La scelta si fa per sistema operativo e per carico, si scrive nel verbale, e **una versione già collaudata su una VM non si sostituisce solo perché ne esiste una più nuova**.\n\n**Verificato il 2026-09-14** sulle fonti in fondo. Il riferimento pubblicato da Proxmox: *«Currently, there are no known issues for version virtio-win 0.1.271»*; la 0.1.302 (31 agosto 2026) è *«in test: non la possiamo ancora consigliare per la produzione»*.",
   "troncato": 1
@@ -75,29 +75,29 @@ FONTI = {
   "file": "manuale/11-migrazione.md",
   "riga": 32,
   "parte": "Parte 11",
-  "testo": "Nessuna migrazione parte senza questo inventario. Esportabile da vCenter con PowerCLI.\n\n| Dato | Perché serve |\n|---|---|\n| Nome, vCPU, RAM, dimensione e numero dischi | Dimensionamento e configurazione target |\n| **Firmware: BIOS o UEFI** | Determina SeaBIOS vs OVMF. **Se sbagliato la VM non trova il bootloader** |\n| **Controller disco attuale** (LSI Logic / PVSCSI / SATA) | Determina la strategia di switch a VirtIO |\n| Sistema operativo e versione | Disponibilità driver VirtIO |\n| **vTPM presente?** | Lo stato vTPM **non è migrabile** da VMware. Impatta BitLocker |\n| **BitLocker o crittografia full-disk?** | Serve sospendere/decrittare, o avere le chiavi di ripristino |\n| Configurazione di rete (IP, DNS, gateway, route, VLAN) | Il nome dell'adattatore cambierà |\n| MAC address | Per mantenere le reservation DHCP |\n| **Snapshot presenti** | Rallentano enormemente l'import: da consolidare prima |\n| Dischi RDM / independent / shared | **Non migrabili** con i metodi standard |\n| Disk su **vSAN** | **Non importabili**: spostare prima su altro datastore |\n| **Cifratura VM (storage policy)** | **Non importabile**: rimuovere la policy prima |\n| Licenze legate a hardware ID / dongle USB | Rischio di riattivazione o blocco |\n| Criticità, finestra di manutenzione, RTO/RPO | Pianificazione delle ondate |\n\n- Versione ESXi di ogni host e nome dei datastore (**caratteri speciali come `+` rompono l'import**)\n- Credenziali amministrative sugli host ESXi — **non solo su vCenter**, vedi §11.5.1\n- Banda disponibile tra ESXi e Proxmox\n\n---",
-  "troncato": 0
+  "testo": "Nessuna migrazione parte senza questo inventario. Esportabile da vCenter con PowerCLI.\n\n**I bloccanti stanno in un posto solo: la procedura 01 «Avvio di un progetto».** La sua parte A dice quali dati avere prima, la parte B l'ordine dei lavori, la parte C i circa settanta bloccanti con la loro fonte (infrastruttura, sistemi operativi, impostazioni dei guest, attivazioni e licenze). Questa sezione spiega perché ciascun dato serve. L'elenco da spuntare è quello.",
+  "troncato": 1
  },
  "§11.4": {
   "titolo": "§11.4 Preparazione del cluster Proxmox",
   "file": "manuale/11-migrazione.md",
-  "riga": 106,
+  "riga": 111,
   "parte": "Parte 11",
-  "testo": "Da completare **prima** della prima migrazione.\n\n| Elemento | Raccomandazione |\n|---|---|\n| **Corosync** | **Rete fisica dedicata**, più almeno un link ridondante. Corosync gestisce fino a 8 reti e commuta da solo |\n| Storage | Rete separata da corosync. Se iSCSI/NFS: VLAN dedicata, MTU 9000 se l'intero percorso lo supporta |\n| Migrazione | Rete dedicata configurabile in Datacenter → Options |\n| Backup | Il traffico verso PBS può saturare un link: tenerlo lontano da corosync |\n| Bridge | Linux bridge VLAN-aware. OVS raramente necessario: il bridge Linux ha colmato il divario |\n\n**L'errore più comune:** far convivere corosync, storage e backup sullo stesso link. Sotto carico i nodi si auto-fenciano e sembra che il cluster si riavvii senza motivo.\n\n- Repository: **enterprise** con subscription (consigliato in produzione), altrimenti `no-subscription`. Ogni nodo del cluster deve avere lo **stesso livello** di subscription\n- Aggiornare tutti i nodi alla stessa versione prima di iniziare\n- NTP funzionante e coerente su tutti i nodi\n- `Datacenter → Options → Next free VMID range` per non collidere con altri cluster\n- Se si usa ZFS: **limitare l'ARC** in base alla RAM da lasciare alle VM (`/etc/modprobe.d/zfs.conf` → `zfs_arc_max`)\n\nConfigurare **Proxmox Backup Server prima della migrazione**, non dopo. Serve anche come rete di sicurezza durante le ondate.\n\nAggiungere lo storage **ESXi** (Datacenter → Storage → Add → ESXi) puntando **direttamente agli host ESXi**, non a vCenter (§11.5.1).",
+  "testo": "Da completare **prima** della prima migrazione.\n\n| Elemento | Raccomandazione |\n|---|---|\n| **Corosync** | **Rete fisica dedicata**, più almeno un link ridondante. Corosync gestisce fino a 8 reti e commuta da solo |\n| Storage | Rete separata da corosync. Se iSCSI/NFS: VLAN dedicata, MTU 9000 se l'intero percorso lo supporta |\n| Migrazione | Rete dedicata configurabile in Datacenter → Options |\n| Backup | Il traffico verso PBS può saturare un link: tenerlo lontano da corosync |\n| Bridge | Linux bridge VLAN-aware. OVS raramente necessario: il bridge Linux ha colmato il divario |\n\n**L'errore più comune:** far convivere corosync, storage e backup sullo stesso link. Sotto carico i nodi si auto-fenciano e sembra che il cluster si riavvii senza motivo.\n\n- Repository: **enterprise** con subscription (consigliato in produzione), altrimenti `no-subscription`. Ogni nodo del cluster deve avere lo **stesso livello** di subscription\n- Aggiornare tutti i nodi alla stessa versione prima di iniziare, **dallo stesso repository** e mai `pve-test`: una VM importata sul nodo più avanti non riparte sugli altri (§3.2)\n- NTP funzionante e coerente su tutti i nodi\n- `Datacenter → Options → Next free VMID range` per non collidere con altri cluster\n- Se si usa ZFS: **limitare l'ARC** in base alla RAM da lasciare alle VM (`/etc/modprobe.d/zfs.conf` → `zfs_arc_max`)\n\nConfigurare **Proxmox Backup Server prima della migrazione**, non dopo. Serve anche come rete di sicurezza durante le ondate.",
   "troncato": 1
  },
  "§11.5": {
   "titolo": "§11.5 Metodi di migrazione",
   "file": "manuale/11-migrazione.md",
-  "riga": 142,
+  "riga": 147,
   "parte": "Parte 11",
-  "testo": "| Metodo | Downtime | Quando usarlo |\n|---|---|---|\n| **Import wizard ESXi** | Medio (VM spenta durante la copia) | **Prima scelta** per la maggior parte delle VM |\n| **Import wizard + live-import** | Basso | VM grandi con servizi sensibili al downtime |\n| **Attach & Move disk** | Minimo | VM molto grandi con finestra strettissima. Più laborioso |\n| `qm importovf` (via `ovftool`) | Alto | Quando l'accesso diretto all'ESXi non è possibile |\n| `qm disk import` da share | Alto | Controllo fine sulla configurazione target |\n| **Restore da backup** (Veeam ecc.) | Variabile | Se esiste già un backup con integrazione Proxmox |\n| **Clonezilla** | Alto | Casi limite: sorgenti non VMware, dischi problematici |\n\n- **Puntare agli host ESXi, non a vCenter.** L'import via vCenter riduce le prestazioni in modo drammatico.\n- **La VM sorgente deve essere spenta** (anche con live-import).\n- **Consolidare o eliminare gli snapshot** sulla sorgente: la presenza di snapshot rallenta enormemente l'import.\n- Testato da ESXi 6.5 a 8.0.\n- Con certificati self-signed: aggiungere la CA al trust store o spuntare *Skip Certificate Verification*.\n- La scheda *Advanced* consente di scegliere storage diversi per ogni disco, modelli di NIC, e di **escludere dischi o CD-ROM** dall'import.\n\nLa VM viene avviata mentre l'import è ancora in corso: prima i dati necessari all'avvio, il resto in background. La sorgente resta comunque spenta, quindi **un downtime c'è**, solo più breve.",
+  "testo": "> ⚠️ **Non esiste la migrazione live fra ESXi e Proxmox.** Non c'è un equivalente di vMotion fra i due hypervisor: cambiano il formato dei dischi, il chipset virtuale e i driver, e lo stato di CPU e RAM non si trasferisce. **In tutti i percorsi la VM sorgente è spenta** prima che la migrazione si completi: cambia solo quanto dura il fermo e dove sta il rischio.\n\n| Metodo | Downtime | Quando usarlo |\n|---|---|---|\n| **Import wizard ESXi** | Medio (VM spenta durante la copia) | **Prima scelta** per la maggior parte delle VM |\n| **Import wizard + live-import** | Basso | VM grandi con servizi sensibili al downtime |\n| **Attach & Move disk** | Minimo | VM molto grandi con finestra strettissima. Più laborioso |\n| `qm importovf` (via `ovftool`) | Alto | Quando l'accesso diretto all'ESXi non è possibile |\n| `qm disk import` da share | Alto | Controllo fine sulla configurazione target |\n| **Restore da backup** (Veeam ecc.) | Variabile | Se esiste già un backup con integrazione Proxmox. Con Veeam 13.1 i driver VirtIO si iniettano nel restore normale, **non** nell'Instant Recovery (§11.5.4) |\n| **Clonezilla** | Alto | Casi limite: sorgenti non VMware, dischi problematici |",
   "troncato": 1
  },
  "§11.6": {
   "titolo": "§11.6 Preparazione della VM sorgente (PRE-migrazione)",
   "file": "manuale/11-migrazione.md",
-  "riga": 188,
+  "riga": 205,
   "parte": "Parte 11",
   "testo": "**Questa è la sezione che determina se la migrazione riesce al primo colpo.** Va eseguita mentre la VM è ancora su VMware e funzionante.\n\n1. **Backup o snapshot della VM sorgente.** Mai migrare senza. È anche il piano di rollback.\n2. **Documentare la configurazione di rete**: IP, netmask, gateway, DNS, route statiche, VLAN, MAC address. L'adattatore cambierà e la configurazione andrà rifatta a mano.\n3. **Annotare il firmware**: BIOS legacy o UEFI. Da replicare esattamente sul target.\n4. **Rimuovere gli snapshot** sulla sorgente (consolidare).\n5. **Verificare l'accesso fuori banda**: password di root/Administrator note, console raggiungibile. **La rete quasi certamente non funzionerà al primo avvio.**\n6. **Crittografia full-disk con chiavi nel vTPM**: sospendere BitLocker o disabilitare la crittografia. Lo **stato vTPM non è migrabile da VMware**. Avere comunque le chiavi di ripristino a portata di mano.\n7. **Rimuovere i guest tools del vecchio hypervisor** — è molto più difficile farlo dopo.\n8. **DHCP reservation**: o si adatta la reservation al nuovo MAC, o si imposta manualmente il vecchio MAC sulla NIC target.\n9. **Spegnere la VM in modo pulito** (shutdown dal sistema operativo, non power off).\n\nL'ordine conta. Eseguire nella sequenza indicata.\n\n**Passo 1 — Rilevare il firmware.**\n\n```\nmsinfo32\n```\n\nLeggere *Modalità BIOS*: `UEFI` oppure `Legacy`. Annotare. Verificare anche lo stile partizione (GPT/MBR) in Gestione disco.\n\n**Passo 2 — Sospendere BitLocker** (se attivo), o annotare la chiave di ripristino:",
   "troncato": 1
@@ -105,7 +105,7 @@ FONTI = {
  "§11.7": {
   "titolo": "§11.7 Configurazione ottimale della VM target",
   "file": "manuale/11-migrazione.md",
-  "riga": 331,
+  "riga": 348,
   "parte": "Parte 11",
   "testo": "Da applicare a ogni VM migrata. L'import wizard fa scelte ragionevoli ma non sempre ottimali.",
   "troncato": 1
@@ -113,7 +113,7 @@ FONTI = {
  "§11.8": {
   "titolo": "§11.8 Esecuzione: ondate",
   "file": "manuale/11-migrazione.md",
-  "riga": 388,
+  "riga": 405,
   "parte": "Parte 11",
   "testo": "Non migrare mai tutto insieme. La suddivisione in ondate serve a imparare sul parco a basso rischio.\n\n| Ondata | Contenuto | Obiettivo |\n|---|---|---|\n| **0 — Pilota** | 1 VM Windows + 1 VM Linux di test, non di produzione | Validare l'intera procedura e **misurare i tempi reali** |\n| **1 — Basso rischio** | Sviluppo, test, VM non critiche | Affinare la procedura, formare il personale |\n| **2 — Medio** | Produzione non critica, servizi ridondati | |\n| **3 — Critico** | Domain controller, database, applicativi core | Finestra concordata, rollback pronto |\n\n**Regole trasversali:**\n\n- Dalla misura dell'ondata 0 si ricava il throughput reale (GB/ora) e si dimensionano le finestre. Non stimare a occhio.\n- I **domain controller** vanno migrati uno alla volta, verificando la replica AD tra uno e l'altro. Mai spegnerli tutti insieme.\n- I cluster applicativi (SQL Always On, cluster di failover) si migrano un nodo per volta.\n- **Non cancellare la VM sorgente.** Lasciarla spenta e intatta per il periodo di rollback concordato (tipicamente 2–4 settimane).\n- ⚠️ **Mai avviare la stessa VM contemporaneamente su VMware e Proxmox.** Con i metodi che condividono i file su share, questo corrompe il disco.\n\n---",
   "troncato": 0
@@ -417,7 +417,7 @@ FONTI = {
  "§8.3": {
   "titolo": "§8.3 Disco",
   "file": "manuale/08-parametri-vm.md",
-  "riga": 102,
+  "riga": 106,
   "parte": "Parte 8",
   "testo": "**`VirtIO SCSI single` + bus `SCSI`** è la configurazione di riferimento: un controller per disco, presupposto per gli **IO thread**.\n\n`VirtIO Block` è più vecchio, valido ma senza le funzionalità SCSI. `SATA`/`IDE` solo per compatibilità o fase transitoria di migrazione.\n\nDelega l'I/O di quel disco a un thread dedicato invece che al thread principale di QEMU. **Da attivare praticamente sempre** con `VirtIO SCSI single`, e obbligatorio per `aio=native`.\n\n| Modalità | Page cache host | Sicurezza al crash dell'host | Uso |\n|---|---|---|---|\n| **`none`** (*No cache*) | Bypassata | ✅ Sicura | **Default consigliato**; obbligatoria per `aio=native` |\n| `writeback` | Usata in scrittura | ⚠️ Perdita dati senza UPS/BBU | Solo con alimentazione protetta e consapevolezza |\n| `writethrough` | Usata in lettura | ✅ Sicura | Scritture lente, raramente utile |\n| `directsync` | Bypassata, write-through | ✅ La più sicura | Durabilità massima |\n| `unsafe` | Ignora i flush del guest | ❌ **Pericolosa** | Solo installazioni usa-e-getta |\n\nCon `none` il guest riceve la conferma quando il blocco raggiunge la coda di scrittura dello storage fisico, ignorando la page cache dell'host.\n\n| Valore | Quando |\n|---|---|\n| **`io_uring`** (default) | **File-based (qcow2, NFS, directory), ZFS, LVM-thin, sopra RAID software.** Con `native` qui l'I/O **può bloccarsi** |\n| `native` | **Solo** blocco raw non bufferizzato con `cache=none` **e IO thread attivo** |\n| `threads` | Fallback |",
   "troncato": 1
@@ -425,7 +425,7 @@ FONTI = {
  "§8.4": {
   "titolo": "§8.4 Rete",
   "file": "manuale/08-parametri-vm.md",
-  "riga": 153,
+  "riga": 157,
   "parte": "Parte 8",
   "testo": "**VirtIO (paravirtualized)** salvo assenza di driver. `e1000`/`rtl8139` solo per sistemi legacy.\n\nPermette al guest di elaborare pacchetti su più vCPU. Va impostato **pari al numero di vCPU**, ma la documentazione raccomanda di attivarlo **solo su VM con molte connessioni in ingresso**: router, reverse proxy, server HTTP molto trafficati. Altrove aumenta soltanto il carico CPU.\n\n> ⚠️ **Non basta impostarlo lato Proxmox: va abilitato anche dentro il guest.**\n>\n> Linux: `ethtool -L ens18 combined <numero_vCPU>`\n>\n> Windows: Gestione dispositivi → scheda di rete → Proprietà → Avanzate → **Receive Side Scaling** su *Enabled*, poi **Maximum number of RSS Queues** pari al numero di vCPU.\n\n> ⚠️ **Su tutte le interfacce, non solo sulla prima.**\n\n> ⚠️ **Le code attive sono limitate dal numero di vCPU:** `queues` e `cores` vanno alzati insieme.\n\nMeccanismo completo e caso misurato in §21.3.\n\n| Parametro | Note |\n|---|---|\n| **MTU** | Solo su VirtIO. Vuoto o `mtu=1` eredita dal bridge. Coerente **su tutto il percorso**, guest incluso |\n| **Firewall** | Il firewall per-VM inserisce bridge aggiuntivi (`fwbr`). Su VM ad alto traffico, se il filtraggio avviene altrove, conviene disattivarlo |\n| **Rate limit** | Tetto di banda per interfaccia |\n| **VLAN tag** | Preferibile al tagging dentro il guest, salvo appliance che gestiscono trunk |",
   "troncato": 0
@@ -433,7 +433,7 @@ FONTI = {
  "§8.5": {
   "titolo": "§8.5 Sistema",
   "file": "manuale/08-parametri-vm.md",
-  "riga": 182,
+  "riga": 186,
   "parte": "Parte 8",
   "testo": "| Parametro | Raccomandazione |\n|---|---|\n| **BIOS** | `OVMF (UEFI)` per SO moderni; `SeaBIOS` per legacy. Con OVMF serve l'**EFI Disk** |\n| **Machine** | `q35` per SO moderni; `i440fx` per legacy. **≥ 10** se lo storage usa `snapshot-as-volume-chain`; **`11.0+pve2`** per Windows recenti su host Intel con VBS |\n| **QEMU Guest Agent** | Attivare sempre: IP e RAM nella GUI, spegnimento pulito, **freeze del filesystem nei backup** |\n| `agent: freeze-fs` | Default attivo. Controlla freeze/thaw durante backup, clonazioni, replication e snapshot |\n| `agent: fstrim_cloned_disks` | TRIM dopo clonazione e migrazione: recupera spazio su storage thin |\n| **vmgenid** | Assegnato automaticamente dalla 5.2. **Non rimuoverlo** — vedi §9.1 e §21.6 |\n| **VGA** | `std` di default; `qxl` solo con SPICE |\n| `tablet` | Attivo di default. Disattivabile su molte VM solo-console per risparmiare context switch |\n| `rng0` | Entropia dall'host. Utile su VM con molta crittografia |",
   "troncato": 0
@@ -441,9 +441,9 @@ FONTI = {
  "§8.6": {
   "titolo": "§8.6 Ciclo di vita",
   "file": "manuale/08-parametri-vm.md",
-  "riga": 196,
+  "riga": 200,
   "parte": "Parte 8",
-  "testo": "| Parametro | Uso |\n|---|---|\n| `onboot` | Avvio automatico all'accensione del nodo |\n| `startup: order=N,up=X,down=Y` | Ordine di avvio (lo spegnimento segue l'ordine inverso) con ritardo in secondi |\n| `protection` | Impedisce cancellazione di VM e dischi. **Attivare su tutte le VM critiche** |\n| `tags` / pool | Organizzazione, filtri, permessi |\n| HA + regole di affinità | Da PVE 9: affinità e anti-affinità per nodo e per risorsa |\n\n| Ordine | Categoria | `up` |\n|---|---|---|\n| 1 | Domain controller, DNS, appliance di rete | 60 |\n| 2 | Database | 120 |\n| 3 | Application server | 60 |\n| 4 | Web, frontend, reverse proxy | 30 |\n| 9 | Test, sviluppo | 0 |\n\n---",
+  "testo": "| Parametro | Uso |\n|---|---|\n| `onboot` | Avvio automatico all'accensione del nodo |\n| `startup: order=N,up=X,down=Y` | Ordine di avvio (lo spegnimento segue l'ordine inverso) con ritardo in secondi |\n| `protection` | Impedisce cancellazione di VM e dischi. **Attivare su tutte le VM critiche** |\n| `tags` / pool | Organizzazione, filtri, permessi |\n| HA + regole di affinità | Da PVE 9: affinità e anti-affinità per nodo e per risorsa |\n\n| Ordine | Categoria | `up` |\n|---|---|---|\n| 1 | Domain controller, DNS, appliance di rete | 60 |\n| 2 | Database | 120 |\n| 3 | Application server | 60 |\n| 4 | Web, frontend, reverse proxy | 30 |\n| 9 | Test, sviluppo | 0 |",
   "troncato": 0
  },
  "§9.1": {
@@ -529,7 +529,7 @@ FONTI = {
  "§8.1 › Overcommit di vCPU": {
   "titolo": "§8.1 CPU › Overcommit di vCPU",
   "file": "manuale/08-parametri-vm.md",
-  "riga": 45,
+  "riga": 49,
   "parte": "Parte 8",
   "testo": "Sovrallocare è normale, ma va misurato: il sintomo di eccesso è lo **steal time** nel guest. Rapporti tipici 3:1 o 4:1 su carichi generici, **1:1 su database e appliance di rete**.",
   "troncato": 0
@@ -537,7 +537,7 @@ FONTI = {
  "§8.1 › Priorità e limiti": {
   "titolo": "§8.1 CPU › Priorità e limiti",
   "file": "manuale/08-parametri-vm.md",
-  "riga": 37,
+  "riga": 41,
   "parte": "Parte 8",
   "testo": "| Parametro | Cosa fa | Uso tipico |\n|---|---|---|\n| `cpuunits` | Peso relativo nello scheduler (default 100 su cgroup v2). Una VM a 200 ottiene il doppio di banda CPU di una a 100 | Prioritizzare la produzione **quando l'host è in contesa** |\n| `cpulimit` | Tetto assoluto di tempo CPU. `0` = nessun limite | Contenere VM che possono impazzire. Impostandolo pari al numero di vCPU si garantisce che non superino mai la propria allocazione |\n| `affinity` | Pinning su core fisici specifici (`0,5,8-11`) | Solo casi estremi di latenza. **Non è una misura di sicurezza**, e i processi di I/O non sono coperti |",
   "troncato": 0
@@ -547,7 +547,7 @@ FONTI = {
   "file": "manuale/08-parametri-vm.md",
   "riga": 21,
   "parte": "Parte 8",
-  "testo": "**Regola: 1 socket, N core.** Semplifica il licensing di Windows Server e SQL Server, ed è gestito meglio dalla maggior parte dei sistemi operativi.\n\nEccezione: attivando NUMA, la documentazione raccomanda **socket pari al numero di nodi NUMA dell'host**.",
+  "testo": "**Regola: 1 socket, N core.** Semplifica il licensing di Windows Server e SQL Server, ed è gestito meglio dalla maggior parte dei sistemi operativi.\n\nEccezione: attivando NUMA, la documentazione raccomanda **socket pari al numero di nodi NUMA dell'host**.\n\n**Il tetto per VM sono le CPU logiche del nodo, non i core.** Proxmox non avvia una VM che ha più vCPU (`sockets × cores`, anche se `vcpus` ne attiva meno) delle CPU logiche del nodo su cui deve partire. Le CPU logiche sono i thread: con Hyper-Threading il doppio dei core. L'errore è `MAX <n> vcpus allowed per VM on this node`, e il numero si legge con `nproc`. Il controllo sta in `QemuServer.pm`, che conta le righe `processor` di `/proc/cpuinfo` (letto sulla 9.2.20 il 28/09/2026).\n\n> ⚠️ **In un cluster con nodi diversi, il limite è quello del nodo più piccolo.** La VM parte e migra fra i nodi grandi, poi il giorno del guasto l'alta affidabilità la porta proprio su quello piccolo, dove non parte (§7.9). Si dimensionano le VM in HA sul nodo più piccolo, oppure una regola di affinità le tiene lontane da lì.",
   "troncato": 0
  },
  "§8.1 › Tipo di CPU": {
@@ -555,13 +555,13 @@ FONTI = {
   "file": "manuale/08-parametri-vm.md",
   "riga": 8,
   "parte": "Parte 8",
-  "testo": "| Valore | Quando | Effetto |\n|---|---|---|\n| `host` | Tutti i nodi hanno **CPU identica** | Espone tutte le istruzioni del processore fisico (AES-NI, AVX-512…). Prestazioni migliori |\n| `x86-64-v2-AES` | Cluster misto, hardware dal 2010 circa | Compromesso sicuro, ampiamente compatibile |\n| `x86-64-v3` | Cluster misto ma hardware recente (Haswell+) | Include AVX2 |\n| `kvm64` (default storico) | Da evitare | Set di istruzioni minimo, prestazioni penalizzate |\n\n> ⚠️ **`host` impedisce la migrazione live verso un nodo con CPU diversa.** In un cluster che potrebbe crescere con hardware differente, usare un modello generico. Il guadagno di `host` è reale ma tipicamente inferiore al costo operativo di perdere la migrazione live — salvo carichi che sfruttano istruzioni specifiche (crittografia, compressione, database).\n\n> ⚠️ **Su host Intel con Windows 11/2022/2025 e VBS attiva**, `host` richiede machine version `11.0+pve2` o successiva: vedi il problema noto qui sopra.",
+  "testo": "| Valore | Quando | Effetto |\n|---|---|---|\n| `host` | Tutti i nodi hanno **CPU identica** | Espone tutte le istruzioni del processore fisico (AES-NI, AVX-512…). Prestazioni migliori |\n| `x86-64-v2-AES` | Cluster misto, hardware dal 2010 circa | Compromesso sicuro, ampiamente compatibile |\n| `x86-64-v3` | Cluster misto ma hardware recente (Haswell+) | Include AVX2 |\n| `kvm64` (default storico) | Da evitare | Set di istruzioni minimo, prestazioni penalizzate |\n\n> ⚠️ **`host` impedisce la migrazione live verso un nodo con CPU diversa.** In un cluster che potrebbe crescere con hardware differente, usare un modello generico. Il guadagno di `host` è reale ma tipicamente inferiore al costo operativo di perdere la migrazione live — salvo carichi che sfruttano istruzioni specifiche (crittografia, compressione, database).\n\n> ⚠️ **Su host Intel con Windows 11/2022/2025 e VBS attiva**, `host` richiede machine version `11.0+pve2` o successiva, altrimenti la VM si blocca a intermittenza al 100% di CPU. Versioni affette e rimedio in §11.7 e §20.",
   "troncato": 0
  },
  "§8.2 › Ballooning — il malinteso più diffuso": {
   "titolo": "§8.2 Memoria › Ballooning — il malinteso più diffuso",
   "file": "manuale/08-parametri-vm.md",
-  "riga": 51,
+  "riga": 55,
   "parte": "Parte 8",
   "testo": "La documentazione è letterale: *\"il driver balloon è abilitato per default, a meno che non sia esplicitamente disabilitato impostando il valore a zero\"*.\n\n| Configurazione | Palloncino | Statistiche | Cosa vedi nella GUI |\n|---|---|---|---|\n| *Minimum memory* **<** *Memory* | Attivo | ✅ | Uso reale della RAM |\n| *Minimum memory* **=** *Memory* | Presente ma fermo | ✅ | **Uso reale della RAM** |\n| `balloon: 0` | **Assente** | ❌ | **Sempre 100%** |\n\n> **Errore comune:** impostare `balloon: 0` credendo di \"fissare la memoria mantenendo le statistiche\". Per quello serve `min = max`. Con `balloon: 0` si perde il reporting e la VM appare per sempre al 100% di RAM. Meccanismo spiegato in §21.2.",
   "troncato": 0
@@ -569,7 +569,7 @@ FONTI = {
  "§8.2 › Shares, hugepages, KSM": {
   "titolo": "§8.2 Memoria › Shares, hugepages, KSM",
   "file": "manuale/08-parametri-vm.md",
-  "riga": 96,
+  "riga": 100,
   "parte": "Parte 8",
   "testo": "- **Shares**: con l'allocazione automatica definisce quanta RAM libera dell'host ogni VM può prendere. Utile perché in un host con più VM in ballooning sia il database a ricevere la memoria in eccesso, non l'ambiente di test.\n- **Hugepages**: riducono i TLB miss. Utili su VM grandi e statiche (database, JVM). Costo: memoria riservata in anticipo, host meno flessibile. Attivare solo con misura prima/dopo.\n- **KSM**: deduplica pagine identiche tra VM. Molto efficace con tante VM dello stesso SO (VDI, farm web). Da valutare rispetto agli attacchi side-channel tra VM.",
   "troncato": 0
@@ -577,7 +577,7 @@ FONTI = {
  "§8.3 › AIO — la scelta che dipende dallo storage": {
   "titolo": "§8.3 Disco › AIO — la scelta che dipende dallo storage",
   "file": "manuale/08-parametri-vm.md",
-  "riga": 126,
+  "riga": 130,
   "parte": "Parte 8",
   "testo": "| Valore | Quando |\n|---|---|\n| **`io_uring`** (default) | **File-based (qcow2, NFS, directory), ZFS, LVM-thin, sopra RAID software.** Con `native` qui l'I/O **può bloccarsi** |\n| `native` | **Solo** blocco raw non bufferizzato con `cache=none` **e IO thread attivo** |\n| `threads` | Fallback |\n\nMeccanismo del blocco spiegato in §21.4. **Lasciare `io_uring`** salvo le tre condizioni insieme e una misura che dimostri il guadagno.",
   "troncato": 0
@@ -585,7 +585,7 @@ FONTI = {
  "§8.3 › Altri parametri disco": {
   "titolo": "§8.3 Disco › Altri parametri disco",
   "file": "manuale/08-parametri-vm.md",
-  "riga": 136,
+  "riga": 140,
   "parte": "Parte 8",
   "testo": "| Parametro | Effetto | Quando |\n|---|---|---|\n| `discard=on` | Propaga TRIM/UNMAP | **Sempre** con thin provisioning |\n| `ssd=1` | Presenta il disco come SSD | Backing flash: il guest attiva TRIM e disabilita la deframmentazione |\n| `detect_zeroes` | Ottimizza le scritture di zeri | Utile con thin provisioning |\n| `backup=0` | Esclude il disco dal backup VM | Dischi dati enormi con backup applicativo, dischi scratch |\n| `replicate=0` | Esclude dalla replication ZFS | Dischi non replicabili |\n| `iops`, `mbps`, `bps_rd/wr` + varianti `_max` | Throttling per disco, con burst | **Isolare un vicino rumoroso** su storage condiviso |\n\nIl throttling è sottoutilizzato: un log server che satura la SAN penalizza tutte le altre VM. Un tetto con burst risolve senza degradare il funzionamento normale.",
   "troncato": 0
@@ -593,7 +593,7 @@ FONTI = {
  "§8.3 › Cache mode": {
   "titolo": "§8.3 Disco › Cache mode",
   "file": "manuale/08-parametri-vm.md",
-  "riga": 114,
+  "riga": 118,
   "parte": "Parte 8",
   "testo": "| Modalità | Page cache host | Sicurezza al crash dell'host | Uso |\n|---|---|---|---|\n| **`none`** (*No cache*) | Bypassata | ✅ Sicura | **Default consigliato**; obbligatoria per `aio=native` |\n| `writeback` | Usata in scrittura | ⚠️ Perdita dati senza UPS/BBU | Solo con alimentazione protetta e consapevolezza |\n| `writethrough` | Usata in lettura | ✅ Sicura | Scritture lente, raramente utile |\n| `directsync` | Bypassata, write-through | ✅ La più sicura | Durabilità massima |\n| `unsafe` | Ignora i flush del guest | ❌ **Pericolosa** | Solo installazioni usa-e-getta |\n\nCon `none` il guest riceve la conferma quando il blocco raggiunge la coda di scrittura dello storage fisico, ignorando la page cache dell'host.",
   "troncato": 0
@@ -601,7 +601,7 @@ FONTI = {
  "§8.3 › Controller e bus": {
   "titolo": "§8.3 Disco › Controller e bus",
   "file": "manuale/08-parametri-vm.md",
-  "riga": 104,
+  "riga": 108,
   "parte": "Parte 8",
   "testo": "**`VirtIO SCSI single` + bus `SCSI`** è la configurazione di riferimento: un controller per disco, presupposto per gli **IO thread**.\n\n`VirtIO Block` è più vecchio, valido ma senza le funzionalità SCSI. `SATA`/`IDE` solo per compatibilità o fase transitoria di migrazione.",
   "troncato": 0
@@ -609,7 +609,7 @@ FONTI = {
  "§8.3 › IO thread": {
   "titolo": "§8.3 Disco › IO thread",
   "file": "manuale/08-parametri-vm.md",
-  "riga": 110,
+  "riga": 114,
   "parte": "Parte 8",
   "testo": "Delega l'I/O di quel disco a un thread dedicato invece che al thread principale di QEMU. **Da attivare praticamente sempre** con `VirtIO SCSI single`, e obbligatorio per `aio=native`.",
   "troncato": 0
@@ -617,7 +617,7 @@ FONTI = {
  "§8.4 › Multiqueue": {
   "titolo": "§8.4 Rete › Multiqueue",
   "file": "manuale/08-parametri-vm.md",
-  "riga": 157,
+  "riga": 161,
   "parte": "Parte 8",
   "testo": "Permette al guest di elaborare pacchetti su più vCPU. Va impostato **pari al numero di vCPU**, ma la documentazione raccomanda di attivarlo **solo su VM con molte connessioni in ingresso**: router, reverse proxy, server HTTP molto trafficati. Altrove aumenta soltanto il carico CPU.\n\n> ⚠️ **Non basta impostarlo lato Proxmox: va abilitato anche dentro il guest.**\n>\n> Linux: `ethtool -L ens18 combined <numero_vCPU>`\n>\n> Windows: Gestione dispositivi → scheda di rete → Proprietà → Avanzate → **Receive Side Scaling** su *Enabled*, poi **Maximum number of RSS Queues** pari al numero di vCPU.\n\n> ⚠️ **Su tutte le interfacce, non solo sulla prima.**\n\n> ⚠️ **Le code attive sono limitate dal numero di vCPU:** `queues` e `cores` vanno alzati insieme.\n\nMeccanismo completo e caso misurato in §21.3.",
   "troncato": 0
