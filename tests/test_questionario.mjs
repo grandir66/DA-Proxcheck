@@ -194,6 +194,18 @@ const CASI = [
   ['dump_db', {}, false],
   ['repo', { sic_repo: 'No' }, 'blocco'],
   ['repo', { sic_repo: 'Sì' }, false],
+  // 29/09/2026: le domande della parte A della procedura 01 che mancavano
+  ['lun_dedicata', { storage_tipo: 'SAN iSCSI', storage_lun_dedicata: 'No' }, 'blocco'],
+  ['lun_dedicata', { storage_tipo: 'SAN iSCSI', storage_lun_dedicata: 'Da verificare' }, 'verifica'],
+  ['lun_dedicata', { storage_tipo: 'ZFS locale', storage_lun_dedicata: 'No' }, false],
+  ['console', {}, 'verifica'],
+  ['console', { nodi_console: 'XCC 10.20.0.101-103, credenziali: Mario Rossi' }, false],
+  ['dr_deciso', {}, 'verifica'],
+  ['dr_deciso', { dr_previsto: 'No' }, false],
+  ['dr_zfs_su_lvm', { dr_previsto: 'Sì', dr_strumento: 'Replica ZFS di Proxmox', storage_tipo: 'SAN iSCSI' }, 'blocco'],
+  ['dr_zfs_su_lvm', { dr_previsto: 'Sì', dr_strumento: 'Replica ZFS di Proxmox', storage_tipo: 'ZFS locale' }, false],
+  ['dr_zfs_su_lvm', { dr_previsto: 'Sì', dr_strumento: 'Da decidere' }, 'verifica'],
+  ['dr_zfs_su_lvm', { dr_previsto: 'No', dr_strumento: 'Replica ZFS di Proxmox', storage_tipo: 'SAN iSCSI' }, false],
 ];
 
 function esitoDi(campi, idRegola, extra) {
@@ -296,7 +308,7 @@ test('le regole applicate finiscono nel Markdown, col testo e con l\'origine', (
 });
 
 test('senza regole accese non si stampa una sezione vuota di regole', () => {
-  q.prova({ ref_applicativo: 'Anna Bianchi', ntp: '10.0.0.1' },
+  q.prova({ ref_applicativo: 'Anna Bianchi', ntp: '10.0.0.1', nodi_console: 'XCC, credenziali da Anna', dr_previsto: 'No' },
           { nodi: [{ id: 'n1', ip_mgmt: '1.1.1.1/24', ip_coro1: '2.2.2.1/24', ip_coro2: '3.3.3.1/24' }] });
   assert.deepEqual(q.regoleApplicateMarkdown(), []);
 });

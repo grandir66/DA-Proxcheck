@@ -999,7 +999,8 @@ def controlla_nodo(nome: str, blocco: dict, inv: dict, esito: Esito):
     if not attiva and nosub:
         esito.add(ATTENZIONE, A, "Repository no-subscription in produzione: l'enterprise riceve solo aggiornamenti ampiamente testati.", "manuale §1.6")
     if test:
-        esito.add(ATTENZIONE, A, "Repository pvetest attivo su un nodo di produzione.", "manuale §1.6")
+        esito.add(ATTENZIONE, A, "Repository pvetest attivo su un nodo di produzione: QEMU più avanti degli altri nodi, "
+                      "le VM create qui non migrano né partono altrove.", "manuale §1.6, §3.2")
     if attiva and sub.get("nextduedate"):
         try:
             gg = (datetime.strptime(sub["nextduedate"], "%Y-%m-%d") - datetime.now()).days
@@ -1234,6 +1235,26 @@ def controlla_generali(vm: VM, inv: dict, esito: Esito):
     A = ambito_vm(vm, inv)
     G = "manuale"
     host_cpu = (((inv.get("nodi") or {}).get(vm.nodo) or {}).get("nodo") or {}).get("status", {}).get("cpuinfo") or {}
+    # Il tetto per VM sono le CPU logiche del nodo (i thread), non i core:
+    # oltre, Proxmox non la avvia (`MAX <n> vcpus allowed per VM on this node`,
+    # QemuServer.pm, letto sulla 9.2.20). Conta sockets × cores, anche se `vcpus`
+    # ne accende meno. E si guarda il nodo più piccolo: l'HA o una migrazione
+    # possono portarla lì (manuale §8.1, §8.7).
+    try:
+        vcpu_max = int(cfg.get("sockets") or 1) * int(cfg.get("cores") or 1)
+    except ValueError:
+        vcpu_max = 0
+    cpu_nodi = {n: (((d or {}).get("nodo") or {}).get("status") or {}).get("cpuinfo", {}).get("cpus")
+                for n, d in (inv.get("nodi") or {}).items()}
+    cpu_nodi = {n: c for n, c in cpu_nodi.items() if isinstance(c, int) and c > 0}
+    qui = cpu_nodi.get(vm.nodo)
+    if vcpu_max and qui and vcpu_max > qui:
+        esito.add(BLOCCANTE, A, f"{vcpu_max} vCPU (sockets × cores) su un nodo con {qui} CPU logiche: "
+                  "Proxmox non la avvia.", f"{G} §8.1", comando=f"qm set {vm.vmid} --sockets 1 --cores {qui}")
+    elif vcpu_max and cpu_nodi and vcpu_max > min(cpu_nodi.values()):
+        piccolo = min(cpu_nodi, key=cpu_nodi.get)
+        esito.add(ATTENZIONE, A, f"{vcpu_max} vCPU: sul nodo più piccolo ({piccolo}, {cpu_nodi[piccolo]} CPU logiche) "
+                  "non partirebbe, e l'HA o una migrazione possono portarla lì.", f"{G} §8.1, §8.7")
     cpu_tipo = (cfg.get("cpu") or "kvm64").split(",")[0]
     if cpu_tipo == "kvm64":
         esito.add(ATTENZIONE, A, "CPU type kvm64 (default): set di istruzioni minimo. Valutare almeno x86-64-v2-AES.", f"{G} §8.1 › Tipo di CPU",
@@ -2838,7 +2859,7 @@ PRONTEZZA = [
         "reti di servizio", "migrazione", "anelli", "Coerenza — rete", "Rete —", "Rete del nodo")),
     ("Sistema", "§11.4.2", (
         "Coerenza — host", "orario", "Coerenza — firewall")),
-    ("Storage", "§11.4.1", (
+    ("Storage", "§4.1", (
         "Coerenza — storage", "storage", "ZFS")),
     ("Backup", "§11.4.3", (
         "Cluster — notifiche",)),

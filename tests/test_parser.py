@@ -774,3 +774,33 @@ def test_replica_in_orario_con_next_sync_nel_futuro_non_e_in_ritardo():
     tardi = [r for r in e2.rilievi if r.livello == an.BLOCCANTE and "105-0" in r.messaggio]
     assert len(tardi) == 1 and "attesa" in tardi[0].messaggio
     assert len([r for r in e2.rilievi if "101-0" in r.messaggio]) == 1
+
+
+def _inv_nodi(**cpus):
+    return {"nodi": {n: {"nodo": {"status": {"cpuinfo": {"cpus": c}}}} for n, c in cpus.items()}, "cluster": {}}
+
+
+def test_piu_vcpu_delle_cpu_logiche_del_nodo_e_bloccante():
+    """Proxmox non avvia una VM con più vCPU (sockets × cores) delle CPU logiche
+    del nodo: `MAX <n> vcpus allowed per VM on this node` (manuale §8.1)."""
+    vm = an.VM(vmid="9", nome="db", nodo="grande", config={"sockets": "2", "cores": "12", "memory": "1024"})
+    e = an.Esito()
+    an.controlla_generali(vm, _inv_nodi(grande=16), e)
+    r = [x for x in e.rilievi if "CPU logiche" in x.messaggio]
+    assert r and r[0].livello == an.BLOCCANTE and "§8.1" in r[0].fonte
+
+
+def test_vcpu_oltre_il_nodo_piu_piccolo_avvisa():
+    """Parte dov'è, ma l'HA o una migrazione possono portarla sul nodo più piccolo (§8.7)."""
+    vm = an.VM(vmid="9", nome="db", nodo="grande", config={"cores": "24", "memory": "1024"})
+    e = an.Esito()
+    an.controlla_generali(vm, _inv_nodi(grande=32, piccolo=16), e)
+    r = [x for x in e.rilievi if "nodo più piccolo" in x.messaggio]
+    assert r and r[0].livello == an.ATTENZIONE and "§8.7" in r[0].fonte
+
+
+def test_vcpu_entro_tutti_i_nodi_nessun_rilievo():
+    vm = an.VM(vmid="9", nome="db", nodo="grande", config={"cores": "8", "memory": "1024"})
+    e = an.Esito()
+    an.controlla_generali(vm, _inv_nodi(grande=32, piccolo=16), e)
+    assert not [x for x in e.rilievi if "CPU logiche" in x.messaggio or "nodo più piccolo" in x.messaggio]

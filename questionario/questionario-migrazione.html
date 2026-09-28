@@ -311,6 +311,18 @@ function C(id, label, o={}) {
    Un default compare tratteggiato: è una proposta, si può cambiare. */
 let LINGUA = 'it';
 const TRADUZIONI = {
+"LUN non vuota o non dedicata": "LUN not empty or not dedicated",
+"La creazione del volume group distrugge il contenuto della LUN: se non è vuota e dedicata a questo cluster si perdono dati, o due sistemi scrivono sullo stesso disco.": "Creating the volume group wipes the LUN: if it is not empty and dedicated to this cluster, data is lost or two systems write to the same disk.",
+"Farsi consegnare una LUN vuota, dedicata e assegnata a tutti i nodi insieme, confermato per iscritto da chi gestisce l'array.": "Get an empty, dedicated LUN mapped to all nodes together, confirmed in writing by whoever manages the array.",
+"Nessuna console fuori banda dei server": "No out-of-band console on the servers",
+"Senza XCC, iDRAC o iLO una rete configurata male o un nodo che non risponde si risolvono solo andando sul posto.": "Without XCC, iDRAC or iLO, a misconfigured network or an unresponsive node can only be fixed on site.",
+"Configurare la console fuori banda di ogni server, su una rete separata, e dire chi ne ha le credenziali.": "Configure the out-of-band console of every server on a separate network, and say who holds the credentials.",
+"Sito di disaster recovery non deciso": "Disaster recovery site not decided",
+"La scelta del DR cambia rete, licenze e spazio: decisa dopo l'installazione, costa rifare una parte del lavoro.": "The DR choice changes network, licences and space: deciding it after installation means redoing part of the work.",
+"Decidere con il cliente se c'è un sito di DR, con RPO e RTO, prima di installare.": "Decide with the customer whether there is a DR site, with RPO and RTO, before installing.",
+"Replica ZFS con uno storage che non è ZFS": "ZFS replication with storage that is not ZFS",
+"La replica nativa di Proxmox funziona solo su ZFS: con uno storage condiviso LVM, NFS o una SAN non replica niente.": "Proxmox native replication works only on ZFS: with shared LVM, NFS or a SAN it replicates nothing.",
+"Usare Veeam (replica nativa) o Proxmox Backup Server con sincronizzazione e ripristino al sito di DR.": "Use Veeam (native replication) or Proxmox Backup Server with sync and restore at the DR site.",
 "Sito di DR e strumento di replica": "DR site and replication tool",
 "La LUN per Proxmox sarà vuota, dedicata e assegnata a tutti i nodi insieme (host type Linux DM-MP)?": "Will the Proxmox LUN be empty, dedicated and mapped to all nodes together (host type Linux DM-MP)?",
 "La creazione del volume group cancella la LUN: deve essere vuota e dedicata, confermato per iscritto.": "Creating the volume group wipes the LUN: it must be empty and dedicated, confirmed in writing.",
@@ -1754,6 +1766,14 @@ const FONTI = {
   "testo": "Da leggere prima di riusare qualsiasi procedura scritta per un altro trasporto. Il confronto completo, con i comandi e le due strade (riga di comando e interfaccia), è nella procedura 05 «Storage a blocchi condiviso: iSCSI, Fibre Channel e SAS».",
   "troncato": 1
  },
+ "§5.6": {
+  "titolo": "§5.6 Fase 2 — PV e VG",
+  "file": "manuale/05-storage-blocchi.md",
+  "riga": 214,
+  "parte": "Parte 5",
+  "testo": "⚠️ **Passo irreversibile.** `pvcreate` distrugge il contenuto della LUN. Verificare per iscritto che sia vuota e dedicata a questo cluster.\n\nSu **un solo nodo**:\n\n```bash\n# usare SEMPRE il device multipath, mai /dev/sdX\npvcreate /dev/mapper/<WWID>\nvgcreate vg_shared /dev/mapper/<WWID>\n```\n\nPerché `/dev/mapper/<WWID>` e non `/dev/sdb`: il nome `sdX` cambia tra un reboot e l'altro e tra un nodo e l'altro, il WWID no. Un PV creato su `sdb` finisce prima o poi in una situazione ambigua, e con più percorsi attivi rischia di essere visto come PV duplicato.\n\nSugli **altri nodi**:\n\n```bash\npvscan --cache\nvgs vg_shared\npvs -o pv_name,vg_name,pv_uuid\n```\n\n**Criterio di accettazione:** stesso VG, stesso `PV UUID`, PV su `/dev/mapper/<WWID>` su tutti i nodi. Nessun warning di PV duplicato.\n\n> ⚠️ **Se un nodo non vede il VG** (`Failed to find physical volume`, storage `inactive`), la causa più probabile sono gli *hints* di LVM. Il file `/run/lvm/hints` elenca i dischi che contengono volumi fisici, e LVM guarda solo quelli. Si aggiorna quando cambia qualcosa sul nodo stesso: se quel nodo aveva già la LUN collegata **prima** del `pvcreate` fatto altrove, il suo elenco non la contiene. La cura è `rm /run/lvm/hints`, che è una cache in memoria, seguito da `pvs`. Visto il 28/09/2026 in laboratorio: il disco era identico per i due nodi (etichetta `LABELONE` letta con `dd … iflag=direct` da entrambi), mancava solo la voce negli hints.\n\n---",
+  "troncato": 0
+ },
  "§5.8": {
   "titolo": "§5.8 Dimensionamento",
   "file": "manuale/05-storage-blocchi.md",
@@ -1998,6 +2018,28 @@ const REGOLE_BLOCCO = [
     sblocco:"Scegliere il modello CPU più basso comune a tutti i nodi, metterlo a verbale e provare una migrazione a caldo in collaudo." },
 
   /* ── §8 il backup ── */
+  { id:'lun_dedicata', sez:'s6', fonte:"§5.6", campo:'storage_lun_dedicata',
+    titolo:"LUN non vuota o non dedicata",
+    quando: ()=> ['SAN iSCSI','SAS direct-attached'].includes(v('storage_tipo')) ? seVale('storage_lun_dedicata','No') : false,
+    effetto:"La creazione del volume group distrugge il contenuto della LUN: se non è vuota e dedicata a questo cluster si perdono dati, o due sistemi scrivono sullo stesso disco.",
+    sblocco:"Farsi consegnare una LUN vuota, dedicata e assegnata a tutti i nodi insieme, confermato per iscritto da chi gestisce l'array." },
+  { id:'console', sez:'s7', fonte:"§2.1", campo:'nodi_console',
+    titolo:"Nessuna console fuori banda dei server",
+    quando: ()=> risposto('nodi_console') ? (incerto('nodi_console') ? 'verifica' : false) : 'verifica',
+    effetto:"Senza XCC, iDRAC o iLO una rete configurata male o un nodo che non risponde si risolvono solo andando sul posto.",
+    sblocco:"Configurare la console fuori banda di ogni server, su una rete separata, e dire chi ne ha le credenziali." },
+  { id:'dr_deciso', sez:'s8', fonte:"§4.5", campo:'dr_previsto',
+    titolo:"Sito di disaster recovery non deciso",
+    quando: ()=> risposto('dr_previsto') ? (v('dr_previsto')==='Da verificare' ? 'verifica' : false) : 'verifica',
+    effetto:"La scelta del DR cambia rete, licenze e spazio: decisa dopo l'installazione, costa rifare una parte del lavoro.",
+    sblocco:"Decidere con il cliente se c'è un sito di DR, con RPO e RTO, prima di installare." },
+  { id:'dr_zfs_su_lvm', sez:'s8', fonte:"§4.5", campo:'dr_strumento',
+    titolo:"Replica ZFS con uno storage che non è ZFS",
+    quando: ()=> v('dr_previsto')!=='Sì' ? false
+                 : (v('dr_strumento')==='Replica ZFS di Proxmox' && v('storage_tipo') && v('storage_tipo')!=='ZFS locale') ? 'blocco'
+                 : ((!risposto('dr_strumento') || v('dr_strumento')==='Da decidere') ? 'verifica' : false),
+    effetto:"La replica nativa di Proxmox funziona solo su ZFS: con uno storage condiviso LVM, NFS o una SAN non replica niente.",
+    sblocco:"Usare Veeam (replica nativa) o Proxmox Backup Server con sincronizzazione e ripristino al sito di DR." },
   { id:'veeam', sez:'s8', fonte:"§1.7 › 1.7.1 Il vincolo Veeam, per esteso", campo:'veeam_filelevel',
     titolo:"Veeam senza storage file-level",
     quando: ()=> v('veeam_previsto')==='Sì' ? seVale('veeam_filelevel','No') : false,

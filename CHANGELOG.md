@@ -2,6 +2,14 @@
 
 Cosa è cambiato e **perché**, per chi non usa git. Più recenti in alto.
 
+## [Non rilasciato] — 2026-09-29 — Le regole dell'audit e del questionario verificate contro il manuale
+
+Richiesta di Riccardo: dopo le rinumerazioni, controllare che le regole con cui audit e questionario giudicano (e autorizzano l'analisi) citino la fonte giusta.
+- **345 citazioni** del manuale nell'audit, nell'analisi vCenter, nel portale e nel questionario, estratte con uno script e lette una per una accanto al titolo della sezione citata. Tutte esistono; quasi tutte portano all'argomento giusto. I rimandi a guide e schede nel codice erano già aggiornati.
+- **Audit, regola nuova sul limite delle vCPU** (manuale §8.1, §8.7): BLOCCANTE se una VM ha più vCPU (sockets × cores) delle CPU logiche del suo nodo — Proxmox non la avvia; ATTENZIONE se supera il nodo più piccolo, dove l'HA può portarla. Mancava, e il manuale la dà come bloccante. Tre prove, viste fallire.
+- **Audit**: il gruppo «Storage» della prontezza alla migrazione citava §11.4.1, che è la rete: ora §4.1. La regola su `pvetest` cita anche §3.2 e dice la conseguenza (VM che non migrano).
+- **Questionario**: le quattro domande bloccanti aggiunte il 29/09 non avevano regola, quindi non entravano nell'esito. Ora sì: LUN non vuota o non dedicata (§5.6), console fuori banda (§2.1), sito di DR non deciso e replica ZFS su uno storage che non è ZFS (§4.5). Con casi di prova che le accendono e le spengono.
+
 ## [Non rilasciato] — 2026-09-29
 
 ### Modifiche

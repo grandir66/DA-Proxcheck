@@ -286,6 +286,14 @@ FONTI = {
   "testo": "Le sezioni di questa parte del manuale:\n\n- **§3.1 Che cosa fa davvero il cluster**\n- **§3.2 Creare il cluster e aggiungere nodi**\n- **§3.3 Link ridondanti: come si verificano**\n- **§3.4 Quando si perde il quorum**\n- **§3.5 Due nodi: il QDevice**\n- **§3.6 Oltre i tre nodi**\n- **§3.7 Rimuovere un nodo, reinserirlo, ripartire senza quorum**",
   "troncato": 0
  },
+ "§3.2": {
+  "titolo": "§3.2 Creare il cluster e aggiungere nodi",
+  "file": "manuale/03-cluster.md",
+  "riga": 12,
+  "parte": "Parte 3",
+  "testo": "```bash\n# sul primo nodo\npvecm create <nome-cluster> --link0 <ip-corosync-1> --link1 <ip-corosync-2>\n\n# sugli altri\npvecm add <ip-primo-nodo> --link0 <ip-corosync-1> --link1 <ip-corosync-2>\n\npvecm status         # verificare quorum e i due link\n```\n\n> ⚠️ **Entrando in un cluster, tutta la configurazione in `/etc/pve` del nodo viene sovrascritta.** Un nodo che ha già VM configurate le perde dal punto di vista della configurazione. Si aggiungono i nodi **vuoti**, prima di creare qualsiasi cosa.\n\nI due `--link` sono i ring ridondanti della §1.3. Aggiungerli dopo si può, ma è più laborioso e richiede di modificare `corosync.conf` a mano.\n\n**Requisiti che devono essere già veri prima di lanciare `pvecm create`:**\n\n- tutti i nodi si risolvono tra loro per nome;\n- l'ora è sincronizzata;\n- UDP **5405-5412** aperto tra i nodi, TCP **22** per il tunnel SSH;\n- ogni nodo è aggiornato alla stessa versione, **dallo stesso repository** (§1.6).\n\n> ⚠️ **`pvecm add` fallisce con «unable to copy ssh ID».** Il messaggio nasconde l'errore vero, `Host key verification failed`: `pvecm` azzera il `known_hosts` prima di copiare la chiave, e la connessione verso il nodo di destinazione si ferma sulla verifica della host key. Si accetta prima la host key del nodo di destinazione, oppure si mette un blocco `Host <ip>` in `/root/.ssh/config` sul nodo che entra. Visto in laboratorio il 27/09/2026 (documento LAB-1, trappola 2).",
+  "troncato": 1
+ },
  "§3.3": {
   "titolo": "§3.3 Link ridondanti: come si verificano",
   "file": "manuale/03-cluster.md",
@@ -414,6 +422,14 @@ FONTI = {
   "testo": "Dalla versione 9.0 i **gruppi HA sono sostituiti dalle regole**, che vivono in `/etc/pve/ha/rules.cfg`. Chi arriva da configurazioni più vecchie trova i gruppi migrati automaticamente, ma la logica da usare da qui in avanti è questa.\n\n**Regole di affinità con i nodi** — dove una risorsa può o deve girare:\n\n```bash\nha-manager rules add node-affinity solo-nodi-licenziati \\\n  --resources vm:100,vm:101 --nodes pve1,pve2 --strict 1\n```\n\n- `--strict 1`: la risorsa gira **solo** su quei nodi. Se non sono disponibili, resta ferma.\n- `--strict 0` (predefinito): sono una preferenza; in emergenza la risorsa va altrove.\n\nI nodi possono avere priorità diverse, e la risorsa torna sul nodo preferito quando ridiventa disponibile.\n\n**Regole di affinità tra risorse** — quali VM devono stare insieme e quali separate:\n\n```bash\n# tenerle insieme: applicativo e suo database\nha-manager rules add resource-affinity app-e-db \\\n  --resources vm:200,vm:201 --affinity positive\n\n# tenerle separate: i due domain controller\nha-manager rules add resource-affinity dc-separati \\\n  --resources vm:10,vm:11 --affinity negative\n```\n\n**L'affinità negativa è quella che salva davvero.** Due domain controller, due nodi di un cluster applicativo o due bilanciatori che finiscono sullo stesso nodo annullano la ridondanza che il cliente ha pagato — e nessuno se ne accorge finché quel nodo non muore.\n\n**L'affinità positiva ha un caso d'uso preciso:** VM che comunicano tanto tra loro, o vincoli di licenza che legano un software a un insieme di socket fisici.",
   "troncato": 0
  },
+ "§8.1": {
+  "titolo": "§8.1 CPU",
+  "file": "manuale/08-parametri-vm.md",
+  "riga": 6,
+  "parte": "Parte 8",
+  "testo": "| Valore | Quando | Effetto |\n|---|---|---|\n| `host` | Tutti i nodi hanno **CPU identica** | Espone tutte le istruzioni del processore fisico (AES-NI, AVX-512…). Prestazioni migliori |\n| `x86-64-v2-AES` | Cluster misto, hardware dal 2010 circa | Compromesso sicuro, ampiamente compatibile |\n| `x86-64-v3` | Cluster misto ma hardware recente (Haswell+) | Include AVX2 |\n| `kvm64` (default storico) | Da evitare | Set di istruzioni minimo, prestazioni penalizzate |\n\n> ⚠️ **`host` impedisce la migrazione live verso un nodo con CPU diversa.** In un cluster che potrebbe crescere con hardware differente, usare un modello generico. Il guadagno di `host` è reale ma tipicamente inferiore al costo operativo di perdere la migrazione live — salvo carichi che sfruttano istruzioni specifiche (crittografia, compressione, database).\n\n> ⚠️ **Su host Intel con Windows 11/2022/2025 e VBS attiva**, `host` richiede machine version `11.0+pve2` o successiva, altrimenti la VM si blocca a intermittenza al 100% di CPU. Versioni affette e rimedio in §11.7 e §20.\n\n**Regola: 1 socket, N core.** Semplifica il licensing di Windows Server e SQL Server, ed è gestito meglio dalla maggior parte dei sistemi operativi.\n\nEccezione: attivando NUMA, la documentazione raccomanda **socket pari al numero di nodi NUMA dell'host**.",
+  "troncato": 1
+ },
  "§8.3": {
   "titolo": "§8.3 Disco",
   "file": "manuale/08-parametri-vm.md",
@@ -444,6 +460,14 @@ FONTI = {
   "riga": 200,
   "parte": "Parte 8",
   "testo": "| Parametro | Uso |\n|---|---|\n| `onboot` | Avvio automatico all'accensione del nodo |\n| `startup: order=N,up=X,down=Y` | Ordine di avvio (lo spegnimento segue l'ordine inverso) con ritardo in secondi |\n| `protection` | Impedisce cancellazione di VM e dischi. **Attivare su tutte le VM critiche** |\n| `tags` / pool | Organizzazione, filtri, permessi |\n| HA + regole di affinità | Da PVE 9: affinità e anti-affinità per nodo e per risorsa |\n\n| Ordine | Categoria | `up` |\n|---|---|---|\n| 1 | Domain controller, DNS, appliance di rete | 60 |\n| 2 | Database | 120 |\n| 3 | Application server | 60 |\n| 4 | Web, frontend, reverse proxy | 30 |\n| 9 | Test, sviluppo | 0 |",
+  "troncato": 0
+ },
+ "§8.7": {
+  "titolo": "§8.7 I default che fanno più danni",
+  "file": "manuale/08-parametri-vm.md",
+  "riga": 218,
+  "parte": "Parte 8",
+  "testo": "Le scelte qui sotto sembrano innocue, e ognuna ha il suo sintomo. La procedura 10 «Matrice delle VM per tipo» le riprende tipologia per tipologia: **è la tipologia della VM a decidere quali regole valgono**, e un domain controller e un database si controllano con criteri opposti.\n\n| Scelta | Che cosa succede | Dove |\n|---|---|---|\n| `balloon: 0` «per fissare la RAM» | Toglie anche il reporting: la GUI mostra sempre 100% e non si sa più quanta memoria serva. Per la memoria fissa: *Minimum* = *Memory* | §8.2 |\n| RAM dimensionata guardando il grafico | Il grafico conta la cache del guest come memoria usata: si guarda `available` di `free -h` dentro il guest | §8.2 |\n| `aio=native` su ZFS, NFS, qcow2 | I/O che si blocca. Va solo su blocco raw con `cache=none` e IO thread | §8.3 |\n| `cpu: host` in un cluster misto | Niente migrazione live; e con Windows recente, VBS e host Intel, blocchi al 100% di CPU senza `qemu-server` ≥ 9.2.0 e machine `11.0+pve2` | §8.1 |\n| Multiqueue impostato solo in Proxmox | Nessun effetto: va attivato anche nel guest, su ogni interfaccia | §8.4 |\n| Un disco solo per tutto | Backup, throttling e crescita indivisibili | §8.3 |\n| Più vCPU delle CPU logiche del nodo più piccolo | La VM non parte lì, anche dopo un failover dell'HA | §8.1 |\n\n---",
   "troncato": 0
  },
  "§9.1": {
