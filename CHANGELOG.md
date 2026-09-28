@@ -2,6 +2,15 @@
 
 Cosa è cambiato e **perché**, per chi non usa git. Più recenti in alto.
 
+## [Non rilasciato] — 2026-09-29
+
+### Modifiche
+
+- **Questionario online** (quello che si manda al cliente): aggiunte le voci che la parte A della procedura 01 chiede e che mancavano. Sono la LUN vuota e dedicata con host type Linux DM-MP, lo storage NFS, la console fuori banda dei server, VT-x/VT-d e firmware, gli IP dei worker Veeam, le licenze Windows (KMS, MAK, OEM) e una sezione nuova **8.5 Sito di disaster recovery** (previsto?, dove, collegamento, strumento di replica, IP al failover). Bloccanti ed essenziali: LUN, console, DR previsto, strumento di replica. Traduzioni inglesi comprese; 23 prove del questionario verdi; guardato reso nel browser.
+- **I due Word** (ridotto e completo) hanno le stesse voci, e in testa dicono che al cliente si manda quello online: sono la forma stampabile.
+- `fonti_manuale.py` rigenerato dopo le correzioni al manuale (Ceph, §11.9.4).
+
+
 ## 2026-09-14 (3) — I profili sanno dei driver VirtIO
 
 Ogni tipologia di carico porta una riga «extra» sui driver VirtIO per
