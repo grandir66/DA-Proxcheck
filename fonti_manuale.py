@@ -18,7 +18,7 @@ MANUALE = {
  "versione": "1.0",
  "verificato": "2026-09-01",
  "repo": "DA-Proxmox-Docs",
- "estratto_il": "2026-09-15"
+ "estratto_il": "2026-09-28"
 }
 
 FONTI = {
@@ -43,7 +43,7 @@ FONTI = {
   "file": "manuale/01-progettare.md",
   "riga": 122,
   "parte": "Parte 1",
-  "testo": "| Repository | Chi lo usa | Stabilità |\n|---|---|---|\n| `pve-enterprise` | Chi ha una sottoscrizione | Massima, consigliato in produzione |\n| `pve-no-subscription` | Senza sottoscrizione | Pacchetti più recenti, meno collaudati |\n| `pve-test` | Sviluppo | Non in produzione |\n\nTre cose che si scoprono tardi:\n\n1. **Tutti i nodi devono avere lo stesso livello di sottoscrizione.** Un cluster metà enterprise e metà no-subscription riceve versioni diverse degli stessi pacchetti, ed è una fonte di problemi difficili da diagnosticare.\n2. **La chiave di sottoscrizione è legata all'architettura.** Una chiave arm64 non è valida su x86, e viceversa.\n3. **Proxmox VE 9 usa il formato deb822** (file `.sources`, non più righe singole in `sources.list`). Su un sistema aggiornato da versioni precedenti, `apt modernize-sources` converte le voci vecchie.",
+  "testo": "| Repository | Chi lo usa | Stabilità |\n|---|---|---|\n| `pve-enterprise` | Chi ha una sottoscrizione | Massima, consigliato in produzione |\n| `pve-no-subscription` | Senza sottoscrizione | Pacchetti più recenti, meno collaudati |\n| `pve-test` | Sviluppo | **Mai su un nodo di cluster**, nemmeno uno solo |\n\nQuattro cose che si scoprono tardi:\n\n1. **Tutti i nodi devono avere lo stesso livello di sottoscrizione.** Un cluster metà enterprise e metà no-subscription riceve versioni diverse degli stessi pacchetti, ed è una fonte di problemi difficili da diagnosticare.\n2. **Tutti i nodi sullo stesso repository, e quindi sullo stesso QEMU.** Un nodo più avanti degli altri crea VM con una *machine version* che gli altri non sanno eseguire: la VM non migra e non riparte altrove, né a mano né con l'alta affidabilità (`Installed QEMU version '11.0.3' is too old to run machine type 'pc-i440fx-11.1+pve0'`). Visto in laboratorio il 27/09/2026 con `pve-test` attivo su un nodo solo; sintomo e rimedio in §3.2.\n3. **La chiave di sottoscrizione è legata all'architettura.** Una chiave arm64 non è valida su x86, e viceversa.\n4. **Proxmox VE 9 usa il formato deb822** (file `.sources`, non più righe singole in `sources.list`). Su un sistema aggiornato da versioni precedenti, `apt modernize-sources` converte le voci vecchie.",
   "troncato": 0
  },
  "§10.2": {
@@ -257,7 +257,7 @@ FONTI = {
  "§2.7": {
   "titolo": "§2.7 Certificati",
   "file": "manuale/02-installare.md",
-  "riga": 218,
+  "riga": 221,
   "parte": "Parte 2",
   "testo": "Il certificato autofirmato che l'installer genera è sufficiente a far funzionare tutto, ma produce l'avviso del browser a ogni accesso — e abitua le persone a ignorare gli avvisi dei certificati, che è il vero danno.\n\n```bash\n# registrazione dell'account ACME (una volta per cluster)\npvenode acme account register default sistemi@example.com\n\n# per ogni nodo: aggiungere il dominio e ordinare\npvenode acme cert order\n```\n\n- **HTTP-01** richiede che il nodo sia raggiungibile dall'esterno sulla porta 80: quasi mai il caso per una rete di management.\n- **DNS-01** funziona anche su reti interne, e supporta i caratteri jolly. Va configurato un plugin DNS in *Datacenter → ACME*. È la scelta giusta nella maggior parte delle installazioni.\n\nSe l'azienda ha una CA interna, il certificato si carica in *Node → System → Certificates*, oppure:\n\n```bash\npvenode cert set --certificates /root/fullchain.pem --key /root/privkey.pem\n```",
   "troncato": 0
@@ -289,7 +289,7 @@ FONTI = {
  "§3.3": {
   "titolo": "§3.3 Link ridondanti: come si verificano",
   "file": "manuale/03-cluster.md",
-  "riga": 35,
+  "riga": 39,
   "parte": "Parte 3",
   "testo": "Configurare due link non serve se non si controlla che siano davvero due percorsi.\n\n```bash\ncorosync-cfgtool -s      # deve mostrare entrambi i ring, stato OK\npvecm status             # Quorate: Yes, e il numero di voti atteso\n```\n\n**La prova che conta** è staccare fisicamente il primo link e verificare che il cluster resti quorato. Va fatta in fase di collaudo, non durante il primo guasto reale.",
   "troncato": 0
@@ -297,7 +297,7 @@ FONTI = {
  "§3.4": {
   "titolo": "§3.4 Quando si perde il quorum",
   "file": "manuale/03-cluster.md",
-  "riga": 46,
+  "riga": 50,
   "parte": "Parte 3",
   "testo": "| Sintomo | Causa tipica |\n|---|---|\n| `/etc/pve` in sola lettura, VM accese ma immodificabili | Quorum perso, il nodo è in minoranza |\n| Nodi che si riavviano da soli, apparentemente a caso | **Self-fencing**: HA attiva e latenza corosync oltre soglia |\n| Un nodo \"grigio\" nella GUI ma raggiungibile via SSH | Corosync isolato, rete di management ancora viva |\n\nIl secondo caso è il più frequente e il più frainteso: non è un problema hardware, è **corosync che condivide il collegamento con storage o backup** (§1.3).",
   "troncato": 0
@@ -305,15 +305,15 @@ FONTI = {
  "§3.5": {
   "titolo": "§3.5 Due nodi: il QDevice",
   "file": "manuale/03-cluster.md",
-  "riga": 56,
+  "riga": 60,
   "parte": "Parte 3",
-  "testo": "Il QDevice è un servizio esterno che fornisce un voto. Non ospita VM, non tocca lo storage, non conosce le configurazioni: dice solo \"io ci sono\", e la sua presenza rompe la parità.\n\n```bash\n# sul dispositivo esterno (NAS, VM altrove, piccolo sistema dedicato)\napt install corosync-qnetd\n\n# su ogni nodo del cluster\napt install corosync-qdevice\n\n# da un nodo qualsiasi\npvecm qdevice setup <ip-del-qdevice>\npvecm status          # devono comparire 3 voti attesi\n```\n\n**Dove metterlo.** Non su uno dei due nodi — sarebbe inutile. Non su una VM ospitata dal cluster stesso, per la stessa ragione. Va bene un NAS, un piccolo sistema fisico, o una VM su un'infrastruttura diversa. Deve raggiungere entrambi i nodi in **UDP 5405**.\n\n**Cosa succede se cade il QDevice.** Il cluster resta a due voti su due: continua a funzionare finché entrambi i nodi sono vivi, ma torna a essere vulnerabile alla parità. Il QDevice va quindi monitorato come un componente dell'infrastruttura, non trattato come un accessorio.\n\n> ⚠️ **Il QDevice è pensato per cluster con numero PARI di nodi.** L'algoritmo predefinito `ffsplit` presuppone la parità. Su un cluster con numero dispari Proxmox rifiuta l'aggiunta e richiede `--force`, passando automaticamente all'algoritmo `lms` (last-man-standing), che dà al QDevice un peso diverso. *Comportamento verificato sul forum Proxmox il 2026-09-01; la documentazione ufficiale non lo descrive nel dettaglio.*\n\nPer rimuoverlo:\n\n```bash\npvecm qdevice remove\n```\n\n**Il QDevice va rimosso prima di togliere un nodo dal cluster** (§3.7).",
-  "troncato": 0
+  "testo": "Il QDevice è un servizio esterno che fornisce un voto. Non ospita VM, non tocca lo storage, non conosce le configurazioni: dice solo \"io ci sono\", e la sua presenza rompe la parità.\n\n```bash\n# sul dispositivo esterno (NAS, VM altrove, piccolo sistema dedicato)\napt install corosync-qnetd\n\n# su ogni nodo del cluster\napt install corosync-qdevice\n\n# da un nodo qualsiasi\npvecm qdevice setup <ip-del-qdevice>\npvecm status          # devono comparire 3 voti attesi\n```\n\n**`corosync-qdevice` va installato su tutti i nodi prima del setup.** Se manca su uno, `pvecm qdevice setup` se ne accorge a metà, dopo aver già creato i certificati sull'altro, e si ferma su `corosync-qdevice-net-certutil` (laboratorio, 27/09/2026).\n\n**Dove metterlo.** Non su uno dei due nodi — sarebbe inutile. Non su una VM ospitata dal cluster stesso, per la stessa ragione. Va bene un NAS, un piccolo sistema fisico, o una VM su un'infrastruttura diversa. Deve raggiungere entrambi i nodi in **UDP 5405**.\n\n**Cosa succede se cade il QDevice.** Il cluster resta a due voti su due: continua a funzionare finché entrambi i nodi sono vivi, ma torna a essere vulnerabile alla parità. Il QDevice va quindi monitorato come un componente dell'infrastruttura, non trattato come un accessorio.",
+  "troncato": 1
  },
  "§3.7": {
   "titolo": "§3.7 Rimuovere un nodo, reinserirlo, ripartire senza quorum",
   "file": "manuale/03-cluster.md",
-  "riga": 99,
+  "riga": 105,
   "parte": "Parte 3",
   "testo": "L'ordine è vincolante e il terzo passo è quello che si salta.\n\n```bash\n# 1. migrare via tutte le VM e i container, rimuovere i job di replica\n# 2. rimuovere il QDevice, se presente\npvecm qdevice remove\n# 3. distruggere gli OSD e i servizi Ceph sul nodo, se presente   [D]\n# 4. SPEGNERE il nodo, e assicurarsi che non si riaccenda com'è\n# 5. da un altro nodo\npvecm delnode <nome-nodo>\n```\n\n> ⚠️ **Il nodo va spento prima della rimozione, e non deve riaccendersi con la sua configurazione attuale.** Un nodo rimosso che torna online crede ancora di far parte del cluster: è la ricetta dello split-brain.\n\n**Un nodo rimosso non si reinserisce così com'è.** Va reinstallato da zero. Riusare il vecchio nome è possibile, ma solo dopo aver ripulito i residui sugli altri nodi.\n\nSituazione: due nodi su tre sono morti e il terzo è in sola lettura. Serve rimettere in servizio quello che resta.\n\n```bash\npvecm expected 1        # abbassa i voti attesi: il nodo torna scrivibile\n```\n\n> ⚠️ **È una forzatura, non una riparazione.** Va usata solo quando si è *certi* che gli altri nodi siano spenti. Se uno di essi è vivo e isolato, si è appena creato uno split-brain con due cluster che credono di essere quello buono. Quando i nodi rientrano, il valore torna automaticamente corretto.\n\nOperazione sconsigliata ma a volte necessaria: separare un nodo dal cluster senza reinstallarlo.",
   "troncato": 1
@@ -329,15 +329,15 @@ FONTI = {
  "§4.2": {
   "titolo": "§4.2 ZFS locale",
   "file": "manuale/04-storage.md",
-  "riga": 35,
+  "riga": 37,
   "parte": "Parte 4",
-  "testo": "Tre decisioni non si correggono senza distruggere e ricreare il pool:\n\n| Decisione | Regola | Se sbagliata |\n|---|---|---|\n| **Livello di RAID** | **mirror o RAID10** per i carichi VM. RAIDZ solo se le prestazioni misurate bastano. dRAID da 10-15 dischi in su | Prestazioni casuali insufficienti, e non si converte |\n| **`ashift`** | 12 (4 KB) di default; mai *sotto* il settore fisico reale del disco | Amplificazione della scrittura per tutta la vita del pool |\n| **Special device** | Deve avere **la stessa ridondanza del pool** | È un punto singolo di guasto **dell'intero pool**, e non si può togliere |\n\n**Perché mirror e non RAIDZ.** Un vdev RAIDZ ha le IOPS casuali di *un solo disco*, per quanti dischi contenga. Su un fileserver che scrive sequenzialmente non si nota; su un database o su venti VM che leggono contemporaneamente sì, e molto.\n\nZFS usa la RAM libera come cache di lettura. Su un hypervisor questa RAM la vogliono le VM.\n\n**Dalla 8.1 il valore predefinito è il 10% della memoria con tetto a 16 GiB** — prima era il 50%, ed è la ragione per cui le guide più vecchie insistono tanto su questo punto. Il default attuale è ragionevole, ma su un nodo molto carico va comunque fissato esplicitamente:\n\n```ini\n# /etc/modprobe.d/zfs.conf\noptions zfs zfs_arc_max=8589934592     # 8 GiB\n```\n\n```bash\nupdate-initramfs -u -k all      # e riavvio, se la root è su ZFS\n```\n\nSu sistemi con più di 256 GiB di RAM conviene fissare anche `zfs_arc_min`.\n\n```bash\nzfs set compression=lz4 <pool>        # praticamente gratis, quasi sempre conveniente\n```",
+  "testo": "Tre decisioni non si correggono senza distruggere e ricreare il pool:\n\n| Decisione | Regola | Se sbagliata |\n|---|---|---|\n| **Livello di RAID** | **mirror o RAID10** per i carichi VM. RAIDZ solo se le prestazioni misurate bastano. dRAID da 10-15 dischi in su | Prestazioni casuali insufficienti, e non si converte |\n| **`ashift`** | 12 (4 KB) di default; mai *sotto* il settore fisico reale del disco | Amplificazione della scrittura per tutta la vita del pool |\n| **Special device** | Deve avere **la stessa ridondanza del pool** | È un punto singolo di guasto **dell'intero pool**, e non si può togliere |\n\n**Perché mirror e non RAIDZ.** Un vdev RAIDZ ha le IOPS casuali di *un solo disco*, per quanti dischi contenga. Su un fileserver che scrive sequenzialmente non si nota; su un database o su venti VM che leggono contemporaneamente sì, e molto.\n\n> ⚠️ **Il `volblocksize` si fissa quando lo zvol viene creato, e non si cambia dopo.** È l'unità minima che ZFS legge e scrive per quel disco: se il guest scrive 4 KB su uno zvol da 64 KB, ZFS rilegge e riscrive 64 KB. Si imposta **sullo storage, prima di creare o importare i dischi**, e vale per i volumi nuovi; uno già creato si corregge solo ricopiandolo in un volume nuovo, cioè rifacendo la migrazione. Lo stesso vale per il *chunk size* di un pool LVM-thin (§4.4).\n\n```bash\npvesm set local-zfs --blocksize 16k                 # sullo storage, prima dell'import\nzfs get volblocksize rpool/data/vm-120-disk-0       # verifica su un disco creato dopo\n```",
   "troncato": 1
  },
  "§4.5": {
   "titolo": "§4.5 Replica ZFS tra nodi",
   "file": "manuale/04-storage.md",
-  "riga": 123,
+  "riga": 134,
   "parte": "Parte 4",
   "testo": "È il modo di avere alta affidabilità senza storage condiviso: ZFS copia periodicamente le differenze del dataset su un altro nodo.\n\n```bash\npvesr create-local-job 100-0 pve2 --schedule \"*/5\"    # ogni 5 minuti\npvesr status\npvesr list\n```\n\n| Caratteristica | Valore |\n|---|---|\n| Storage supportato | **Solo ZFS locale.** Nient'altro |\n| Intervallo | Da 1 minuto a 1 settimana |\n| Ritentativo dopo un errore | Ogni 30 minuti |\n| Destinazioni per job | **Una sola** |\n| RPO | Uguale all'intervallo configurato |\n\n**Che cosa succede davvero quando il nodo di origine muore.** I dati sono sull'altro nodo, aggiornati all'ultima replica riuscita. Se la VM è gestita in HA, riparte automaticamente **perdendo il lavoro dall'ultima replica**. Se non lo è, serve spostare a mano la configurazione e avviarla.\n\n> ⚠️ **La replica non è alta affidabilità sincrona, ed è la confusione più costosa che si possa fare in fase di vendita.** Con intervallo di 5 minuti si possono perdere 5 minuti di transazioni. Su un fileserver è spesso accettabile; su un gestionale o un database non lo è, e va detto prima, per iscritto, con il numero dentro.\n\n**Su cosa non usarla:** database transazionali, code di messaggi, qualunque cosa dove la coerenza di cinque minuti fa più danno di un fermo di venti.",
   "troncato": 0
@@ -345,7 +345,7 @@ FONTI = {
  "§4.6": {
   "titolo": "§4.6 Lo spazio: dove si finisce pieni",
   "file": "manuale/04-storage.md",
-  "riga": 147,
+  "riga": 158,
   "parte": "Parte 4",
   "testo": "Il thin provisioning permette di assegnare ai guest più spazio di quello che esiste. Funziona finché nessuno lo usa davvero.\n\n**La catena che porta al riempimento**, in ordine:\n\n1. i dischi dei guest sono thin, e crescono man mano che vengono scritti;\n2. **i dati cancellati dentro il guest non liberano spazio** sullo storage, a meno che il TRIM/UNMAP arrivi fino in fondo;\n3. gli snapshot trattengono i blocchi vecchi e nessuno li rimuove;\n4. i backup locali si accumulano sullo stesso volume.\n\n**Perché la catena UNMAP funzioni servono tre cose insieme:**\n\n| Anello | Cosa serve |\n|---|---|\n| Guest | `discard`/TRIM attivo — su Linux `fstrim.timer`, su Windows è il comportamento predefinito |\n| Disco virtuale | Opzione **Discard** attiva e bus **SCSI** con controller VirtIO SCSI |\n| Storage | Deve supportare la riallocazione: SSD, LVM-thin, ZFS, Ceph, SAN con SCSI UNMAP |\n\nSe manca un anello, lo spazio non torna mai. Su LVM condiviso è il calcolo della §1.4.1.\n\n**Wipe Removed Volumes** (`saferemove`), dalla 9.1, usa `blkdiscard` e quindi SCSI UNMAP: su una SAN che lo supporta, cancellare un disco restituisce davvero lo spazio all'array.",
   "troncato": 0
@@ -387,7 +387,7 @@ FONTI = {
   "file": "manuale/07-ha.md",
   "riga": 3,
   "parte": "Parte 7",
-  "testo": "**L'HA di Proxmox riavvia le macchine virtuali su un altro nodo.** Non le sposta accese, non conserva la memoria, non evita l'interruzione. Una VM su un nodo che muore viene riaccesa altrove: per il sistema operativo dentro è stato un blackout, con tutto quello che comporta — filesystem da controllare, transazioni interrotte, sessioni cadute.\n\n| Serve | Strumento |\n|---|---|\n| Il servizio torna da solo dopo un guasto hardware, in qualche minuto | **HA** |\n| Il servizio non si interrompe mai | Ridondanza **dentro** il guest: due DC, cluster di database, due bilanciatori |\n| Spostare una VM senza interruzione per manutenzione | **Migrazione a caldo**, che è una funzione diversa e non richiede HA |\n\n**La distinzione va messa per iscritto nell'offerta.** \"Alta affidabilità\" letta da un cliente significa \"non si ferma mai\"; quello che si consegna è \"riparte da sola in tre minuti\". Sono due prodotti diversi.",
+  "testo": "**L'HA di Proxmox riavvia le macchine virtuali su un altro nodo.** Non le sposta accese, non conserva la memoria, non evita l'interruzione. Una VM su un nodo che muore viene riaccesa altrove: per il sistema operativo dentro è stato un blackout, con tutto quello che comporta — filesystem da controllare, transazioni interrotte, sessioni cadute.\n\n| Serve | Strumento |\n|---|---|\n| Il servizio torna da solo dopo un guasto hardware, in qualche minuto | **HA** |\n| Il servizio non si interrompe mai | Ridondanza **dentro** il guest: due DC, cluster di database, due bilanciatori |\n| Spostare una VM senza interruzione per manutenzione | **Migrazione a caldo**, che è una funzione diversa e non richiede HA. Su storage condiviso il fermo è di pochi millisecondi (4 ms misurati in laboratorio, §5.10) |\n\n**La distinzione va messa per iscritto nell'offerta.** \"Alta affidabilità\" letta da un cliente significa \"non si ferma mai\"; quello che si consegna è \"riparte da sola in tre minuti\". Sono due prodotti diversi.",
   "troncato": 0
  },
  "§7.2": {
@@ -395,13 +395,13 @@ FONTI = {
   "file": "manuale/07-ha.md",
   "riga": 15,
   "parte": "Parte 7",
-  "testo": "| Requisito | Perché |\n|---|---|\n| **Almeno 3 nodi** | Serve un quorum affidabile. Con 2 nodi + QDevice si può, con le riserve della §7.8 |\n| **Storage condiviso, oppure replica ZFS** | Il nodo che riavvia la VM deve poterne leggere il disco |\n| **Watchdog funzionante** | Senza fencing l'HA non può ripartire in sicurezza |\n| Rete corosync dedicata | Un falso positivo di corosync diventa un riavvio di nodi (§1.3) |\n| Hardware ridondato | L'HA copre il guasto del nodo, non quello dell'unico switch |",
+  "testo": "| Requisito | Perché |\n|---|---|\n| **Almeno 3 nodi** | Serve un quorum affidabile. Con 2 nodi + QDevice si può, con le riserve della §7.8 |\n| **Storage condiviso, oppure replica ZFS** | Il nodo che riavvia la VM deve poterne leggere il disco |\n| **Watchdog funzionante** | Senza fencing l'HA non può ripartire in sicurezza |\n| Rete corosync dedicata | Un falso positivo di corosync diventa un riavvio di nodi (§1.3) |\n| Hardware ridondato | L'HA copre il guasto del nodo, non quello dell'unico switch |\n| **Nodi alla stessa versione, dallo stesso repository** | Una VM creata sul nodo più aggiornato non riparte su quello rimasto indietro (§3.2) |\n| **VM che stanno sul nodo più piccolo** | Una VM con più vCPU delle CPU logiche di un nodo (i thread: con Hyper-Threading, il doppio dei core) lì non parte, e l'HA può spostarla proprio su quel nodo |",
   "troncato": 0
  },
  "§7.4": {
   "titolo": "§7.4 Risorse, stati e tentativi",
   "file": "manuale/07-ha.md",
-  "riga": 44,
+  "riga": 46,
   "parte": "Parte 7",
   "testo": "```bash\nha-manager add vm:100 --state started\nha-manager status\nha-manager set vm:100 --state stopped\nha-manager remove vm:100\n```\n\nLa configurazione sta in `/etc/pve/ha/resources.cfg`, replicata su tutti i nodi.\n\n| Stato | Significato |\n|---|---|\n| `started` | Deve essere in esecuzione: se cade, l'HA la riavvia |\n| `stopped` | Deve restare ferma: l'HA la tiene ferma |\n| `disabled` | Ferma e ignorata |\n| `ignored` | L'HA non se ne occupa, ma la risorsa resta in elenco |\n| `error` | Tutti i tentativi sono falliti: richiede intervento |\n\n**Due parametri, entrambi con valore predefinito 1:**\n\n- `max_restart` — quante volte riprovare ad avviare la risorsa **sullo stesso nodo**;\n- `max_relocate` — quante volte provare a spostarla **su un altro nodo**.\n\n**Uscire dallo stato `error` richiede un passaggio esplicito**, ed è progettato così perché nessuno riavvii in ciclo una VM rotta:\n\n```bash\nha-manager set vm:100 --state disabled     # 1. disabilita\n# 2. ripara la causa\nha-manager set vm:100 --state started      # 3. riabilita\n```",
   "troncato": 0
@@ -409,7 +409,7 @@ FONTI = {
  "§7.5": {
   "titolo": "§7.5 Le regole HA",
   "file": "manuale/07-ha.md",
-  "riga": 76,
+  "riga": 78,
   "parte": "Parte 7",
   "testo": "Dalla versione 9.0 i **gruppi HA sono sostituiti dalle regole**, che vivono in `/etc/pve/ha/rules.cfg`. Chi arriva da configurazioni più vecchie trova i gruppi migrati automaticamente, ma la logica da usare da qui in avanti è questa.\n\n**Regole di affinità con i nodi** — dove una risorsa può o deve girare:\n\n```bash\nha-manager rules add node-affinity solo-nodi-licenziati \\\n  --resources vm:100,vm:101 --nodes pve1,pve2 --strict 1\n```\n\n- `--strict 1`: la risorsa gira **solo** su quei nodi. Se non sono disponibili, resta ferma.\n- `--strict 0` (predefinito): sono una preferenza; in emergenza la risorsa va altrove.\n\nI nodi possono avere priorità diverse, e la risorsa torna sul nodo preferito quando ridiventa disponibile.\n\n**Regole di affinità tra risorse** — quali VM devono stare insieme e quali separate:\n\n```bash\n# tenerle insieme: applicativo e suo database\nha-manager rules add resource-affinity app-e-db \\\n  --resources vm:200,vm:201 --affinity positive\n\n# tenerle separate: i due domain controller\nha-manager rules add resource-affinity dc-separati \\\n  --resources vm:10,vm:11 --affinity negative\n```\n\n**L'affinità negativa è quella che salva davvero.** Due domain controller, due nodi di un cluster applicativo o due bilanciatori che finiscono sullo stesso nodo annullano la ridondanza che il cliente ha pagato — e nessuno se ne accorge finché quel nodo non muore.\n\n**L'affinità positiva ha un caso d'uso preciso:** VM che comunicano tanto tra loro, o vincoli di licenza che legano un software a un insieme di socket fisici.",
   "troncato": 0

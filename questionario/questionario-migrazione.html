@@ -1604,7 +1604,7 @@ const MANUALE = {
  "versione": "1.0",
  "verificato": "2026-09-01",
  "repo": "DA-Proxmox-Docs",
- "estratto_il": "2026-09-15"
+ "estratto_il": "2026-09-28"
 };
 const FONTI = {
  "§1.3": {
@@ -1620,13 +1620,13 @@ const FONTI = {
   "file": "manuale/01-progettare.md",
   "riga": 122,
   "parte": "Parte 1",
-  "testo": "| Repository | Chi lo usa | Stabilità |\n|---|---|---|\n| `pve-enterprise` | Chi ha una sottoscrizione | Massima, consigliato in produzione |\n| `pve-no-subscription` | Senza sottoscrizione | Pacchetti più recenti, meno collaudati |\n| `pve-test` | Sviluppo | Non in produzione |\n\nTre cose che si scoprono tardi:\n\n1. **Tutti i nodi devono avere lo stesso livello di sottoscrizione.** Un cluster metà enterprise e metà no-subscription riceve versioni diverse degli stessi pacchetti, ed è una fonte di problemi difficili da diagnosticare.\n2. **La chiave di sottoscrizione è legata all'architettura.** Una chiave arm64 non è valida su x86, e viceversa.\n3. **Proxmox VE 9 usa il formato deb822** (file `.sources`, non più righe singole in `sources.list`). Su un sistema aggiornato da versioni precedenti, `apt modernize-sources` converte le voci vecchie.",
+  "testo": "| Repository | Chi lo usa | Stabilità |\n|---|---|---|\n| `pve-enterprise` | Chi ha una sottoscrizione | Massima, consigliato in produzione |\n| `pve-no-subscription` | Senza sottoscrizione | Pacchetti più recenti, meno collaudati |\n| `pve-test` | Sviluppo | **Mai su un nodo di cluster**, nemmeno uno solo |\n\nQuattro cose che si scoprono tardi:\n\n1. **Tutti i nodi devono avere lo stesso livello di sottoscrizione.** Un cluster metà enterprise e metà no-subscription riceve versioni diverse degli stessi pacchetti, ed è una fonte di problemi difficili da diagnosticare.\n2. **Tutti i nodi sullo stesso repository, e quindi sullo stesso QEMU.** Un nodo più avanti degli altri crea VM con una *machine version* che gli altri non sanno eseguire: la VM non migra e non riparte altrove, né a mano né con l'alta affidabilità (`Installed QEMU version '11.0.3' is too old to run machine type 'pc-i440fx-11.1+pve0'`). Visto in laboratorio il 27/09/2026 con `pve-test` attivo su un nodo solo; sintomo e rimedio in §3.2.\n3. **La chiave di sottoscrizione è legata all'architettura.** Una chiave arm64 non è valida su x86, e viceversa.\n4. **Proxmox VE 9 usa il formato deb822** (file `.sources`, non più righe singole in `sources.list`). Su un sistema aggiornato da versioni precedenti, `apt modernize-sources` converte le voci vecchie.",
   "troncato": 0
  },
  "§1.8": {
   "titolo": "§1.8 Indirizzi IP e porte da riservare",
   "file": "manuale/01-progettare.md",
-  "riga": 156,
+  "riga": 157,
   "parte": "Parte 1",
   "testo": "| Uso | Quantità | Profili |\n|---|---|---|\n| Management dei nodi | 1 per nodo | tutti |\n| Corosync ring primario | 1 per nodo | B C D |\n| Corosync ring secondario | 1 per nodo | B C D |\n| Storage | 1-2 per nodo | se presente |\n| Ceph pubblica e cluster | 2 per nodo | D |\n| Migrazione | 1 per nodo | C D |\n| Backup | 1 per nodo | tutti |\n| Proxmox Backup Server | 1 | tutti |\n| QDevice | 1 | B, e cluster con numero pari di nodi |\n| Proxmox Datacenter Manager | 1 | D |\n| iDRAC / iLO / IPMI | 1 per nodo | tutti |\n\n**Le porte di switch** vanno contate insieme agli indirizzi: è il vincolo che di solito si scopre il giorno dell'installazione. Un nodo di profilo C ben fatto usa **sei porte** — due corosync, due storage o VM in bond, due management o backup — più una IPMI.\n\nLe porte TCP/UDP usate da Proxmox sono nell'Appendice B.",
   "troncato": 0
@@ -1682,39 +1682,39 @@ const FONTI = {
  "§3.5": {
   "titolo": "§3.5 Due nodi: il QDevice",
   "file": "manuale/03-cluster.md",
-  "riga": 56,
+  "riga": 60,
   "parte": "Parte 3",
-  "testo": "Il QDevice è un servizio esterno che fornisce un voto. Non ospita VM, non tocca lo storage, non conosce le configurazioni: dice solo \"io ci sono\", e la sua presenza rompe la parità.\n\n```bash\n# sul dispositivo esterno (NAS, VM altrove, piccolo sistema dedicato)\napt install corosync-qnetd\n\n# su ogni nodo del cluster\napt install corosync-qdevice\n\n# da un nodo qualsiasi\npvecm qdevice setup <ip-del-qdevice>\npvecm status          # devono comparire 3 voti attesi\n```\n\n**Dove metterlo.** Non su uno dei due nodi — sarebbe inutile. Non su una VM ospitata dal cluster stesso, per la stessa ragione. Va bene un NAS, un piccolo sistema fisico, o una VM su un'infrastruttura diversa. Deve raggiungere entrambi i nodi in **UDP 5405**.\n\n**Cosa succede se cade il QDevice.** Il cluster resta a due voti su due: continua a funzionare finché entrambi i nodi sono vivi, ma torna a essere vulnerabile alla parità. Il QDevice va quindi monitorato come un componente dell'infrastruttura, non trattato come un accessorio.\n\n> ⚠️ **Il QDevice è pensato per cluster con numero PARI di nodi.** L'algoritmo predefinito `ffsplit` presuppone la parità. Su un cluster con numero dispari Proxmox rifiuta l'aggiunta e richiede `--force`, passando automaticamente all'algoritmo `lms` (last-man-standing), che dà al QDevice un peso diverso. *Comportamento verificato sul forum Proxmox il 2026-09-01; la documentazione ufficiale non lo descrive nel dettaglio.*\n\nPer rimuoverlo:\n\n```bash\npvecm qdevice remove\n```\n\n**Il QDevice va rimosso prima di togliere un nodo dal cluster** (§3.7).",
-  "troncato": 0
+  "testo": "Il QDevice è un servizio esterno che fornisce un voto. Non ospita VM, non tocca lo storage, non conosce le configurazioni: dice solo \"io ci sono\", e la sua presenza rompe la parità.\n\n```bash\n# sul dispositivo esterno (NAS, VM altrove, piccolo sistema dedicato)\napt install corosync-qnetd\n\n# su ogni nodo del cluster\napt install corosync-qdevice\n\n# da un nodo qualsiasi\npvecm qdevice setup <ip-del-qdevice>\npvecm status          # devono comparire 3 voti attesi\n```\n\n**`corosync-qdevice` va installato su tutti i nodi prima del setup.** Se manca su uno, `pvecm qdevice setup` se ne accorge a metà, dopo aver già creato i certificati sull'altro, e si ferma su `corosync-qdevice-net-certutil` (laboratorio, 27/09/2026).\n\n**Dove metterlo.** Non su uno dei due nodi — sarebbe inutile. Non su una VM ospitata dal cluster stesso, per la stessa ragione. Va bene un NAS, un piccolo sistema fisico, o una VM su un'infrastruttura diversa. Deve raggiungere entrambi i nodi in **UDP 5405**.\n\n**Cosa succede se cade il QDevice.** Il cluster resta a due voti su due: continua a funzionare finché entrambi i nodi sono vivi, ma torna a essere vulnerabile alla parità. Il QDevice va quindi monitorato come un componente dell'infrastruttura, non trattato come un accessorio.",
+  "troncato": 1
  },
  "§4.2": {
   "titolo": "§4.2 ZFS locale",
   "file": "manuale/04-storage.md",
-  "riga": 35,
+  "riga": 37,
   "parte": "Parte 4",
-  "testo": "Tre decisioni non si correggono senza distruggere e ricreare il pool:\n\n| Decisione | Regola | Se sbagliata |\n|---|---|---|\n| **Livello di RAID** | **mirror o RAID10** per i carichi VM. RAIDZ solo se le prestazioni misurate bastano. dRAID da 10-15 dischi in su | Prestazioni casuali insufficienti, e non si converte |\n| **`ashift`** | 12 (4 KB) di default; mai *sotto* il settore fisico reale del disco | Amplificazione della scrittura per tutta la vita del pool |\n| **Special device** | Deve avere **la stessa ridondanza del pool** | È un punto singolo di guasto **dell'intero pool**, e non si può togliere |\n\n**Perché mirror e non RAIDZ.** Un vdev RAIDZ ha le IOPS casuali di *un solo disco*, per quanti dischi contenga. Su un fileserver che scrive sequenzialmente non si nota; su un database o su venti VM che leggono contemporaneamente sì, e molto.\n\nZFS usa la RAM libera come cache di lettura. Su un hypervisor questa RAM la vogliono le VM.\n\n**Dalla 8.1 il valore predefinito è il 10% della memoria con tetto a 16 GiB** — prima era il 50%, ed è la ragione per cui le guide più vecchie insistono tanto su questo punto. Il default attuale è ragionevole, ma su un nodo molto carico va comunque fissato esplicitamente:\n\n```ini\n# /etc/modprobe.d/zfs.conf\noptions zfs zfs_arc_max=8589934592     # 8 GiB\n```\n\n```bash\nupdate-initramfs -u -k all      # e riavvio, se la root è su ZFS\n```\n\nSu sistemi con più di 256 GiB di RAM conviene fissare anche `zfs_arc_min`.\n\n```bash\nzfs set compression=lz4 <pool>        # praticamente gratis, quasi sempre conveniente\n```",
+  "testo": "Tre decisioni non si correggono senza distruggere e ricreare il pool:\n\n| Decisione | Regola | Se sbagliata |\n|---|---|---|\n| **Livello di RAID** | **mirror o RAID10** per i carichi VM. RAIDZ solo se le prestazioni misurate bastano. dRAID da 10-15 dischi in su | Prestazioni casuali insufficienti, e non si converte |\n| **`ashift`** | 12 (4 KB) di default; mai *sotto* il settore fisico reale del disco | Amplificazione della scrittura per tutta la vita del pool |\n| **Special device** | Deve avere **la stessa ridondanza del pool** | È un punto singolo di guasto **dell'intero pool**, e non si può togliere |\n\n**Perché mirror e non RAIDZ.** Un vdev RAIDZ ha le IOPS casuali di *un solo disco*, per quanti dischi contenga. Su un fileserver che scrive sequenzialmente non si nota; su un database o su venti VM che leggono contemporaneamente sì, e molto.\n\n> ⚠️ **Il `volblocksize` si fissa quando lo zvol viene creato, e non si cambia dopo.** È l'unità minima che ZFS legge e scrive per quel disco: se il guest scrive 4 KB su uno zvol da 64 KB, ZFS rilegge e riscrive 64 KB. Si imposta **sullo storage, prima di creare o importare i dischi**, e vale per i volumi nuovi; uno già creato si corregge solo ricopiandolo in un volume nuovo, cioè rifacendo la migrazione. Lo stesso vale per il *chunk size* di un pool LVM-thin (§4.4).\n\n```bash\npvesm set local-zfs --blocksize 16k                 # sullo storage, prima dell'import\nzfs get volblocksize rpool/data/vm-120-disk-0       # verifica su un disco creato dopo\n```",
   "troncato": 1
  },
  "§4.5": {
   "titolo": "§4.5 Replica ZFS tra nodi",
   "file": "manuale/04-storage.md",
-  "riga": 123,
+  "riga": 134,
   "parte": "Parte 4",
   "testo": "È il modo di avere alta affidabilità senza storage condiviso: ZFS copia periodicamente le differenze del dataset su un altro nodo.\n\n```bash\npvesr create-local-job 100-0 pve2 --schedule \"*/5\"    # ogni 5 minuti\npvesr status\npvesr list\n```\n\n| Caratteristica | Valore |\n|---|---|\n| Storage supportato | **Solo ZFS locale.** Nient'altro |\n| Intervallo | Da 1 minuto a 1 settimana |\n| Ritentativo dopo un errore | Ogni 30 minuti |\n| Destinazioni per job | **Una sola** |\n| RPO | Uguale all'intervallo configurato |\n\n**Che cosa succede davvero quando il nodo di origine muore.** I dati sono sull'altro nodo, aggiornati all'ultima replica riuscita. Se la VM è gestita in HA, riparte automaticamente **perdendo il lavoro dall'ultima replica**. Se non lo è, serve spostare a mano la configurazione e avviarla.\n\n> ⚠️ **La replica non è alta affidabilità sincrona, ed è la confusione più costosa che si possa fare in fase di vendita.** Con intervallo di 5 minuti si possono perdere 5 minuti di transazioni. Su un fileserver è spesso accettabile; su un gestionale o un database non lo è, e va detto prima, per iscritto, con il numero dentro.\n\n**Su cosa non usarla:** database transazionali, code di messaggi, qualunque cosa dove la coerenza di cinque minuti fa più danno di un fermo di venti.",
   "troncato": 0
  },
  "§5.2": {
-  "titolo": "§5.2 Differenze tra SAS direct-attached e iSCSI",
+  "titolo": "§5.2 Differenze tra SAS direct-attached, Fibre Channel e iSCSI",
   "file": "manuale/05-storage-blocchi.md",
   "riga": 23,
   "parte": "Parte 5",
-  "testo": "Da leggere prima di riusare qualsiasi procedura scritta per iSCSI.\n\n| Elemento | iSCSI | **SAS direct-attached** |\n|---|---|---|\n| Trasporto | Ethernet, VLAN dedicata, MTU 9000 | Cavo SAS punto-punto. **Niente rete da progettare** |\n| Discovery / login | `iscsiadm` discovery + login + `node.startup automatic` | **Nulla.** La LUN compare da sola all'accensione |\n| Identità dell'initiator | IQN (`iqn.1993-08.org.debian:...`) | **WWN delle porte SAS** dell'HBA |\n| Masking lato array | igroup / host group con gli IQN | Host mapping con i WWN SAS |\n| Servizi da abilitare | `iscsid` + `multipathd` | **Solo `multipathd`** |\n| Storage \"iSCSI\" in Proxmox | Sì, come base per LVM | **NO — non esiste un plugin SAS** |\n| Creazione del VG | Fatta dal wizard LVM della GUI | **Manuale via CLI**, poi la GUI lo adotta |\n| Rescan dopo resize | `iscsiadm -m node -R` | `rescan-scsi-bus.sh` o rescan via sysfs |\n| Contesa con corosync | ⚠️ Reale se condivide la VLAN | ✅ **Inesistente** — il SAS è fuori banda |\n| Numero massimo di nodi | Praticamente illimitato | ⚠️ **Limitato dalle porte dei controller** |\n| Latenza | 0,2–1 ms tipici | Più bassa, tipicamente < 0,2 ms |\n\nSenza switch SAS, ogni nodo occupa **una porta per controller** (due cavi per nodo, per avere ridondanza). Un array dual-controller con 2 porte per controller regge quindi **2 nodi** in piena ridondanza, 4 con controller a 4 porte.",
+  "testo": "Da leggere prima di riusare qualsiasi procedura scritta per un altro trasporto. Il confronto completo, con i comandi e le due strade (riga di comando e interfaccia), è nella procedura 05 «Storage a blocchi condiviso: iSCSI, Fibre Channel e SAS».",
   "troncato": 1
  },
  "§5.8": {
   "titolo": "§5.8 Dimensionamento",
   "file": "manuale/05-storage-blocchi.md",
-  "riga": 309,
+  "riga": 320,
   "parte": "Parte 5",
   "testo": "**Spazio LVM richiesto ≈ Σ(dischi VM) × (1 + snapshot medi contemporanei) + ~5% di overhead qcow2**\n\nEsempio, 2 TB di dischi VM con snapshot brevi pre-patch:\n\n| Scenario | Dischi | Snapshot | LV allocati |\n|---|---|---|---|\n| Regime normale | 2 TB | 0 | 2 TB |\n| Patch, 20% delle VM | 2 TB | 0,4 TB | ~2,5 TB |\n| Caso peggiore, tutte | 2 TB | 2 TB | ~4,2 TB |\n\nIl VG va dimensionato sul **caso peggiore**. Sull'array il consumo reale resta basso grazie al thin provisioning.\n\nIl modello cambia completamente: **ogni snapshot occupa fisicamente la dimensione piena del disco**, e lo spazio non torna dopo la cancellazione.\n\nContro-esempio per capire l'ordine di grandezza: un disco da 1 TB con 24 snapshot orari richiede **~27,5 TB** di spazio allocato.\n\nSe l'array è thick-only, le opzioni sono:\n\n1. Limitare gli snapshot a finestre di manutenzione, uno per volta, cancellati subito\n2. Sovradimensionare pesantemente la LUN\n3. **Rinunciare a `snapshot-as-volume-chain`** e usare gli snapshot dell'array (crash-consistent, per LUN intera, senza rollback per singola VM dalla GUI)\n\nVa deciso con il cliente **prima** di installare, non dopo.\n\n---",
   "troncato": 0
@@ -1738,7 +1738,7 @@ const FONTI = {
  "§1.7 › 1.7.1 Il vincolo Veeam, per esteso": {
   "titolo": "§1.7 I vincoli che decidono l'architettura › 1.7.1 Il vincolo Veeam, per esteso",
   "file": "manuale/01-progettare.md",
-  "riga": 150,
+  "riga": 151,
   "parte": "Parte 1",
   "testo": "> ⚠️ **Il plug-in Veeam per Proxmox VE richiede almeno uno storage file-level (per esempio NFS) nel cluster: non supporta ambienti basati esclusivamente su LVM.** I dischi delle worker appliance devono inoltre stare su storage che supporti gli snapshot.\n\nSe il progetto prevede solo una SAN a blocchi e il cliente usa Veeam, va messo a budget **anche uno storage NFS**. Non è un'aggiunta opzionale: è un blocco di progetto. Il perché tecnico è nella §21.1.",
   "troncato": 0
