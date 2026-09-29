@@ -93,8 +93,10 @@ def main(argv: list[str]) -> int:
     cartella = Path(tempfile.gettempdir()) / f"audit-{codice}-{quando}"
     rilievi = cartella.with_suffix(".rilievi.json")
 
+    grezzo = cartella.with_suffix(".grezzo.json")
     comando = [sys.executable, str(AUDIT), "--host", nodo,
-               "--output", str(cartella), "--rilievi-json", str(rilievi)]
+               "--output", str(cartella), "--rilievi-json", str(rilievi),
+               "--json", str(grezzo)]      # il grezzo serve per inviare senza rifare tutto
     if nome_cliente:
         comando += ["--cliente", nome_cliente]
     if prontezza:
@@ -132,11 +134,11 @@ def main(argv: list[str]) -> int:
         print(f"\n  Non inviato. Il report resta in {cartella}")
         return 0
 
-    # Si rilancia l'audit con --invia invece di riusare la raccolta: l'audit
-    # non sa (ancora) inviare un risultato già prodotto, e rifarlo costa una
-    # manciata di comandi ssh in sola lettura.
+    # L'invio riusa il grezzo già salvato (--da-json): non ricontatta il nodo,
+    # non rifà una tornata di comandi ssh, e manda ESATTAMENTE quello che hai
+    # appena visto nel riepilogo — non una seconda raccolta, magari diversa.
     print("\n  invio…\n")
-    comando_invio = [sys.executable, str(AUDIT), "--host", nodo,
+    comando_invio = [sys.executable, str(AUDIT), "--da-json", str(grezzo),
                      "--invia", portale, "--codice-portale", codice]
     if nome_cliente:
         comando_invio += ["--cliente", nome_cliente]
