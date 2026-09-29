@@ -16,17 +16,42 @@ PORTALE_PREDEFINITO = "https://survey.domarc.it/proxmox"
 CODICE = re.compile(r"^PXM(-[A-Z0-9]{4}){3}$", re.I)
 
 
+def cartella_raccolte() -> Path:
+    """Dove finiscono i file: una sottocartella di DOVE SI LANCIA, non /tmp.
+
+    In /tmp si perdono al riavvio, e quando servono — per caricarli a mano dal
+    portale — bisogna ricordarsi il percorso. Qui restano accanto a dove si sta
+    lavorando, e si trovano da soli.
+    """
+    d = Path.cwd() / "raccolte"
+    d.mkdir(exist_ok=True)
+    return d
+
+
+def _leggi(invito: str) -> str:
+    """input() che non lascia una traccia di stack se lo standard input finisce.
+
+    Succede quando si lancia lo strumento da uno script o con una pipe: non è
+    un errore da programmatore, è una domanda senza risposta, e si esce dicendolo.
+    """
+    try:
+        return input(invito)
+    except EOFError:
+        print("\n  nessuna risposta (standard input finito): mi fermo.")
+        raise SystemExit(130)
+
+
 def chiedi(domanda: str, predefinito: str = "", obbligatorio: bool = True) -> str:
     coda = f" [{predefinito}]" if predefinito else ""
     while True:
-        r = input(f"{domanda}{coda}: ").strip() or predefinito
+        r = _leggi(f"{domanda}{coda}: ").strip() or predefinito
         if r or not obbligatorio:
             return r
         print("  serve un valore")
 
 
 def conferma(domanda: str, predefinito: bool = False) -> bool:
-    r = input(f"{domanda} {'[S/n]' if predefinito else '[s/N]'}: ").strip().lower()
+    r = _leggi(f"{domanda} {'[S/n]' if predefinito else '[s/N]'}: ").strip().lower()
     return predefinito if not r else r in ("s", "si", "sì", "y", "yes")
 
 

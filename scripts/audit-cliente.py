@@ -24,14 +24,14 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
-import tempfile
 from datetime import datetime
 from pathlib import Path
 
 QUI = Path(__file__).resolve().parent
 sys.path.insert(0, str(QUI))
-from comune import (PORTALE_PREDEFINITO, chiedi, chiedi_codice,  # noqa: E402
-                    conferma, memoria_leggi, memoria_scrivi, raggiungibile)
+from comune import (PORTALE_PREDEFINITO, cartella_raccolte, chiedi,  # noqa: E402
+                    chiedi_codice, conferma, memoria_leggi, memoria_scrivi,
+                    raggiungibile)
 
 AUDIT = QUI.parent / "audit-nodo.py"
 GRAVITA = {"critico": "CRITICI", "alto": "ALTI", "medio": "MEDI", "basso": "BASSI",
@@ -90,7 +90,7 @@ def main(argv: list[str]) -> int:
             return 1
 
     quando = datetime.now().strftime("%Y%m%d-%H%M")
-    cartella = Path(tempfile.gettempdir()) / f"audit-{codice}-{quando}"
+    cartella = cartella_raccolte() / f"proxmox-{codice}-{quando}"
     rilievi = cartella.with_suffix(".rilievi.json")
 
     grezzo = cartella.with_suffix(".grezzo.json")

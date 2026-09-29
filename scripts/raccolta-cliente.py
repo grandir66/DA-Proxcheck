@@ -29,8 +29,9 @@ from pathlib import Path
 
 QUI = Path(__file__).resolve().parent
 sys.path.insert(0, str(QUI))
-from comune import (CODICE, PORTALE_PREDEFINITO, chiedi, conferma,  # noqa: E402
-                    memoria_leggi, memoria_scrivi, raggiungibile)
+from comune import (CODICE, PORTALE_PREDEFINITO, cartella_raccolte,  # noqa: E402
+                    chiedi, conferma, memoria_leggi, memoria_scrivi,
+                    raggiungibile)
 
 COLLETTORE = QUI.parent / "strumenti" / "raccogli-vcenter.py"
 
@@ -265,7 +266,7 @@ def main() -> int:
         print("  password vuota: mi fermo")
         return 1
 
-    fuori = Path(f"/tmp/raccolta-{codice}-{datetime.now():%Y%m%d-%H%M}.json")
+    fuori = cartella_raccolte() / f"vmware-{codice}-{datetime.now():%Y%m%d-%H%M}.json"
     comando = [sys.executable, str(COLLETTORE),
                "--host", host, "--credenziale", "-",
                "--campione", campione, "--host-minimi", host_minimi,
