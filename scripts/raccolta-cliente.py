@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Raccolta vCenter di un cliente, e invio al portale — tutto a domande.
 
-    raccolta-cliente
+    raccolta-cliente                  raccolta e invio, tutto a domande
+    raccolta-cliente <file.json>      invia una raccolta già fatta
 
 Chiede il codice del cliente, l'indirizzo del vCenter e la password, fa la
 raccolta (solo lettura) e, se lo confermi, la manda al portale.
@@ -29,7 +30,10 @@ from pathlib import Path
 QUI = Path(__file__).resolve().parent
 COLLETTORE = QUI.parent / "strumenti" / "raccogli-vcenter.py"
 MEMORIA = Path.home() / ".config" / "domarc" / "raccolta-clienti.json"
-PORTALE_PREDEFINITO = "https://192.168.20.40"
+# Il nome pubblico, non l'IP: sull'IP il certificato è autofirmato, sul nome
+# è valido. E il prefisso «/proxmox» fa parte dell'indirizzo del portale —
+# senza, l'API risponde 404 (verificato il 29/09/2026).
+PORTALE_PREDEFINITO = "https://survey.domarc.it/proxmox"
 CODICE = re.compile(r"^PXM(-[A-Z0-9]{4}){3}$", re.I)
 
 
@@ -62,6 +66,66 @@ def memoria_scrivi(dati: dict) -> None:
     MEMORIA.parent.mkdir(parents=True, exist_ok=True)
     MEMORIA.write_text(json.dumps(dati, indent=1, ensure_ascii=False), encoding="utf-8")
     MEMORIA.chmod(0o600)
+
+
+def impronta_certificato(host: str, porta: int = 443) -> str | None:
+    """L'impronta SHA-256 del certificato, come la mostra un browser."""
+    import hashlib
+    import ssl
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+    try:
+        with socket.create_connection((host, porta), timeout=8) as grezzo:
+            with ctx.wrap_socket(grezzo, server_hostname=host) as tls:
+                der = tls.getpeercert(binary_form=True)
+    except OSError:
+        return None
+    grezza = hashlib.sha256(der).hexdigest().upper()
+    return ":".join(grezza[i:i + 2] for i in range(0, len(grezza), 2))
+
+
+def certificato_riconosciuto(portale: str, mem: dict) -> bool:
+    """Come fa SSH con le host key: la prima volta si guarda, poi si ricorda.
+
+    Il portale interno ha un certificato autofirmato, che nessuna catena di CA
+    può convalidare. Disattivare la verifica e basta vorrebbe dire accettare
+    qualunque certificato, per sempre. Fissare l'impronta invece dice: mi fido
+    di QUESTO, e se un giorno cambia me ne accorgo.
+    """
+    from urllib.parse import urlparse
+    u = urlparse(portale if "//" in portale else f"https://{portale}")
+    if u.scheme != "https":
+        return True                      # http: non c'è niente da verificare
+    host, porta = u.hostname, u.port or 443
+
+    ora = impronta_certificato(host, porta)
+    if not ora:
+        print(f"  non riesco a leggere il certificato di {host}:{porta}")
+        return False
+
+    conosciute = mem.setdefault("_certificati", {})
+    prima = conosciute.get(f"{host}:{porta}")
+
+    if prima == ora:
+        return True
+    if prima and prima != ora:
+        print(f"\n  ATTENZIONE: il certificato di {host}:{porta} È CAMBIATO.")
+        print(f"     prima:  {prima}")
+        print(f"     adesso: {ora}")
+        print("     Può essere un rinnovo legittimo, oppure qualcuno in mezzo.")
+        if not conferma("     Accetto il certificato nuovo?"):
+            return False
+    else:
+        print(f"\n  Il portale {host} ha un certificato autofirmato, mai visto prima.")
+        print(f"     impronta SHA-256: {ora}")
+        print("     Confrontala con quella che mostra il browser sullo stesso indirizzo.")
+        if not conferma("     Me ne fido?"):
+            return False
+
+    conosciute[f"{host}:{porta}"] = ora
+    memoria_scrivi(mem)
+    return True
 
 
 def raggiungibile(host: str, porta: int = 443, attesa: float = 5) -> bool:
@@ -140,10 +204,63 @@ def stampa_riepilogo(r: dict) -> None:
 
 
 # ------------------------------------------------------------------ main
+def invia_file(percorso: Path) -> int:
+    """Manda al portale una raccolta già fatta, senza ripassare da vCenter.
+
+    Serve quando l'invio è fallito — certificato, rete, codice — e rifare la
+    raccolta vorrebbe dire un'altra tornata di chiamate all'API di vSphere.
+    """
+    if not percorso.exists():
+        print(f"non trovo {percorso}", file=sys.stderr)
+        return 2
+
+    mem = memoria_leggi()
+    r = riepilogo(percorso)
+    print(f"\nRaccolta già fatta: {percorso}")
+    stampa_riepilogo(r)
+
+    # il codice si indovina dal nome del file, se c'è
+    trovato = re.search(r"(PXM(?:-[A-Z0-9]{4}){3})", percorso.name, re.I)
+    codice = chiedi("\nCodice cliente (PXM-…)",
+                    (trovato.group(1).upper() if trovato else mem.get("_ultimo", ""))).upper()
+    noto = mem.get(codice, {})
+    nome_cliente = chiedi("Nome del cliente (facoltativo)", noto.get("cliente", ""), obbligatorio=False)
+    portale = chiedi("Portale", noto.get("portale", PORTALE_PREDEFINITO))
+
+    print(f"\n  Sto per inviare {r['raccolte']} macchine di «{nome_cliente or codice}»")
+    print(f"  a {portale}, sotto il codice {codice}.")
+    if not conferma("  Confermi l'invio?"):
+        print("\n  Non inviato.")
+        return 0
+
+    if not certificato_riconosciuto(portale, mem):
+        print("\n  Invio annullato.")
+        return 1
+
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("collettore", COLLETTORE)
+    modulo = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(modulo)
+    ok = modulo.invia_al_portale(json.loads(percorso.read_text(encoding="utf-8")),
+                                 portale, codice, nome_cliente, "", verifica=False)
+    if ok:
+        mem.setdefault(codice, {}).update({"portale": portale, "cliente": nome_cliente})
+        memoria_scrivi(mem)
+        print("\n  Inviato.")
+        return 0
+    print("\n  L'invio non è andato a buon fine.")
+    return 1
+
+
 def main() -> int:
     if not COLLETTORE.exists():
         print(f"non trovo il collettore: {COLLETTORE}", file=sys.stderr)
         return 2
+
+    # «raccolta-cliente <file.json>» invia una raccolta già fatta
+    argomenti = [a for a in sys.argv[1:] if not a.startswith("-")]
+    if argomenti:
+        return invia_file(Path(argomenti[0]).expanduser())
 
     print("\nRaccolta vCenter per il portale clienti")
     print("La password non viene salvata da nessuna parte.\n")
@@ -221,6 +338,10 @@ def main() -> int:
 
     # L'invio riusa la funzione del collettore invece di rifare le chiamate a
     # vCenter: la raccolta è già su disco, mandarla via è un POST e basta.
+    if not certificato_riconosciuto(portale, mem):
+        print(f"\n  Invio annullato. Il JSON resta in {fuori}")
+        return 1
+
     try:
         import importlib.util
         spec = importlib.util.spec_from_file_location("collettore", COLLETTORE)
@@ -228,7 +349,7 @@ def main() -> int:
         spec.loader.exec_module(modulo)
         ok = modulo.invia_al_portale(
             json.loads(fuori.read_text(encoding="utf-8")),
-            portale, codice, nome_cliente, "")
+            portale, codice, nome_cliente, "", verifica=False)
     except Exception as e:
         print(f"  Invio non riuscito: {e}", file=sys.stderr)
         ok = False

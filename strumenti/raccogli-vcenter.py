@@ -171,7 +171,8 @@ def raccogli(vc: VCenter, quante: int, host_minimi: int) -> dict:
     return fuori
 
 
-def invia_al_portale(dati: dict, portale: str, codice: str, cliente: str = "", codice_cliente: str = "") -> bool:
+def invia_al_portale(dati: dict, portale: str, codice: str, cliente: str = "",
+                     codice_cliente: str = "", verifica: bool | str = True) -> bool:
     """Manda la raccolta grezza al portale, come fa `audit-nodo.py --invia`.
 
     Una via sola per due strumenti: il portale archivia il grezzo e ne produce
@@ -188,7 +189,10 @@ def invia_al_portale(dati: dict, portale: str, codice: str, cliente: str = "", c
     if codice_cliente.strip():
         testate["X-Codice-Cliente"] = urllib.parse.quote(codice_cliente.strip())
     try:
-        r = requests.post(indirizzo, data=corpo, headers=testate, timeout=180, verify=True)
+        # «verifica» è True (catena di CA), il percorso di un CA, oppure False
+        # quando chi chiama ha già controllato l'impronta del certificato —
+        # è il caso del portale interno, che ha un certificato autofirmato.
+        r = requests.post(indirizzo, data=corpo, headers=testate, timeout=180, verify=verifica)
     except requests.RequestException as e:
         print(f"Invio non riuscito: {e}", file=sys.stderr)
         return False
