@@ -12,6 +12,9 @@ DA DOVE SI LANCIA
     python3 raccogli-vcenter.py --host 172.16.1.80 --credenziale ~/gao/vcenter.pass \\
         --campione 30 --host-minimi 3 --json /tmp/vcenter.json
 
+    Per non lasciare la password su disco, «--credenziale -» la legge da stdin.
+    Il modo comodo è `scripts/raccolta-cliente.py`, che chiede tutto a schermo.
+
 PERCHE' E' LENTO DI PROPOSITO
     L'API di vSphere ha un limite basso di connessioni: superarlo blocca i
     client per una trentina di secondi — anche quelli gia' in corso (manuale
@@ -206,8 +209,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--host", required=True, help="indirizzo del vCenter")
     ap.add_argument("--credenziale", required=True,
-                    help="file con «utente:password», permessi 600. MAI la password sulla riga di comando: "
-                         "finirebbe nella storia della shell e nell'elenco dei processi")
+                    help="file con «utente:password», permessi 600, oppure «-» per leggerla da stdin. "
+                         "MAI la password sulla riga di comando: finirebbe nella storia della shell "
+                         "e nell'elenco dei processi")
     ap.add_argument("--campione", type=int, default=30, help="quante macchine (0 = tutte)")
     ap.add_argument("--host-minimi", type=int, default=3, dest="host_minimi",
                     help="da quanti host ESXi almeno")
@@ -220,7 +224,12 @@ def main() -> int:
                     help="codice cliente: è la chiave con cui il portale raggruppa le acquisizioni")
     args = ap.parse_args()
 
-    testo = Path(args.credenziale).expanduser().read_text(encoding="utf-8").strip()
+    # «-» legge da stdin: la password non tocca mai il disco. È la via che usa
+    # scripts/raccolta-cliente.py, dove la si digita e basta.
+    if args.credenziale == "-":
+        testo = sys.stdin.readline().strip()
+    else:
+        testo = Path(args.credenziale).expanduser().read_text(encoding="utf-8").strip()
     if ":" not in testo:
         print("il file della credenziale deve contenere «utente:password»", file=sys.stderr)
         return 2
