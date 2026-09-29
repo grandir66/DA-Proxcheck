@@ -131,7 +131,13 @@ def main(argv: list[str]) -> int:
     print(f"\n  Sto per inviare l'audit di «{nome_cliente or codice}»")
     print(f"  a {portale}, sotto il codice {codice}.")
     if not conferma("  Confermi l'invio?"):
-        print(f"\n  Non inviato. Il report resta in {cartella}")
+        # Chi non invia di solito vuole caricare a mano: serve il GREZZO, non
+        # il report. Dirgli dove sta, e che strada prendere.
+        print(f"\n  Non inviato.")
+        print(f"  report leggibile:  {cartella}")
+        print(f"  file da caricare:  {grezzo}")
+        print(f"\n  Per caricarlo: entrare in {portale} con il codice {codice},")
+        print(f"  pagina «Verifiche», riquadro in fondo. L'analisi è la stessa dell'invio diretto.")
         return 0
 
     # L'invio riusa il grezzo già salvato (--da-json): non ricontatta il nodo,
