@@ -3284,9 +3284,13 @@ def esegui(args):
     if getattr(args, "invia", None):
         if not getattr(args, "codice_portale", None):
             print("Con --invia serve anche --codice-portale (quello che vi ha dato Domarc).", file=sys.stderr)
-        else:
-            invia_al_portale(inv, args.invia, args.codice_portale,
-                             cliente=args.cliente or "", codice_cliente=args.codice or "")
+        elif not invia_al_portale(inv, args.invia, args.codice_portale,
+                                  cliente=args.cliente or "", codice_cliente=args.codice or ""):
+            dove = args.json or "(usare --json per salvarla)"
+            print(f"\nLa raccolta grezza e' in {dove} — non e' andato perso niente."
+                  f"\nSi puo' caricare a mano da un computer che raggiunge il portale:"
+                  f"\n  {args.invia.rstrip('/')}  →  pagina «Verifiche», riquadro in fondo.",
+                  file=sys.stderr)
 
     cluster_nome = next((x.get("name") for x in (inv.get("cluster", {}).get("status") or []) if x.get("type") == "cluster"), None)
     multi = len(inv.get("nodi") or {}) > 1

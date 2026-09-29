@@ -254,8 +254,14 @@ def main() -> int:
     if args.invia:
         if not args.codice_portale:
             print("Con --invia serve anche --codice-portale.", file=sys.stderr)
-        else:
-            invia_al_portale(dati, args.invia, args.codice_portale, args.cliente, args.codice_cliente)
+        elif not invia_al_portale(dati, args.invia, args.codice_portale, args.cliente, args.codice_cliente):
+            # L'invio è un di piu': la raccolta e' gia' su disco, e da li' si
+            # carica a mano. Chi non ha una via verso il portale dal luogo
+            # della rilevazione non ha perso niente, e deve saperlo.
+            print(f"\nLa raccolta e' salva in {args.json} — non e' andato perso niente."
+                  f"\nSi puo' caricare a mano da un computer che raggiunge il portale:"
+                  f"\n  {args.invia.rstrip('/')}  →  pagina «Verifiche», riquadro in fondo.",
+                  file=sys.stderr)
     print(f"\n{len(dati.get('vm') or {})} macchine · {dati['chiamate']} chiamate · {dati['durata_s']} s"
           f"\nScritto in {args.json}", file=sys.stderr)
     return 0
