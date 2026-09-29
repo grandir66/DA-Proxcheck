@@ -28,44 +28,11 @@ from datetime import datetime
 from pathlib import Path
 
 QUI = Path(__file__).resolve().parent
+sys.path.insert(0, str(QUI))
+from comune import (CODICE, PORTALE_PREDEFINITO, chiedi, conferma,  # noqa: E402
+                    memoria_leggi, memoria_scrivi, raggiungibile)
+
 COLLETTORE = QUI.parent / "strumenti" / "raccogli-vcenter.py"
-MEMORIA = Path.home() / ".config" / "domarc" / "raccolta-clienti.json"
-# Il nome pubblico, non l'IP: sull'IP il certificato è autofirmato, sul nome
-# è valido. E il prefisso «/proxmox» fa parte dell'indirizzo del portale —
-# senza, l'API risponde 404 (verificato il 29/09/2026).
-PORTALE_PREDEFINITO = "https://survey.domarc.it/proxmox"
-CODICE = re.compile(r"^PXM(-[A-Z0-9]{4}){3}$", re.I)
-
-
-# ----------------------------------------------------------------- dialogo
-def chiedi(domanda: str, predefinito: str = "", obbligatorio: bool = True) -> str:
-    coda = f" [{predefinito}]" if predefinito else ""
-    while True:
-        r = input(f"{domanda}{coda}: ").strip() or predefinito
-        if r or not obbligatorio:
-            return r
-        print("  serve un valore")
-
-
-def conferma(domanda: str, predefinito: bool = False) -> bool:
-    coda = "[S/n]" if predefinito else "[s/N]"
-    r = input(f"{domanda} {coda}: ").strip().lower()
-    if not r:
-        return predefinito
-    return r in ("s", "si", "sì", "y", "yes")
-
-
-def memoria_leggi() -> dict:
-    try:
-        return json.loads(MEMORIA.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
-
-
-def memoria_scrivi(dati: dict) -> None:
-    MEMORIA.parent.mkdir(parents=True, exist_ok=True)
-    MEMORIA.write_text(json.dumps(dati, indent=1, ensure_ascii=False), encoding="utf-8")
-    MEMORIA.chmod(0o600)
 
 
 def impronta_certificato(host: str, porta: int = 443) -> str | None:
